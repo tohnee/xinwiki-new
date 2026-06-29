@@ -176,18 +176,19 @@ func (r *VectorStoreRouter) GetWriter(ctx context.Context, storeID string) (inte
 	return entry.master, nil
 }
 
-// RegisterEngine 注册一个存储引擎（使用全局默认配置）
-// master 自动包装为支持读写分离能力的节点，replicas 可选传读副本
-func (r *VectorStoreRouter) RegisterEngine(storeID string, master interfaces.RetrieveEngineService, replicas []interfaces.ReadableNode) error {
-	return r.RegisterEngineWithConfig(storeID, master, r.config, replicas)
+// RegisterEngine 注册一个存储引擎（使用全局默认配置，master 需为已包装的 RWCapableEngine）
+func (r *VectorStoreRouter) RegisterEngine(storeID string, master interfaces.RWCapableEngine, replicas []interfaces.ReadableNode) error {
+	return r.registerEngineInternal(storeID, master, nil, r.config, replicas)
 }
 
 // RegisterEngineWithConfig 注册一个存储引擎（使用独立配置）
-// master 自动包装为支持读写分离能力的节点，replicas 可选传读副本
+// master 为原始 RetrieveEngineService，内部自动包装为 RWCapableEngine
 func (r *VectorStoreRouter) RegisterEngineWithConfig(storeID string, master interfaces.RetrieveEngineService, storeCfg types.ReadWriteSeparationConfig, replicas []interfaces.ReadableNode) error {
-	// 自动包装master为RWCapableEngine，零侵入
 	rwMaster := WrapEngineWithRWCapabilities(storeID, master)
+	return r.registerEngineInternal(storeID, rwMaster, master, storeCfg, replicas)
+}
 
+func (r *VectorStoreRouter) registerEngineInternal(storeID string, rwMaster interfaces.RWCapableEngine, rawMaster interfaces.RetrieveEngineService, storeCfg types.ReadWriteSeparationConfig, replicas []interfaces.ReadableNode) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

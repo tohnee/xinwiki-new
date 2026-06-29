@@ -118,27 +118,27 @@ type QAResponse struct {
 
 // Answer represents a high-precision QA result.
 type Answer struct {
-	ID              string      `json:"id"`
-	Question        string      `json:"question"`
-	Answer          string      `json:"answer"`
-	Citations       []*Citation `json:"citations"`
-	Confidence      float64     `json:"confidence"`
-	GroundingScore  float64     `json:"grounding_score"`
-	TokensUsed      int         `json:"tokens_used"`
-	ModelUsed       string      `json:"model_used"`
-	ThinkingChain   []ThinkingStep `json:"thinking_chain,omitempty"`
-	RelatedSearches []string    `json:"related_searches,omitempty"`
-	CreatedAt       time.Time   `json:"created_at"`
+	ID              string          `json:"id"`
+	Question        string          `json:"question"`
+	Answer          string          `json:"answer"`
+	Citations       []*Citation     `json:"citations"`
+	Confidence      float64         `json:"confidence"`
+	GroundingScore  float64         `json:"grounding_score"`
+	TokensUsed      int             `json:"tokens_used"`
+	ModelUsed       string          `json:"model_used"`
+	ThinkingChain   []ReasoningStep `json:"thinking_chain,omitempty"`
+	RelatedSearches []string        `json:"related_searches,omitempty"`
+	CreatedAt       time.Time       `json:"created_at"`
 }
 
-// ThinkingStep represents a step in the reasoning chain.
-type ThinkingStep struct {
-	Step       int       `json:"step"`
-	Thought    string    `json:"thought"`
-	Action     string    `json:"action,omitempty"`
-	Observation string   `json:"observation,omitempty"`
-	Timestamp  time.Time `json:"timestamp"`
-	DurationMs int64     `json:"duration_ms"`
+// ReasoningStep represents a step in the flat reasoning chain.
+type ReasoningStep struct {
+	Step        int       `json:"step"`
+	Thought     string    `json:"thought"`
+	Action      string    `json:"action,omitempty"`
+	Observation string    `json:"observation,omitempty"`
+	Timestamp   time.Time `json:"timestamp"`
+	DurationMs  int64     `json:"duration_ms"`
 }
 
 // CompilationCache manages cached compiled wiki artifacts.

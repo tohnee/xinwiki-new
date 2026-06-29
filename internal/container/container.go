@@ -896,8 +896,8 @@ func initRetrieveEngineRegistry(
 	if slices.Contains(retrieveDriver, "postgres") {
 		postgresRepo := postgresRepo.NewPostgresRetrieveEngineRepository(db)
 		engine := retriever.NewKVHybridRetrieveEngine(postgresRepo, types.PostgresRetrieverEngineType)
-		envID := "env:" + types.PostgresRetrieverEngineType
-		if err := wrapAndRegisterEnvEngine(envID, engine, types.PostgresRetrieverEngineType); err != nil {
+		envID := "env:" + string(types.PostgresRetrieverEngineType)
+		if err := wrapAndRegisterEnvEngine(envID, engine, string(types.PostgresRetrieverEngineType)); err != nil {
 			log.Errorf("Register postgres retrieve engine failed: %v", err)
 		} else {
 			log.Infof("Register postgres retrieve engine success")
@@ -906,8 +906,8 @@ func initRetrieveEngineRegistry(
 	if slices.Contains(retrieveDriver, "sqlite") {
 		sqliteRepo := sqliteRetrieverRepo.NewSQLiteRetrieveEngineRepository(db)
 		engine := retriever.NewKVHybridRetrieveEngine(sqliteRepo, types.SQLiteRetrieverEngineType)
-		envID := "env:" + types.SQLiteRetrieverEngineType
-		if err := wrapAndRegisterEnvEngine(envID, engine, types.SQLiteRetrieverEngineType); err != nil {
+		envID := "env:" + string(types.SQLiteRetrieverEngineType)
+		if err := wrapAndRegisterEnvEngine(envID, engine, string(types.SQLiteRetrieverEngineType)); err != nil {
 			log.Errorf("Register sqlite retrieve engine failed: %v", err)
 		} else {
 			log.Infof("Register sqlite retrieve engine success")
@@ -925,7 +925,7 @@ func initRetrieveEngineRegistry(
 			elasticsearchRepo := elasticsearchRepoV8.NewElasticsearchEngineRepository(client, cfg, nil)
 			engine := retriever.NewKVHybridRetrieveEngine(elasticsearchRepo, types.ElasticsearchRetrieverEngineType)
 			envID := "env:elasticsearch_v8"
-			if err := wrapAndRegisterEnvEngine(envID, engine, types.ElasticsearchRetrieverEngineType); err != nil {
+			if err := wrapAndRegisterEnvEngine(envID, engine, string(types.ElasticsearchRetrieverEngineType)); err != nil {
 				log.Errorf("Register elasticsearch_v8 retrieve engine failed: %v", err)
 			} else {
 				log.Infof("Register elasticsearch_v8 retrieve engine success")
@@ -945,7 +945,7 @@ func initRetrieveEngineRegistry(
 			elasticsearchRepo := elasticsearchRepoV7.NewElasticsearchEngineRepository(client, cfg, nil)
 			engine := retriever.NewKVHybridRetrieveEngine(elasticsearchRepo, types.ElasticsearchRetrieverEngineType)
 			envID := "env:elasticsearch_v7"
-			if err := wrapAndRegisterEnvEngine(envID, engine, types.ElasticsearchRetrieverEngineType); err != nil {
+			if err := wrapAndRegisterEnvEngine(envID, engine, string(types.ElasticsearchRetrieverEngineType)); err != nil {
 				log.Errorf("Register elasticsearch_v7 retrieve engine failed: %v", err)
 			} else {
 				log.Infof("Register elasticsearch_v7 retrieve engine success")
@@ -969,8 +969,8 @@ func initRetrieveEngineRegistry(
 			log.Errorf("Create opensearch repository failed: %v", err)
 		} else {
 			engine := retriever.NewKVHybridRetrieveEngine(repo, types.OpenSearchRetrieverEngineType)
-			envID := "env:" + types.OpenSearchRetrieverEngineType
-			if err := wrapAndRegisterEnvEngine(envID, engine, types.OpenSearchRetrieverEngineType); err != nil {
+			envID := "env:" + string(types.OpenSearchRetrieverEngineType)
+			if err := wrapAndRegisterEnvEngine(envID, engine, string(types.OpenSearchRetrieverEngineType)); err != nil {
 				log.Errorf("Register opensearch retrieve engine failed: %v", err)
 			} else {
 				log.Infof("Register opensearch retrieve engine success")
@@ -1015,8 +1015,8 @@ func initRetrieveEngineRegistry(
 		} else {
 			qdrantRepository := qdrantRepo.NewQdrantRetrieveEngineRepository(client, nil)
 			engine := retriever.NewKVHybridRetrieveEngine(qdrantRepository, types.QdrantRetrieverEngineType)
-			envID := "env:" + types.QdrantRetrieverEngineType
-			if err := wrapAndRegisterEnvEngine(envID, engine, types.QdrantRetrieverEngineType); err != nil {
+			envID := "env:" + string(types.QdrantRetrieverEngineType)
+			if err := wrapAndRegisterEnvEngine(envID, engine, string(types.QdrantRetrieverEngineType)); err != nil {
 				log.Errorf("Register qdrant retrieve engine failed: %v", err)
 			} else {
 				log.Infof("Register qdrant retrieve engine success")
@@ -1056,8 +1056,8 @@ func initRetrieveEngineRegistry(
 		} else {
 			weaviateRepository := weaviateRepo.NewWeaviateRetrieveEngineRepository(weaviateClient, nil)
 			engine := retriever.NewKVHybridRetrieveEngine(weaviateRepository, types.WeaviateRetrieverEngineType)
-			envID := "env:" + types.WeaviateRetrieverEngineType
-			if err := wrapAndRegisterEnvEngine(envID, engine, types.WeaviateRetrieverEngineType); err != nil {
+			envID := "env:" + string(types.WeaviateRetrieverEngineType)
+			if err := wrapAndRegisterEnvEngine(envID, engine, string(types.WeaviateRetrieverEngineType)); err != nil {
 				log.Errorf("Register weaviate retrieve engine failed: %v", err)
 			} else {
 				log.Infof("Register weaviate retrieve engine success")
@@ -1091,8 +1091,8 @@ func initRetrieveEngineRegistry(
 		} else {
 			milvusRepository := milvusRepo.NewMilvusRetrieveEngineRepository(milvusCli, nil)
 			engine := retriever.NewKVHybridRetrieveEngine(milvusRepository, types.MilvusRetrieverEngineType)
-			envID := "env:" + types.MilvusRetrieverEngineType
-			if err := wrapAndRegisterEnvEngine(envID, engine, types.MilvusRetrieverEngineType); err != nil {
+			envID := "env:" + string(types.MilvusRetrieverEngineType)
+			if err := wrapAndRegisterEnvEngine(envID, engine, string(types.MilvusRetrieverEngineType)); err != nil {
 				log.Errorf("Register milvus retrieve engine failed: %v", err)
 			} else {
 				log.Infof("Register milvus retrieve engine success")
@@ -1136,8 +1136,8 @@ func initRetrieveEngineRegistry(
 				dorisDB, httpBase, dorisUsername, dorisPassword, dorisDatabase, nil,
 			)
 			engine := retriever.NewKVHybridRetrieveEngine(dorisRepository, types.DorisRetrieverEngineType)
-			envID := "env:" + types.DorisRetrieverEngineType
-			if err := wrapAndRegisterEnvEngine(envID, engine, types.DorisRetrieverEngineType); err != nil {
+			envID := "env:" + string(types.DorisRetrieverEngineType)
+			if err := wrapAndRegisterEnvEngine(envID, engine, string(types.DorisRetrieverEngineType)); err != nil {
 				log.Errorf("Register doris retrieve engine failed: %v", err)
 			} else {
 				log.Infof("Register doris retrieve engine success: %s db=%s", dorisAddr, dorisDatabase)
@@ -1164,8 +1164,8 @@ func initRetrieveEngineRegistry(
 					nil,
 				)
 				engine := retriever.NewKVHybridRetrieveEngine(tencentRepository, types.TencentVectorDBRetrieverEngineType)
-				envID := "env:" + types.TencentVectorDBRetrieverEngineType
-				if err := wrapAndRegisterEnvEngine(envID, engine, types.TencentVectorDBRetrieverEngineType); err != nil {
+				envID := "env:" + string(types.TencentVectorDBRetrieverEngineType)
+				if err := wrapAndRegisterEnvEngine(envID, engine, string(types.TencentVectorDBRetrieverEngineType)); err != nil {
 					log.Errorf("Register tencent_vectordb retrieve engine failed: %v", err)
 				} else {
 					log.Infof("Register tencent_vectordb retrieve engine success")

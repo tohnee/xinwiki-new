@@ -253,3 +253,24 @@ func IsAppError(err error) (*AppError, bool) {
 	appErr, ok := err.(*AppError)
 	return appErr, ok
 }
+
+func BadRequest(message string, err error) *AppError {
+	if err != nil {
+		message = fmt.Sprintf("%s: %v", message, err)
+	}
+	return NewBadRequestError(message)
+}
+
+func Internal(message string, err error) *AppError {
+	if err != nil {
+		message = fmt.Sprintf("%s: %v", message, err)
+	}
+	return NewInternalServerError(message)
+}
+
+func NotFound(message string, err error) *AppError {
+	if err != nil {
+		message = fmt.Sprintf("%s: %v", message, err)
+	}
+	return NewNotFoundError(message)
+}

@@ -158,59 +158,100 @@ func TestEmbeddingBatcher_TimeWindowFlush(t *testing.T) {
 }
 
 func TestEmbeddingBatcher_QueueFullDegradation(t *testing.T) {
-	// Block the batch function so queue fills up
-	blockBatch := make(chan struct{})
+	// When the worker is stuck processing a batch (slow API) AND the queue is
+	// full, new Embed() calls must NOT block — they should fall back to a direct
+	// single call and return quickly.
 	var singleCallCount int64
 
+	batchEntered := make(chan struct{})
+	release := make(chan struct{})
+	var once sync.Once
 	batchFn := func(ctx context.Context, texts []string) ([][]float32, error) {
-		<-blockBatch // Block until test releases
+		once.Do(func() { close(batchEntered) })
+		// Block bulk calls (the batch that occupies the worker) so the queue
+		// can back up; single calls (degradation path) return immediately.
+		if len(texts) > 1 {
+			<-release
+		} else {
+			atomic.AddInt64(&singleCallCount, 1)
+		}
 		results := make([][]float32, len(texts))
 		for i := range texts {
-			results[i] = []float32{1.0}
+			results[i] = []float32{42.0}
 		}
 		return results, nil
 	}
 
 	cfg := DefaultEmbeddingBatcherConfig()
-	cfg.MaxBatchSize = 10
-	cfg.MaxPendingRequests = 2 // Very small queue for testing
-	cfg.MaxWaitTime = 1 * time.Hour // Effectively disable time flush
+	cfg.MaxBatchSize = 2
+	cfg.MaxPendingRequests = 1
+	cfg.MaxWaitTime = 1 * time.Hour
 	batcher := NewEmbeddingBatcher("test-model", cfg, batchFn)
 	defer func() {
-		close(blockBatch)
+		close(release)
 		batcher.Shutdown()
 	}()
 
-	// Fill up the queue first (capacity 2)
-	go func() {
-		_, _ = batcher.Embed(context.Background(), "text-1")
-	}()
-	go func() {
-		_, _ = batcher.Embed(context.Background(), "text-2")
-	}()
+	// Step 1: send MaxBatchSize requests to form a batch that blocks the worker.
+	var occupyWg sync.WaitGroup
+	for i := 0; i < cfg.MaxBatchSize; i++ {
+		occupyWg.Add(1)
+		go func(i int) {
+			defer occupyWg.Done()
+			_, _ = batcher.Embed(context.Background(), fmt.Sprintf("occupy-%d", i))
+		}(i)
+	}
 
-	time.Sleep(50 * time.Millisecond) // Wait for queue to fill
+	// Wait until worker has entered the blocking batchFn.
+	select {
+	case <-batchEntered:
+	case <-time.After(2 * time.Second):
+		t.Fatal("worker did not enter batchFn in time")
+	}
 
-	// Now send another request - should degrade to single call immediately
-	// But since our batchFn blocks, we need to handle this - actually the batcher
-	// falls back to direct single call, not queued, so we need to count those
-	// For this test we just verify that Embed doesn't block indefinitely
+	// Step 2: fill the queue buffer (MaxPendingRequests slots). We keep sending
+	// goroutines until Stats().QueueSize reports the queue is full, which
+	// guarantees the next send will take the default (degradation) path.
+	queuedCtx, queuedCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer queuedCancel()
+	var queuedWg sync.WaitGroup
+	queuedWg.Add(cfg.MaxPendingRequests)
+	for i := 0; i < cfg.MaxPendingRequests; i++ {
+		go func(i int) {
+			defer queuedWg.Done()
+			_, _ = batcher.Embed(queuedCtx, fmt.Sprintf("queued-%d", i))
+		}(i)
+	}
+
+	// Poll until the queue is observably full.
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if batcher.Stats().QueueSize >= cfg.MaxPendingRequests {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if batcher.Stats().QueueSize < cfg.MaxPendingRequests {
+		t.Fatalf("queue did not fill up: size=%d want=%d", batcher.Stats().QueueSize, cfg.MaxPendingRequests)
+	}
+
+	// Step 3: queue is full. Next Embed MUST degrade and return promptly.
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		// After queue is full, this should either:
-		// 1. Fail with error (if queue full and batchFn blocks)
-		// 2. Succeed (if we implement non-blocking correctly)
-		_, _ = batcher.Embed(context.Background(), "text-3-degraded")
-		atomic.AddInt64(&singleCallCount, 1)
+		res, err := batcher.Embed(context.Background(), "text-degraded")
+		assert.NoError(t, err)
+		assert.NotNil(t, res)
+		assert.Equal(t, float32(42.0), res[0])
 	}()
 
 	select {
 	case <-done:
-		// Good - didn't block indefinitely
-		t.Log("Degradation path works without blocking")
-	case <-time.After(1 * time.Second):
-		t.Fatal("Embed blocked when queue was full - degradation path not working")
+		assert.GreaterOrEqual(t, atomic.LoadInt64(&singleCallCount), int64(1),
+			"degradation path must have invoked a single-element batchFn call")
+	case <-time.After(2 * time.Second):
+		t.Fatalf("Embed blocked when queue was full (size=%d) - degradation path not working",
+			batcher.Stats().QueueSize)
 	}
 }
 
@@ -236,6 +277,80 @@ func TestEmbeddingBatcher_ContextCancellation(t *testing.T) {
 
 	_, err := batcher.Embed(ctx, "test-text")
 	assert.ErrorIs(t, err, context.Canceled, "should return context.Canceled error")
+}
+
+func TestEmbeddingBatcher_ResultOrderPreservedWithDedup(t *testing.T) {
+	var callCount int64
+
+	batchFn := func(ctx context.Context, texts []string) ([][]float32, error) {
+		atomic.AddInt64(&callCount, 1)
+		results := make([][]float32, len(texts))
+		for i, txt := range texts {
+			var id float32
+			switch txt {
+			case "alpha":
+				id = 1.0
+			case "beta":
+				id = 2.0
+			case "gamma":
+				id = 3.0
+			case "delta":
+				id = 4.0
+			case "epsilon":
+				id = 5.0
+			}
+			results[i] = []float32{id}
+		}
+		return results, nil
+	}
+
+	cfg := DefaultEmbeddingBatcherConfig()
+	cfg.MaxBatchSize = 10
+	cfg.MaxWaitTime = 50 * time.Millisecond
+	batcher := NewEmbeddingBatcher("test-model", cfg, batchFn)
+	defer batcher.Shutdown()
+
+	// Send interleaved duplicate+unique texts to trigger dedup path
+	// Order: alpha, beta, alpha, gamma, beta, delta, alpha, epsilon
+	// After dedup, unique texts should be in first-occurrence order: alpha,beta,gamma,delta,epsilon
+	reqs := []struct {
+		text   string
+		expect float32
+	}{
+		{"alpha", 1.0},
+		{"beta", 2.0},
+		{"alpha", 1.0},
+		{"gamma", 3.0},
+		{"beta", 2.0},
+		{"delta", 4.0},
+		{"alpha", 1.0},
+		{"epsilon", 5.0},
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(reqs))
+	results := make([][]float32, len(reqs))
+	errors := make([]error, len(reqs))
+
+	for i, r := range reqs {
+		go func(idx int, text string) {
+			defer wg.Done()
+			res, err := batcher.Embed(context.Background(), text)
+			results[idx] = res
+			errors[idx] = err
+		}(i, r.text)
+	}
+
+	wg.Wait()
+
+	for i, r := range reqs {
+		require.NoError(t, errors[i], "request %d (%s)", i, r.text)
+		require.NotNil(t, results[i], "request %d (%s)", i, r.text)
+		assert.Equal(t, r.expect, results[i][0], "request %d (%s) should get embedding for %s, got %v",
+			i, r.text, r.text, results[i][0])
+	}
+
+	assert.Equal(t, int64(1), atomic.LoadInt64(&callCount), "should be one batch")
 }
 
 func TestEmbeddingBatcher_ErrorPropagation(t *testing.T) {

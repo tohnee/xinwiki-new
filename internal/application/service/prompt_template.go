@@ -15,11 +15,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// In-memory prompt template repository implementation
-// In production, this should be persisted to database
 type promptTemplateRepo struct {
 	mu        sync.RWMutex
-	templates map[string]map[uint64]map[string]map[string]*types.PromptTemplate
+	templates map[string]map[uint64]map[string]*types.PromptTemplate
 }
 
 var promptRepoInstance *promptTemplateRepo
@@ -28,18 +26,15 @@ var promptRepoOnce sync.Once
 func getPromptTemplateRepo() *promptTemplateRepo {
 	promptRepoOnce.Do(func() {
 		promptRepoInstance = &promptTemplateRepo{
-			templates: make(map[string]map[uint64]map[string]map[string]*types.PromptTemplate),
+			templates: make(map[string]map[uint64]map[string]*types.PromptTemplate),
 		}
-		// Initialize default system templates
 		promptRepoInstance.initDefaultTemplates()
 	})
 	return promptRepoInstance
 }
 
-// PromptTemplateServiceImpl implements prompt template versioning
 type PromptTemplateServiceImpl struct{}
 
-// NewPromptTemplateService creates a new prompt template service
 func NewPromptTemplateService() interfaces.PromptTemplateService {
 	return &PromptTemplateServiceImpl{}
 }
@@ -73,13 +68,12 @@ func (r *promptTemplateRepo) initDefaultTemplates() {
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 		}
-		r.templates[key] = map[uint64]map[string]map[string]*types.PromptTemplate{
+		r.templates[key] = map[uint64]map[string]*types.PromptTemplate{
 			0: {"v1.0": t},
 		}
 	}
 }
 
-// CreateTemplate creates a new prompt template version
 func (s *PromptTemplateServiceImpl) CreateTemplate(ctx context.Context, tpl *types.PromptTemplate) error {
 	if tpl == nil {
 		return fmt.Errorf("template cannot be nil")
@@ -102,19 +96,17 @@ func (s *PromptTemplateServiceImpl) CreateTemplate(ctx context.Context, tpl *typ
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 
-	// Initialize maps if needed
 	if _, ok := repo.templates[tpl.TemplateKey]; !ok {
-		repo.templates[tpl.TemplateKey] = make(map[uint64]map[string]map[string]*types.PromptTemplate)
+		repo.templates[tpl.TemplateKey] = make(map[uint64]map[string]*types.PromptTemplate)
 	}
 	if _, ok := repo.templates[tpl.TemplateKey][tpl.TenantID]; !ok {
-		repo.templates[tpl.TemplateKey][tpl.TenantID] = make(map[string]map[string]*types.PromptTemplate)
+		repo.templates[tpl.TemplateKey][tpl.TenantID] = make(map[string]*types.PromptTemplate)
 	}
 	if _, ok := repo.templates[tpl.TemplateKey][tpl.TenantID][tpl.Version]; ok {
 		return fmt.Errorf("version %s already exists for template %s", tpl.Version, tpl.TemplateKey)
 	}
 	repo.templates[tpl.TemplateKey][tpl.TenantID][tpl.Version] = tpl
 
-	// If set as active, deactivate other versions
 	if tpl.IsActive {
 		for ver, existing := range repo.templates[tpl.TemplateKey][tpl.TenantID] {
 			if ver != tpl.Version {
@@ -128,20 +120,17 @@ func (s *PromptTemplateServiceImpl) CreateTemplate(ctx context.Context, tpl *typ
 	return nil
 }
 
-// GetTemplate retrieves a specific version
 func (s *PromptTemplateServiceImpl) GetTemplate(ctx context.Context, tenantID uint64, templateKey, version string) (*types.PromptTemplate, error) {
 	repo := getPromptTemplateRepo()
 	repo.mu.RLock()
 	defer repo.mu.RUnlock()
 
-	// Try tenant-specific first
 	if tenantTemplates, ok := repo.templates[templateKey]; ok {
 		if versions, ok := tenantTemplates[tenantID]; ok {
 			if tpl, ok := versions[version]; ok {
 				return tpl, nil
 			}
 		}
-		// Fall back to system templates (tenantID=0)
 		if tenantID != 0 {
 			if versions, ok := tenantTemplates[0]; ok {
 				if tpl, ok := versions[version]; ok {
@@ -154,7 +143,6 @@ func (s *PromptTemplateServiceImpl) GetTemplate(ctx context.Context, tenantID ui
 	return nil, fmt.Errorf("template %s version %s not found", templateKey, version)
 }
 
-// GetActiveTemplate retrieves the active version
 func (s *PromptTemplateServiceImpl) GetActiveTemplate(ctx context.Context, tenantID uint64, templateKey string) (*types.PromptTemplate, error) {
 	repo := getPromptTemplateRepo()
 	repo.mu.RLock()
@@ -168,7 +156,6 @@ func (s *PromptTemplateServiceImpl) GetActiveTemplate(ctx context.Context, tenan
 	for _, tid := range searchTenants {
 		if tenantTemplates, ok := repo.templates[templateKey]; ok {
 			if versions, ok := tenantTemplates[tid]; ok {
-				// Find active version
 				var latestActive *types.PromptTemplate
 				var latestTime time.Time
 				for _, tpl := range versions {
@@ -180,7 +167,6 @@ func (s *PromptTemplateServiceImpl) GetActiveTemplate(ctx context.Context, tenan
 				if latestActive != nil {
 					return latestActive, nil
 				}
-				// If no active marked, return latest version
 				var latest *types.PromptTemplate
 				for _, tpl := range versions {
 					if latest == nil || tpl.CreatedAt.After(latest.CreatedAt) {
@@ -197,7 +183,6 @@ func (s *PromptTemplateServiceImpl) GetActiveTemplate(ctx context.Context, tenan
 	return nil, fmt.Errorf("no active template found for %s", templateKey)
 }
 
-// ListTemplateVersions lists all versions for a template key
 func (s *PromptTemplateServiceImpl) ListTemplateVersions(ctx context.Context, tenantID uint64, templateKey string) ([]*types.PromptTemplate, error) {
 	repo := getPromptTemplateRepo()
 	repo.mu.RLock()
@@ -206,7 +191,6 @@ func (s *PromptTemplateServiceImpl) ListTemplateVersions(ctx context.Context, te
 	var result []*types.PromptTemplate
 	seen := make(map[string]bool)
 
-	// Collect tenant-specific
 	if tenantTemplates, ok := repo.templates[templateKey]; ok {
 		if versions, ok := tenantTemplates[tenantID]; ok {
 			for _, tpl := range versions {
@@ -217,7 +201,6 @@ func (s *PromptTemplateServiceImpl) ListTemplateVersions(ctx context.Context, te
 				}
 			}
 		}
-		// Collect system templates (tenantID=0) not overridden
 		if tenantID != 0 {
 			if versions, ok := tenantTemplates[0]; ok {
 				for _, tpl := range versions {
@@ -231,7 +214,6 @@ func (s *PromptTemplateServiceImpl) ListTemplateVersions(ctx context.Context, te
 		}
 	}
 
-	// Sort by creation time descending
 	for i := 0; i < len(result); i++ {
 		for j := i + 1; j < len(result); j++ {
 			if result[j].CreatedAt.After(result[i].CreatedAt) {
@@ -243,7 +225,6 @@ func (s *PromptTemplateServiceImpl) ListTemplateVersions(ctx context.Context, te
 	return result, nil
 }
 
-// ActivateVersion activates a specific version
 func (s *PromptTemplateServiceImpl) ActivateVersion(ctx context.Context, tenantID uint64, templateKey, version string) error {
 	repo := getPromptTemplateRepo()
 	repo.mu.Lock()
@@ -251,11 +232,9 @@ func (s *PromptTemplateServiceImpl) ActivateVersion(ctx context.Context, tenantI
 
 	if tenantTemplates, ok := repo.templates[templateKey]; ok {
 		if versions, ok := tenantTemplates[tenantID]; ok {
-			// Deactivate all versions
 			for _, tpl := range versions {
 				tpl.IsActive = false
 			}
-			// Activate target version
 			if tpl, ok := versions[version]; ok {
 				tpl.IsActive = true
 				tpl.UpdatedAt = time.Now()
@@ -268,7 +247,6 @@ func (s *PromptTemplateServiceImpl) ActivateVersion(ctx context.Context, tenantI
 	return fmt.Errorf("template %s version %s not found", templateKey, version)
 }
 
-// RenderTemplate renders a prompt template with variables
 func (s *PromptTemplateServiceImpl) RenderTemplate(
 	ctx context.Context,
 	tenantID uint64,
@@ -287,7 +265,6 @@ func (s *PromptTemplateServiceImpl) RenderTemplate(
 		return "", "", err
 	}
 
-	// Render using Go template
 	tmpl, err := template.New(tpl.TemplateKey).Parse(tpl.Content)
 	if err != nil {
 		return "", tpl.Version, fmt.Errorf("failed to parse template: %w", err)
@@ -304,7 +281,6 @@ func (s *PromptTemplateServiceImpl) RenderTemplate(
 	}
 
 	rendered := buf.String()
-	// Clean up excessive newlines
 	rendered = strings.TrimSpace(rendered)
 	for strings.Contains(rendered, "\n\n\n") {
 		rendered = strings.ReplaceAll(rendered, "\n\n\n", "\n\n")

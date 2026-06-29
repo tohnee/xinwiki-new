@@ -222,8 +222,10 @@ func (e *AgentEngine) Execute(
 
 	// Initialize thinking chain tracker
 	e.thinkingTracker = thinking.NewTracker(sessionID, true)
-	if e.config.Model != "" {
-		e.thinkingTracker.SetModelID(e.config.Model)
+	if e.chatModel != nil {
+		if mid := e.chatModel.GetModelID(); mid != "" {
+			e.thinkingTracker.SetModelID(mid)
+		}
 	}
 
 	// Build system prompt using progressive RAG prompt

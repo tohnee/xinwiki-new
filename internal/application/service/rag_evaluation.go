@@ -363,7 +363,7 @@ func (s *ragEvaluationService) ExtractCitations(
 				ID:      fmt.Sprintf("chunk_%d", i+1),
 				Text:    response,
 				ChunkID: chunk.ID,
-				DocID:   chunk.DocumentID,
+				DocID:   chunk.KnowledgeID,
 				Content: chunk.Content,
 			})
 		}
@@ -377,7 +377,7 @@ func (s *ragEvaluationService) ExtractCitations(
 			if numIdx, err := parseInt(refID); err == nil && numIdx >= 1 && numIdx <= len(chunks) {
 				chunk := chunks[numIdx-1]
 				citations[i].ChunkID = chunk.ID
-				citations[i].DocID = chunk.DocumentID
+				citations[i].DocID = chunk.KnowledgeID
 				citations[i].Content = chunk.Content
 			}
 		}
@@ -615,18 +615,4 @@ func parseInt(s string) (int, error) {
 		n = n*10 + int(c-'0')
 	}
 	return n, nil
-}
-
-func min(a, b float64) float64 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func max(a, b float64) float64 {
-	if a > b {
-		return a
-	}
-	return b
 }

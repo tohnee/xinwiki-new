@@ -108,8 +108,10 @@ func NewRouter(params RouterParams) *gin.Engine {
 	}
 
 	// CORS 中间件应放在最前面
+	// 安全配置：禁止 "*" + AllowCredentials 组合（违反 W3C CORS 规范，浏览器会拒绝）
+	// 优先使用配置的允许来源列表；未配置时仅允许 localhost 开发环境
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
+		AllowOriginFunc:  buildCORSOriginFunc(params.Config),
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-API-Key", "X-Request-ID", "X-Tenant-ID", "X-Embed-Session"},
 		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin"},
@@ -1312,6 +1314,55 @@ func trustedProxies() []string {
 		}
 	}
 	return proxies
+}
+
+// buildCORSOriginFunc returns a CORS origin-validation function that:
+//   - Allows origins explicitly listed in server.cors_allowed_origins config
+//   - If "*" is in the list, refuses (wildcard+credentials is a CORS spec violation)
+//   - If no origins are configured, defaults to allowing localhost dev origins only
+func buildCORSOriginFunc(cfg *config.Config) func(origin string) bool {
+	allowed := make(map[string]bool)
+	hasWildcard := false
+
+	var configured []string
+	if cfg != nil && cfg.Server != nil && len(cfg.Server.CORSAllowedOrigins) > 0 {
+		configured = cfg.Server.CORSAllowedOrigins
+	} else if cfg != nil && cfg.FrontendBaseURL != "" {
+		configured = []string{cfg.FrontendBaseURL}
+	}
+
+	for _, o := range configured {
+		o = strings.TrimSpace(o)
+		if o == "*" {
+			hasWildcard = true
+			continue
+		}
+		if strings.HasSuffix(o, "/") {
+			o = o[:len(o)-1]
+		}
+		allowed[o] = true
+	}
+
+	return func(origin string) bool {
+		if allowed[origin] {
+			return true
+		}
+		if hasWildcard {
+			if strings.HasPrefix(origin, "http://localhost") ||
+				strings.HasPrefix(origin, "http://127.0.0.1") {
+				return true
+			}
+			logger.Warnf(context.Background(), "[CORS] wildcard '*' with credentials is not allowed; rejecting origin: %s", origin)
+			return false
+		}
+		if len(allowed) == 0 {
+			if strings.HasPrefix(origin, "http://localhost") ||
+				strings.HasPrefix(origin, "http://127.0.0.1") {
+				return true
+			}
+		}
+		return false
+	}
 }
 
 // embedChannelIDFromPath extracts the channel id from an /embed/:channelID path.

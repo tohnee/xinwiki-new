@@ -401,7 +401,10 @@ func (e *AgentEngine) callLLMWithRetry(
 
 	// End thinking step with token usage
 	if thinkStep != nil {
-		modelID := e.config.Model
+		var modelID string
+		if e.chatModel != nil {
+			modelID = e.chatModel.GetModelID()
+		}
 		if response != nil {
 			e.thinkingTracker.EndStep(tokenUsageToDetail(&response.Usage, modelID))
 		} else {

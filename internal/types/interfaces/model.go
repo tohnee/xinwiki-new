@@ -109,4 +109,10 @@ type CostTrackingService interface {
 	GetModelCostBreakdown(ctx context.Context, tenantID uint64, start, end time.Time) ([]*types.ModelCostBreakdown, error)
 	// GetDailyCostTrend returns daily cost trend data
 	GetDailyCostTrend(ctx context.Context, tenantID uint64, start, end time.Time) ([]*types.CostAggregation, error)
+	// QueryCostTrend queries cost trend data with flexible filters
+	QueryCostTrend(ctx context.Context, query *types.CostQuery) ([]*types.CostTrendPoint, error)
+	// GetCostSummary returns cost summary statistics
+	GetCostSummary(ctx context.Context, query *types.CostQuery) (*types.CostSummary, error)
+	// GetModelLatencyStats returns latency statistics by model
+	GetModelLatencyStats(ctx context.Context, tenantID uint64, modelIDs []string, start, end time.Time) ([]*types.ModelLatencyStats, error)
 }

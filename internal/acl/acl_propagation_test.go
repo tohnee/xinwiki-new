@@ -815,6 +815,12 @@ func TestUserCanAccessWikiPage(t *testing.T) {
 
 func TestFilterChunksByACL(t *testing.T) {
 	t.Run("filters out inaccessible chunks", func(t *testing.T) {
+		// Security model:
+		// - chunk1: L1, no explicit ACL → accessible to anyone >= L1
+		// - chunk2: L3, no explicit ACL → L2 user cannot access (SL too low)
+		// - chunk3: L2, explicit user ACL (only user1) → user2 excluded by ACL
+		//   even though their SL meets the threshold. Explicit user/group ACLs
+		//   are authoritative over security level.
 		chunks := []*types.Chunk{
 			{
 				ID:              "chunk1",
@@ -836,14 +842,68 @@ func TestFilterChunksByACL(t *testing.T) {
 			},
 		}
 		filtered := FilterChunksByACL(chunks, types.SecurityLevelL2, "user2", nil)
-		if len(filtered) != 2 {
-			t.Errorf("expected 2 filtered chunks, got %d", len(filtered))
+		if len(filtered) != 1 {
+			t.Errorf("expected 1 filtered chunk, got %d", len(filtered))
 		}
-		if filtered[0].ID != "chunk1" {
+		if len(filtered) > 0 && filtered[0].ID != "chunk1" {
 			t.Errorf("expected first chunk to be chunk1, got %s", filtered[0].ID)
 		}
-		if filtered[1].ID != "chunk3" {
-			t.Errorf("expected second chunk to be chunk3, got %s", filtered[1].ID)
+	})
+
+	t.Run("explicit user ACL grants access to matching user", func(t *testing.T) {
+		chunks := []*types.Chunk{
+			{
+				ID:              "chunk-private",
+				SecurityLevel:   types.SecurityLevelL1,
+				AllowedUserIDs:  types.StringArray{"user1"},
+				AllowedGroupIDs: types.StringArray{},
+			},
+		}
+		// user1 is in the explicit ACL → access granted regardless of SL ordering
+		filtered := FilterChunksByACL(chunks, types.SecurityLevelL1, "user1", nil)
+		if len(filtered) != 1 {
+			t.Errorf("expected user1 to access their private chunk, got %d", len(filtered))
+		}
+		// user2 is NOT in the explicit ACL → denied (same SL is not enough)
+		filtered2 := FilterChunksByACL(chunks, types.SecurityLevelL1, "user2", nil)
+		if len(filtered2) != 0 {
+			t.Errorf("expected user2 to be denied access to user1's private chunk, got %d", len(filtered2))
+		}
+	})
+
+	t.Run("group ACL grants access to group members", func(t *testing.T) {
+		chunks := []*types.Chunk{
+			{
+				ID:              "chunk-group",
+				SecurityLevel:   types.SecurityLevelL2,
+				AllowedUserIDs:  types.StringArray{},
+				AllowedGroupIDs: types.StringArray{"group-A"},
+			},
+		}
+		// Member of group-A → access granted
+		filtered := FilterChunksByACL(chunks, types.SecurityLevelL2, "userX", []string{"group-A"})
+		if len(filtered) != 1 {
+			t.Errorf("expected group member to access chunk, got %d", len(filtered))
+		}
+		// Non-member → denied
+		filtered2 := FilterChunksByACL(chunks, types.SecurityLevelL2, "userY", []string{"group-B"})
+		if len(filtered2) != 0 {
+			t.Errorf("expected non-group member to be denied, got %d", len(filtered2))
+		}
+	})
+
+	t.Run("L4 admin bypasses all ACLs", func(t *testing.T) {
+		chunks := []*types.Chunk{
+			{
+				ID:              "chunk-private",
+				SecurityLevel:   types.SecurityLevelL1,
+				AllowedUserIDs:  types.StringArray{"user1"},
+				AllowedGroupIDs: types.StringArray{"group-A"},
+			},
+		}
+		filtered := FilterChunksByACL(chunks, types.SecurityLevelL4, "admin", nil)
+		if len(filtered) != 1 {
+			t.Errorf("expected L4 admin to bypass ACLs, got %d", len(filtered))
 		}
 	})
 

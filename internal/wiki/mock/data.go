@@ -166,6 +166,14 @@ func (m *MockBM25Retriever) Search(ctx context.Context, query string, kbIDs []st
 	return results, nil
 }
 
+func (m *MockBM25Retriever) IndexDocument(ctx context.Context, chunks []*wiki.Chunk) error {
+	return nil
+}
+
+func (m *MockBM25Retriever) RemoveDocument(ctx context.Context, chunkIDs []string) error {
+	return nil
+}
+
 // MockVectorRetriever 模拟向量检索器
 type MockVectorRetriever struct{}
 
@@ -185,10 +193,22 @@ func (m *MockVectorRetriever) Search(ctx context.Context, queryEmbedding []float
 	return results, nil
 }
 
+func (m *MockVectorRetriever) IndexDocument(ctx context.Context, chunks []*wiki.Chunk) error {
+	return nil
+}
+
+func (m *MockVectorRetriever) RemoveDocument(ctx context.Context, chunkIDs []string) error {
+	return nil
+}
+
 // MockGraphRetriever 模拟知识图谱检索器
 type MockGraphRetriever struct{}
 
 func (m *MockGraphRetriever) Search(ctx context.Context, entities []string, kbIDs []string, topK int, depth int) ([]*wiki.SearchResult, error) {
+	return []*wiki.SearchResult{}, nil
+}
+
+func (m *MockGraphRetriever) Expand(ctx context.Context, chunkIDs []string, depth int) ([]*wiki.SearchResult, error) {
 	return []*wiki.SearchResult{}, nil
 }
 

@@ -59,9 +59,9 @@ func (t *Tracker) StartStep(stepType types.ThinkingType, content string) *types.
 		step.ParentID = t.currentStep.ID
 	}
 
-	t.currentStep = &step
 	t.steps = append(t.steps, step)
-	return &step
+	t.currentStep = &t.steps[len(t.steps)-1]
+	return t.currentStep
 }
 
 // EndStep 结束当前思维步骤，记录耗时和Token使用

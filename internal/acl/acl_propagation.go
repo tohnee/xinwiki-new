@@ -220,36 +220,48 @@ func UserCanAccessChunk(chunk *types.Chunk, userSecurityLevel string, userID str
 		return false
 	}
 
+	// L4 (admin) bypasses all ACL restrictions.
+	if userSecurityLevel == types.SecurityLevelL4 {
+		return true
+	}
+
 	chunkSL := strings.TrimSpace(chunk.SecurityLevel)
 	if chunkSL == "" {
 		chunkSL = types.SecurityLevelL1
 	}
 
-	if IsSecurityLevelHigherOrEqual(userSecurityLevel, chunkSL) {
-		return true
-	}
+	hasUserACL := len(chunk.AllowedUserIDs) > 0
+	hasGroupACL := len(chunk.AllowedGroupIDs) > 0
 
-	if userID != "" && len(chunk.AllowedUserIDs) > 0 {
-		for _, uid := range chunk.AllowedUserIDs {
-			if uid == userID {
-				return true
+	// When explicit user/group ACLs are present, they act as the authoritative
+	// access list: the user must match an allowed user OR belong to an allowed
+	// group. Security level is NOT sufficient to bypass explicit user/group
+	// restrictions (otherwise an L3 user could read another user's private
+	// chunk just by meeting the SL threshold).
+	if hasUserACL || hasGroupACL {
+		if hasUserACL && userID != "" {
+			for _, uid := range chunk.AllowedUserIDs {
+				if uid == userID {
+					return true
+				}
 			}
 		}
-	}
-
-	if len(userGroupIDs) > 0 && len(chunk.AllowedGroupIDs) > 0 {
-		groupSet := make(map[string]struct{}, len(userGroupIDs))
-		for _, g := range userGroupIDs {
-			groupSet[g] = struct{}{}
-		}
-		for _, g := range chunk.AllowedGroupIDs {
-			if _, ok := groupSet[g]; ok {
-				return true
+		if hasGroupACL && len(userGroupIDs) > 0 {
+			groupSet := make(map[string]struct{}, len(userGroupIDs))
+			for _, g := range userGroupIDs {
+				groupSet[g] = struct{}{}
+			}
+			for _, g := range chunk.AllowedGroupIDs {
+				if _, ok := groupSet[g]; ok {
+					return true
+				}
 			}
 		}
+		return false
 	}
 
-	return false
+	// No explicit user/group ACLs — access is determined purely by security level.
+	return IsSecurityLevelHigherOrEqual(userSecurityLevel, chunkSL)
 }
 
 func UserCanAccessWikiPage(page *types.WikiPage, userSecurityLevel string, userID string, userGroupIDs []string) bool {
@@ -257,36 +269,41 @@ func UserCanAccessWikiPage(page *types.WikiPage, userSecurityLevel string, userI
 		return false
 	}
 
+	if userSecurityLevel == types.SecurityLevelL4 {
+		return true
+	}
+
 	pageSL := strings.TrimSpace(page.SecurityLevel)
 	if pageSL == "" {
 		pageSL = types.SecurityLevelL1
 	}
 
-	if IsSecurityLevelHigherOrEqual(userSecurityLevel, pageSL) {
-		return true
-	}
+	hasUserACL := len(page.AllowedUserIDs) > 0
+	hasGroupACL := len(page.AllowedGroupIDs) > 0
 
-	if userID != "" && len(page.AllowedUserIDs) > 0 {
-		for _, uid := range page.AllowedUserIDs {
-			if uid == userID {
-				return true
+	if hasUserACL || hasGroupACL {
+		if hasUserACL && userID != "" {
+			for _, uid := range page.AllowedUserIDs {
+				if uid == userID {
+					return true
+				}
 			}
 		}
-	}
-
-	if len(userGroupIDs) > 0 && len(page.AllowedGroupIDs) > 0 {
-		groupSet := make(map[string]struct{}, len(userGroupIDs))
-		for _, g := range userGroupIDs {
-			groupSet[g] = struct{}{}
-		}
-		for _, g := range page.AllowedGroupIDs {
-			if _, ok := groupSet[g]; ok {
-				return true
+		if hasGroupACL && len(userGroupIDs) > 0 {
+			groupSet := make(map[string]struct{}, len(userGroupIDs))
+			for _, g := range userGroupIDs {
+				groupSet[g] = struct{}{}
+			}
+			for _, g := range page.AllowedGroupIDs {
+				if _, ok := groupSet[g]; ok {
+					return true
+				}
 			}
 		}
+		return false
 	}
 
-	return false
+	return IsSecurityLevelHigherOrEqual(userSecurityLevel, pageSL)
 }
 
 func FilterChunksByACL(chunks []*types.Chunk, userSecurityLevel string, userID string, userGroupIDs []string) []*types.Chunk {

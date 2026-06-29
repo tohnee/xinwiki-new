@@ -157,69 +157,30 @@ func (s *service) SyncAllUsers(ctx context.Context, tenantID, providerID string)
 // --- SSO Authentication ---
 
 func (s *service) ValidateSAMLAssertion(ctx context.Context, tenantID string, samlResponse string) (*SAMLAssertion, error) {
-	// Find active SAML provider for tenant
-	providers, err := s.repo.ListProviders(ctx, tenantID)
-	if err != nil {
-		return nil, err
-	}
-
-	var samlProvider *Provider
-	for _, p := range providers {
-		if p.Type == ProviderSAML && p.Status == StatusActive {
-			samlProvider = p
-			break
-		}
-	}
-	if samlProvider == nil {
-		return nil, errors.New("no active SAML provider configured for tenant")
-	}
-
-	// SAML assertion validation would be implemented with a SAML library
-	// This is the framework - actual implementation requires github.com/russellhaering/gosaml2 or similar
-	assertion := &SAMLAssertion{
-		// Parsed from SAML response
-		AuthnInstant: time.Now(),
-		ExpiresAt:    time.Now().Add(24 * time.Hour),
-	}
-
-	// Auto-provision user if enabled
-	if userData, ok := samlProvider.Config["auto_provision"].(bool); ok && userData {
-		_ = s.provisionUserFromAssertion(ctx, tenantID, samlProvider, assertion)
-	}
-
-	return assertion, nil
+	// CRITICAL SECURITY: SAML assertion validation requires a proper SAML 2.0
+	// library (e.g. github.com/russellhaering/gosaml2) to verify the XML-DSig
+	// signature, Issuer, InResponseTo, NotBefore/NotOnOrAfter, etc.
+	// Returning a "not implemented" error prevents authentication bypass via
+	// forged assertions. Remove this error only after proper SAML validation
+	// is integrated.
+	_ = ctx
+	_ = tenantID
+	_ = samlResponse
+	return nil, fmt.Errorf("SAML SSO is not yet implemented; do not accept unvalidated assertions")
 }
 
 func (s *service) ValidateOIDCToken(ctx context.Context, tenantID string, token string) (*OIDCToken, error) {
-	// Find active OIDC provider for tenant
-	providers, err := s.repo.ListProviders(ctx, tenantID)
-	if err != nil {
-		return nil, err
-	}
-
-	var oidcProvider *Provider
-	for _, p := range providers {
-		if p.Type == ProviderOIDC && p.Status == StatusActive {
-			oidcProvider = p
-			break
-		}
-	}
-	if oidcProvider == nil {
-		return nil, errors.New("no active OIDC provider configured for tenant")
-	}
-
-	// OIDC token validation would be implemented with go-oidc or similar
-	oidcToken := &OIDCToken{
-		// Parsed from token
-		IssuedAt: time.Now().Unix(),
-	}
-
-	// Auto-provision user if enabled
-	if autoProvision, ok := oidcProvider.Config["auto_provision"].(bool); ok && autoProvision {
-		_ = s.provisionUserFromOIDCToken(ctx, tenantID, oidcProvider, oidcToken)
-	}
-
-	return oidcToken, nil
+	// CRITICAL SECURITY: OIDC token validation requires:
+	//   1. Discovering the IdP's JWKS endpoint via .well-known/openid-configuration
+	//   2. Verifying the JWT signature against the IdP's public keys
+	//   3. Validating iss, aud, exp, nbf, and (optionally) nonce/azp claims
+	// A proper implementation should use github.com/coreos/go-oidc or a
+	// similar library. Returning a "not implemented" error prevents
+	// authentication bypass via forged JWTs.
+	_ = ctx
+	_ = tenantID
+	_ = token
+	return nil, fmt.Errorf("OIDC SSO is not yet implemented; do not accept unvalidated tokens")
 }
 
 func (s *service) BuildSSOURL(ctx context.Context, tenantID, providerID string, redirectURI string) (string, error) {

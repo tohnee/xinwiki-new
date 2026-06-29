@@ -1128,7 +1128,6 @@ func (h *WikiPageHandler) Supersede(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
 		return
 	}
-	req.KnowledgeBaseID = kbID
 
 	supersession, err := h.wikiService.Supersede(c.Request.Context(), kbID, &req)
 	if err != nil {

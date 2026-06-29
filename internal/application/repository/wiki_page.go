@@ -18,6 +18,12 @@ var ErrWikiPageNotFound = errors.New("wiki page not found")
 // ErrWikiPageConflict is returned when an optimistic lock conflict is detected
 var ErrWikiPageConflict = errors.New("wiki page version conflict")
 
+// ErrWikiSupersessionConflict is returned when a supersession already exists for the old page
+var ErrWikiSupersessionConflict = errors.New("wiki page already has a supersession")
+
+// ErrWikiSamePageSupersession is returned when old and new page slugs are the same
+var ErrWikiSamePageSupersession = errors.New("old page and new page cannot be the same")
+
 // wikiPageRepository implements the WikiPageRepository interface
 type wikiPageRepository struct {
 	db *gorm.DB

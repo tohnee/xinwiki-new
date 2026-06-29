@@ -3,9 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
-	"math"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -133,10 +131,10 @@ func (s *conflictDetectionService) DetectConflicts(
 	}
 
 	result.Conflicts = detectedConflicts
-	result.Duration = time.Since(startTime)
+	result.DurationMs = time.Since(startTime).Milliseconds()
 
-	logger.Infof(ctx, "[ConflictDetection] Detection completed: scanned=%d new=%d existing=%d duration=%v",
-		result.TotalScanned, result.NewConflicts, result.ExistingConflicts, result.Duration)
+	logger.Infof(ctx, "[ConflictDetection] Detection completed: scanned=%d new=%d existing=%d duration=%dms",
+		result.TotalScanned, result.NewConflicts, result.ExistingConflicts, result.DurationMs)
 
 	return result, nil
 }
@@ -210,13 +208,14 @@ func (s *conflictDetectionService) ListConflicts(
 
 func (s *conflictDetectionService) ResolveConflict(
 	ctx context.Context,
+	tenantID uint64,
 	req *types.ConflictResolutionRequest,
 ) (*types.Conflict, error) {
-	if req.TenantID == 0 {
+	if tenantID == 0 {
 		return nil, fmt.Errorf("tenant_id is required")
 	}
 
-	conflict, err := s.conflictRepo.GetByID(ctx, req.TenantID, req.ConflictID)
+	conflict, err := s.conflictRepo.GetByID(ctx, tenantID, req.ConflictID)
 	if err != nil {
 		return nil, fmt.Errorf("conflict not found: %w", err)
 	}
@@ -396,9 +395,10 @@ func (s *conflictDetectionService) detectAttributeValueConflicts(
 
 	for _, chunk := range chunks {
 		entities := s.extractEntities(chunk.Content)
-		for _, attr := range entities {
-			attr.ChunkID = chunk.ID
-			attr.SourceDocID = chunk.DocumentID
+		for i := range entities {
+			entities[i].ChunkID = chunk.ID
+			entities[i].SourceDocID = chunk.KnowledgeID
+			attr := entities[i]
 			if entityMap[attr.EntityType] == nil {
 				entityMap[attr.EntityType] = make(map[string][]types.EntityAttribute)
 			}
@@ -437,11 +437,11 @@ func (s *conflictDetectionService) detectSpecificAttributeConflicts(
 
 	for _, chunk := range chunks {
 		entities := s.extractEntities(chunk.Content)
-		for _, attr := range entities {
-			if strings.EqualFold(attr.EntityType, entityType) && strings.EqualFold(attr.Attribute, attribute) {
-				attr.ChunkID = chunk.ID
-				attr.SourceDocID = chunk.DocumentID
-				values = append(values, attr)
+		for i := range entities {
+			if strings.EqualFold(entities[i].EntityType, entityType) && strings.EqualFold(entities[i].Attribute, attribute) {
+				entities[i].ChunkID = chunk.ID
+				entities[i].SourceDocID = chunk.KnowledgeID
+				values = append(values, entities[i])
 			}
 		}
 	}
@@ -474,15 +474,24 @@ func (s *conflictDetectionService) checkValueConflict(entityType, attrName strin
 	conflictingValues := make([]string, 0, len(valueCounts))
 	sourceChunks := make([]string, 0)
 	sourceDocs := make([]string, 0)
+	conflictAttrs := make([]types.EntityAttribute, 0, len(valueCounts))
+	seenDocs := make(map[string]bool)
+	seenChunks := make(map[string]bool)
 
-	for val := range valueCounts {
+	for val, attrs := range valueCounts {
 		conflictingValues = append(conflictingValues, val)
-		for _, attr := range valueCounts[val] {
-			if attr.ChunkID != "" {
+		rep := attrs[0]
+		rep.Attribute = attrName
+		rep.Value = val
+		conflictAttrs = append(conflictAttrs, rep)
+		for _, attr := range attrs {
+			if attr.ChunkID != "" && !seenChunks[attr.ChunkID] {
 				sourceChunks = append(sourceChunks, attr.ChunkID)
+				seenChunks[attr.ChunkID] = true
 			}
-			if attr.SourceDocID != "" {
+			if attr.SourceDocID != "" && !seenDocs[attr.SourceDocID] {
 				sourceDocs = append(sourceDocs, attr.SourceDocID)
+				seenDocs[attr.SourceDocID] = true
 			}
 		}
 	}
@@ -498,21 +507,23 @@ func (s *conflictDetectionService) checkValueConflict(entityType, attrName strin
 	}
 
 	return &types.Conflict{
-		ID:             fmt.Sprintf("attr-%s-%s-%d", entityType, attrName, time.Now().UnixNano()),
-		Type:           types.ConflictTypeAttributeValue,
-		Severity:       severity,
-		Status:         types.ConflictStatusDetected,
-		EntityType:     entityType,
-		Attribute:      attrName,
-		ConflictingValues: conflictingValues,
-		SourceChunks:   sourceChunks,
-		SourceDocs:     sourceDocs,
-		Description:    fmt.Sprintf("Conflicting values for %s.%s: %v", entityType, attrName, conflictingValues),
-		Evidence:       evidence,
-		DetectedBy:     "heuristic",
-		Confidence:     0.75,
-		DetectedAt:     time.Now(),
-		UpdatedAt:      time.Now(),
+		ID:          fmt.Sprintf("attr-%s-%s-%d", entityType, attrName, time.Now().UnixNano()),
+		Type:        types.ConflictTypeAttributeValue,
+		Severity:    severity,
+		Status:      types.ConflictStatusDetected,
+		EntityType:  entityType,
+		Attribute:   attrName,
+		Values:      conflictAttrs,
+		AffectedDocs: sourceDocs,
+		Description: fmt.Sprintf("Conflicting values for %s.%s: %v", entityType, attrName, conflictingValues),
+		Suggestion:  "Review conflicting attribute values and select the correct one",
+		DetectedBy:  "heuristic",
+		Metadata: map[string]interface{}{
+			"conflicting_values": conflictingValues,
+			"source_chunks":      sourceChunks,
+			"evidence":           evidence,
+			"confidence":         0.75,
+		},
 	}
 }
 
@@ -562,7 +573,7 @@ func (s *conflictDetectionService) detectParameterDefConflicts(
 	kbID string,
 	chunks []*types.Chunk,
 ) ([]*types.Conflict, error) {
-	paramMap := make(map[string][]types.ParameterDef)
+	paramMap := make(map[string][]types.EntityAttribute)
 
 	paramPattern := regexp.MustCompile(`(?i)(?:parameter|param|config|setting|flag)\s+["']?(\w+)["']?\s*(?:is|are|=|:|defaults? to|means)\s*["']?([^"'\n.;]{1,100})`)
 
@@ -575,11 +586,13 @@ func (s *conflictDetectionService) detectParameterDefConflicts(
 			paramName := strings.ToLower(strings.TrimSpace(match[1]))
 			paramValue := strings.TrimSpace(match[2])
 
-			paramMap[paramName] = append(paramMap[paramName], types.ParameterDef{
-				Name:        paramName,
+			paramMap[paramName] = append(paramMap[paramName], types.EntityAttribute{
+				EntityType:  "parameter",
+				Attribute:   paramName,
 				Value:       paramValue,
 				ChunkID:     chunk.ID,
-				SourceDocID: chunk.DocumentID,
+				SourceDocID: chunk.KnowledgeID,
+				Confidence:  0.85,
 			})
 		}
 	}
@@ -595,18 +608,24 @@ func (s *conflictDetectionService) detectParameterDefConflicts(
 		var values []string
 		var sourceChunks, sourceDocs []string
 		var evidence []string
+		seenDocs := make(map[string]bool)
+		seenChunks := make(map[string]bool)
+		conflictAttrs := make([]types.EntityAttribute, 0)
 
 		for _, def := range defs {
 			normalized := strings.ToLower(def.Value)
 			if !valueSet[normalized] {
 				valueSet[normalized] = true
 				values = append(values, def.Value)
+				conflictAttrs = append(conflictAttrs, def)
 			}
-			if def.ChunkID != "" {
+			if def.ChunkID != "" && !seenChunks[def.ChunkID] {
 				sourceChunks = append(sourceChunks, def.ChunkID)
+				seenChunks[def.ChunkID] = true
 			}
-			if def.SourceDocID != "" {
+			if def.SourceDocID != "" && !seenDocs[def.SourceDocID] {
 				sourceDocs = append(sourceDocs, def.SourceDocID)
+				seenDocs[def.SourceDocID] = true
 			}
 			evidence = append(evidence, fmt.Sprintf("[%s]: %s = %s", def.SourceDocID, paramName, def.Value))
 		}
@@ -614,22 +633,25 @@ func (s *conflictDetectionService) detectParameterDefConflicts(
 		if len(valueSet) > 1 {
 			severity := types.ConflictSeverityHigh
 			conflicts = append(conflicts, &types.Conflict{
-				ID:                fmt.Sprintf("param-%s-%d", paramName, time.Now().UnixNano()),
-				Type:              types.ConflictTypeParameterDef,
-				Severity:          severity,
-				Status:            types.ConflictStatusDetected,
-				Attribute:         paramName,
-				ConflictingValues: values,
-				SourceChunks:      sourceChunks,
-				SourceDocs:        sourceDocs,
-				Description:       fmt.Sprintf("Parameter '%s' has conflicting definitions: %v", paramName, values),
-				Evidence:          evidence,
-				DetectedBy:        "heuristic",
-				Confidence:        0.85,
-				DetectedAt:        time.Now(),
-				UpdatedAt:         time.Now(),
-				TenantID:          tenantID,
-				KBID:              kbID,
+				ID:           fmt.Sprintf("param-%s-%d", paramName, time.Now().UnixNano()),
+				Type:         types.ConflictTypeParameterDef,
+				Severity:     severity,
+				Status:       types.ConflictStatusDetected,
+				EntityType:   "parameter",
+				Attribute:    paramName,
+				Values:       conflictAttrs,
+				AffectedDocs: sourceDocs,
+				Description:  fmt.Sprintf("Parameter '%s' has conflicting definitions: %v", paramName, values),
+				Suggestion:   "Align parameter definition across documents using the latest version",
+				DetectedBy:   "heuristic",
+				TenantID:     tenantID,
+				KBID:         kbID,
+				Metadata: map[string]interface{}{
+					"conflicting_values": values,
+					"source_chunks":      sourceChunks,
+					"evidence":           evidence,
+					"confidence":         0.85,
+				},
 			})
 		}
 	}
@@ -684,22 +706,24 @@ func (s *conflictDetectionService) detectTemporalConflictsFromChunks(
 				chunks := chunkMap[topic]
 				if len(chunks) > 0 {
 					conflicts = append(conflicts, &types.Conflict{
-						ID:          fmt.Sprintf("temporal-%s-%d", sanitizeKey(topic), time.Now().UnixNano()),
-						Type:        types.ConflictTypeTemporal,
-						Severity:    types.ConflictSeverityMedium,
-						Status:      types.ConflictStatusDetected,
-						EntityType:  "temporal",
-						Attribute:   topic,
-						Description: fmt.Sprintf("Potentially outdated information: '%s' last dated %v (%.0f months old)", topic, latest.Format("2006-01-02"), age.Hours()/24/30),
-						Evidence:    []string{fmt.Sprintf("Mention date: %v in chunk %s", latest.Format("2006-01-02"), chunks[0].ID)},
-						SourceChunks: []string{chunks[0].ID},
-						SourceDocs:  []string{chunks[0].DocumentID},
-						DetectedBy:  "temporal_analysis",
-						Confidence:  0.6,
-						DetectedAt:  time.Now(),
-						UpdatedAt:   time.Now(),
-						TenantID:    tenantID,
-						KBID:        kbID,
+						ID:           fmt.Sprintf("temporal-%s-%d", sanitizeKey(topic), time.Now().UnixNano()),
+						Type:         types.ConflictTypeTemporal,
+						Severity:     types.ConflictSeverityMedium,
+						Status:       types.ConflictStatusDetected,
+						EntityType:   "temporal",
+						Attribute:    topic,
+						Description:  fmt.Sprintf("Potentially outdated information: '%s' last dated %v (%.0f months old)", topic, latest.Format("2006-01-02"), age.Hours()/24/30),
+						Values:       []types.EntityAttribute{{EntityType: "temporal", Attribute: topic, Value: latest.Format("2006-01-02"), ChunkID: chunks[0].ID, SourceDocID: chunks[0].KnowledgeID, Confidence: 0.6}},
+						AffectedDocs: []string{chunks[0].KnowledgeID},
+						Suggestion:   "Review outdated information and update if necessary",
+						DetectedBy:   "temporal_analysis",
+						TenantID:     tenantID,
+						KBID:         kbID,
+						Metadata: map[string]interface{}{
+							"source_chunks": []string{chunks[0].ID},
+							"evidence":      []string{fmt.Sprintf("Mention date: %v in chunk %s", latest.Format("2006-01-02"), chunks[0].ID)},
+							"confidence":    0.6,
+						},
 					})
 				}
 			}
@@ -720,31 +744,42 @@ func (s *conflictDetectionService) detectTemporalConflictsFromChunks(
 		if dateRange > 90*24*time.Hour {
 			chunks := chunkMap[topic]
 			sourceChunks := make([]string, len(chunks))
-			sourceDocs := make([]string, len(chunks))
+			sourceDocs := make([]string, 0)
 			evidence := make([]string, len(chunks))
+			seenDocs := make(map[string]bool)
+			conflictAttrs := make([]types.EntityAttribute, 0)
 			for i, c := range chunks {
 				sourceChunks[i] = c.ID
-				sourceDocs[i] = c.DocumentID
-				evidence[i] = fmt.Sprintf("[%s] dated mention in chunk %s", c.DocumentID, c.ID)
+				if c.KnowledgeID != "" && !seenDocs[c.KnowledgeID] {
+					sourceDocs = append(sourceDocs, c.KnowledgeID)
+					seenDocs[c.KnowledgeID] = true
+				}
+				evidence[i] = fmt.Sprintf("[%s] dated mention in chunk %s", c.KnowledgeID, c.ID)
 			}
+			conflictAttrs = append(conflictAttrs,
+				types.EntityAttribute{EntityType: "temporal", Attribute: topic, Value: minDate.Format("2006-01-02"), Confidence: 0.5},
+				types.EntityAttribute{EntityType: "temporal", Attribute: topic, Value: maxDate.Format("2006-01-02"), Confidence: 0.5},
+			)
 			conflicts = append(conflicts, &types.Conflict{
-				ID:             fmt.Sprintf("temporal-range-%s-%d", sanitizeKey(topic), time.Now().UnixNano()),
-				Type:           types.ConflictTypeTemporal,
-				Severity:       types.ConflictSeverityLow,
-				Status:         types.ConflictStatusDetected,
-				EntityType:     "temporal",
-				Attribute:      topic,
-				Description:    fmt.Sprintf("Multiple date references for '%s': range from %v to %v (%.0f days)", topic, minDate.Format("2006-01-02"), maxDate.Format("2006-01-02"), dateRange.Hours()/24),
-				Evidence:       evidence,
-				SourceChunks:   sourceChunks,
-				SourceDocs:     sourceDocs,
-				ConflictingValues: []string{minDate.Format("2006-01-02"), maxDate.Format("2006-01-02")},
-				DetectedBy:     "temporal_analysis",
-				Confidence:     0.5,
-				DetectedAt:     time.Now(),
-				UpdatedAt:      time.Now(),
-				TenantID:       tenantID,
-				KBID:           kbID,
+				ID:           fmt.Sprintf("temporal-range-%s-%d", sanitizeKey(topic), time.Now().UnixNano()),
+				Type:         types.ConflictTypeTemporal,
+				Severity:     types.ConflictSeverityLow,
+				Status:       types.ConflictStatusDetected,
+				EntityType:   "temporal",
+				Attribute:    topic,
+				Description:  fmt.Sprintf("Multiple date references for '%s': range from %v to %v (%.0f days)", topic, minDate.Format("2006-01-02"), maxDate.Format("2006-01-02"), dateRange.Hours()/24),
+				Values:       conflictAttrs,
+				AffectedDocs: sourceDocs,
+				Suggestion:   "Review date references and use the most recent information",
+				DetectedBy:   "temporal_analysis",
+				TenantID:     tenantID,
+				KBID:         kbID,
+				Metadata: map[string]interface{}{
+					"conflicting_values": []string{minDate.Format("2006-01-02"), maxDate.Format("2006-01-02")},
+					"source_chunks":      sourceChunks,
+					"evidence":           evidence,
+					"confidence":         0.5,
+				},
 			})
 		}
 	}
@@ -831,6 +866,8 @@ func (s *conflictDetectionService) detectNumericalConflicts(
 			var values []string
 			var sourceChunks, sourceDocs []string
 			var evidence []string
+			seenDocs := make(map[string]bool)
+			var conflictAttrs []types.EntityAttribute
 
 			for _, e := range entries {
 				valStr := fmt.Sprintf("%v", e.value)
@@ -839,8 +876,19 @@ func (s *conflictDetectionService) detectNumericalConflicts(
 				}
 				values = append(values, valStr)
 				sourceChunks = append(sourceChunks, e.chunk.ID)
-				sourceDocs = append(sourceDocs, e.chunk.DocumentID)
-				evidence = append(evidence, fmt.Sprintf("[%s]: %s = %s", e.chunk.DocumentID, attrName, valStr))
+				if e.chunk.KnowledgeID != "" && !seenDocs[e.chunk.KnowledgeID] {
+					sourceDocs = append(sourceDocs, e.chunk.KnowledgeID)
+					seenDocs[e.chunk.KnowledgeID] = true
+				}
+				evidence = append(evidence, fmt.Sprintf("[%s]: %s = %s", e.chunk.KnowledgeID, attrName, valStr))
+				conflictAttrs = append(conflictAttrs, types.EntityAttribute{
+					EntityType:  "numerical",
+					Attribute:   attrName,
+					Value:       valStr,
+					ChunkID:     e.chunk.ID,
+					SourceDocID: e.chunk.KnowledgeID,
+					Confidence:  0.7,
+				})
 			}
 
 			severity := types.ConflictSeverityMedium
@@ -849,22 +897,26 @@ func (s *conflictDetectionService) detectNumericalConflicts(
 			}
 
 			conflicts = append(conflicts, &types.Conflict{
-				ID:                fmt.Sprintf("num-%s-%d", sanitizeKey(attrName), time.Now().UnixNano()),
-				Type:              types.ConflictTypeNumerical,
-				Severity:          severity,
-				Status:            types.ConflictStatusDetected,
-				Attribute:         attrName,
-				ConflictingValues: values,
-				SourceChunks:      sourceChunks,
-				SourceDocs:        sourceDocs,
-				Description:       fmt.Sprintf("Numerical value discrepancy for '%s': values range from %v to %v%s (%.1fx difference)", attrName, minVal, maxVal, " "+unit, ratio),
-				Evidence:          evidence,
-				DetectedBy:        "numerical_analysis",
-				Confidence:        0.7,
-				DetectedAt:        time.Now(),
-				UpdatedAt:         time.Now(),
-				TenantID:          tenantID,
-				KBID:              kbID,
+				ID:           fmt.Sprintf("num-%s-%d", sanitizeKey(attrName), time.Now().UnixNano()),
+				Type:         types.ConflictTypeNumerical,
+				Severity:     severity,
+				Status:       types.ConflictStatusDetected,
+				EntityType:   "numerical",
+				Attribute:    attrName,
+				Values:       conflictAttrs,
+				AffectedDocs: sourceDocs,
+				Description:  fmt.Sprintf("Numerical value discrepancy for '%s': values range from %v to %v%s (%.1fx difference)", attrName, minVal, maxVal, " "+unit, ratio),
+				Suggestion:   "Review numerical values and verify the correct figure",
+				DetectedBy:   "numerical_analysis",
+				TenantID:     tenantID,
+				KBID:         kbID,
+				Metadata: map[string]interface{}{
+					"conflicting_values": values,
+					"source_chunks":      sourceChunks,
+					"evidence":           evidence,
+					"confidence":         0.7,
+					"ratio":              ratio,
+				},
 			})
 		}
 	}
@@ -910,17 +962,31 @@ func (s *conflictDetectionService) extractTopic(content, dateStr string) string 
 }
 
 func (s *conflictDetectionService) generateValueOptions(conflict *types.Conflict) []string {
-	options := make([]string, 0, len(conflict.ConflictingValues)+2)
-	options = append(options, conflict.ConflictingValues...)
+	valueStrs := make([]string, 0, len(conflict.Values)+2)
+	for _, v := range conflict.Values {
+		valueStrs = append(valueStrs, v.Value)
+	}
+	if raw, ok := conflict.Metadata["conflicting_values"]; ok {
+		if arr, ok := raw.([]string); ok {
+			valueStrs = arr
+		}
+	}
+	options := make([]string, 0, len(valueStrs)+2)
+	options = append(options, valueStrs...)
 	options = append(options, "Merge values", "Mark for manual review")
 	return options
 }
 
 func (s *conflictDetectionService) recommendValue(conflict *types.Conflict) string {
-	if len(conflict.ConflictingValues) == 0 {
-		return ""
+	if len(conflict.Values) > 0 {
+		return conflict.Values[len(conflict.Values)-1].Value
 	}
-	return conflict.ConflictingValues[len(conflict.ConflictingValues)-1]
+	if raw, ok := conflict.Metadata["conflicting_values"]; ok {
+		if arr, ok := raw.([]string); ok && len(arr) > 0 {
+			return arr[len(arr)-1]
+		}
+	}
+	return ""
 }
 
 func parseDateFlexible(s string) (time.Time, error) {

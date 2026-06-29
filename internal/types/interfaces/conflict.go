@@ -19,7 +19,7 @@ type ConflictDetectionService interface {
 	ListConflicts(ctx context.Context, tenantID uint64, kbID string, status types.ConflictStatus, severity types.ConflictSeverity, conflictType types.ConflictType, page, pageSize int) ([]*types.Conflict, int, error)
 
 	// ResolveConflict resolves or dismisses a detected conflict
-	ResolveConflict(ctx context.Context, req *types.ConflictResolutionRequest) (*types.Conflict, error)
+	ResolveConflict(ctx context.Context, tenantID uint64, req *types.ConflictResolutionRequest) (*types.Conflict, error)
 
 	// GetConflictSummary returns conflict summary statistics
 	GetConflictSummary(ctx context.Context, tenantID uint64, kbID string) (*types.ConflictSummary, error)

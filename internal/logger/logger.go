@@ -399,6 +399,15 @@ func WithRequestID(c context.Context, requestID string) context.Context {
 	return WithField(c, "request_id", requestID)
 }
 
+// TraceID extracts the trace/request ID from context for log tagging.
+func TraceID(c context.Context) string {
+	entry := GetLogger(c)
+	if v, ok := entry.Data["request_id"]; ok {
+		return fmt.Sprintf("%v", v)
+	}
+	return ""
+}
+
 // WithField 向日志中添加一个字段
 func WithField(c context.Context, key string, value interface{}) context.Context {
 	logger := GetLogger(c).WithField(key, value)

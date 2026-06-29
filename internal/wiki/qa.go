@@ -35,8 +35,8 @@ func (e *QAEngine) Answer(ctx context.Context, question string, tenantID string,
 	}
 
 	// Step 1: Retrieve relevant context
-	thinkingSteps := make([]ThinkingStep, 0)
-	thinkingSteps = append(thinkingSteps, ThinkingStep{
+	thinkingSteps := make([]ReasoningStep, 0)
+	thinkingSteps = append(thinkingSteps, ReasoningStep{
 		Step:       1,
 		Thought:    "Analyzing question and retrieving relevant context",
 		Action:     "hybrid_retrieval",
@@ -74,7 +74,7 @@ func (e *QAEngine) Answer(ctx context.Context, question string, tenantID string,
 	}
 
 	contextText := e.buildContext(chunks)
-	thinkingSteps = append(thinkingSteps, ThinkingStep{
+	thinkingSteps = append(thinkingSteps, ReasoningStep{
 		Step:      2,
 		Thought:   "Building context from retrieved chunks",
 		Action:    "context_construction",
@@ -94,7 +94,7 @@ func (e *QAEngine) Answer(ctx context.Context, question string, tenantID string,
 	chatResp, err := e.llm.Chat(ctx, messages)
 	llmDuration := time.Since(llmStart)
 
-	thinkingStep := ThinkingStep{
+	thinkingStep := ReasoningStep{
 		Step:       3,
 		Thought:    "Generating answer with language model",
 		Action:     "llm_completion",
@@ -124,7 +124,7 @@ func (e *QAEngine) Answer(ctx context.Context, question string, tenantID string,
 			answer.Citations = verifiedCitations
 			answer.GroundingScore = groundingScore
 		}
-		thinkingSteps = append(thinkingSteps, ThinkingStep{
+		thinkingSteps = append(thinkingSteps, ReasoningStep{
 			Step:       4,
 			Thought:    "Verifying citations and grounding",
 			Action:     "citation_verification",
@@ -145,7 +145,7 @@ func (e *QAEngine) Answer(ctx context.Context, question string, tenantID string,
 				"retrieval_score":   getAvgRetrievalScore(retrievalResp.Results),
 			})
 		}
-		thinkingSteps = append(thinkingSteps, ThinkingStep{
+		thinkingSteps = append(thinkingSteps, ReasoningStep{
 			Step:       5,
 			Thought:    "Computing answer confidence",
 			Action:     "confidence_scoring",
@@ -160,7 +160,7 @@ func (e *QAEngine) Answer(ctx context.Context, question string, tenantID string,
 
 	// Include thinking chain if available
 	if chatResp.Thinking != "" {
-		answer.ThinkingChain = append(answer.ThinkingChain, ThinkingStep{
+		answer.ThinkingChain = append(answer.ThinkingChain, ReasoningStep{
 			Step:      0,
 			Thought:   "Model reasoning",
 			Action:    "reasoning",

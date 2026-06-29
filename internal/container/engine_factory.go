@@ -90,13 +90,9 @@ func createEngineServiceFromStore(
 		return nil, err
 	}
 
-	// 使用存储的读写分离配置，默认关闭
-	rwConfig := store.ReadWriteSeparationConfig
-	// 第一版先禁用读写分离，确保核心路由功能稳定
+	// 使用默认读写分离配置，第一版先禁用读写分离确保核心路由功能稳定
+	rwConfig := types.DefaultReadWriteSeparationConfig()
 	rwConfig.Enabled = false
-	if rwConfig.LoadBalanceStrategy == "" {
-		rwConfig = types.DefaultReadWriteSeparationConfig()
-	}
 
 	// RegisterEngineWithConfig内部会自动包装master为RWCapableEngine
 	// 第一版不配置读副本，所有流量走主节点

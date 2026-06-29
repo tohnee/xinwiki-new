@@ -299,7 +299,6 @@ func (s *CostTrackingService) QueryCostTrend(
 	groupFields := []string{"DATE_FORMAT(created_at, '" + timeFormat + "')"}
 
 	// Add group by fields
-	hasGroupBy := false
 	modelGrouped := false
 	for _, g := range query.GroupBy {
 		switch g {
@@ -307,15 +306,12 @@ func (s *CostTrackingService) QueryCostTrend(
 			selectFields += ", model_id"
 			groupFields = append(groupFields, "model_id")
 			modelGrouped = true
-			hasGroupBy = true
 		case "request_type":
 			selectFields += ", request_type"
 			groupFields = append(groupFields, "request_type")
-			hasGroupBy = true
 		case "user":
 			selectFields += ", user_id"
 			groupFields = append(groupFields, "user_id")
-			hasGroupBy = true
 		}
 	}
 
@@ -500,6 +496,11 @@ func (s *CostTrackingService) GetCostSummary(
 		logger.Warnf(ctx, "[CostTracking] Failed to get request type breakdown: %v", err)
 	}
 
+	reqTypeValues := make([]types.CostTrendPoint, len(reqTypePoints))
+	for i, p := range reqTypePoints {
+		reqTypeValues[i] = *p
+	}
+
 	return &types.CostSummary{
 		StartDate:        query.StartDate,
 		EndDate:          query.EndDate,
@@ -510,7 +511,7 @@ func (s *CostTrackingService) GetCostSummary(
 		AvgLatencyMs:     avgLatency,
 		AvgCostPerCall:   avgCostPerCall,
 		ByModel:          modelBreakdownValues,
-		ByRequestType:    reqTypePoints,
+		ByRequestType:    reqTypeValues,
 		ByDay:            dailyTrendValues,
 		TopUsers:         topUsersValues,
 	}, nil
@@ -603,7 +604,7 @@ func (s *CostTrackingService) GetModelLatencyStats(
 	}
 
 	sort.Slice(stats, func(i, j int) bool {
-		return stats[i].TotalCost > stats[j].TotalCost
+		return stats[i].CallCount > stats[j].CallCount
 	})
 
 	return stats, nil

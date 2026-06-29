@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: wechatopenai/weknora-ui:${WEKNORA_VERSION:-latest}
+    image: xinwiki/xinwiki-ui:${XINWIKI_VERSION:-latest}
     # Requires frontend/dist — run ./scripts/build_frontend_dist.sh before --build
     build:
       context: ./frontend
@@ -25,7 +25,7 @@ services:
     restart: unless-stopped
 
   app:
-    image: wechatopenai/weknora-app:${WEKNORA_VERSION:-latest}
+    image: xinwiki/xinwiki-app:${XINWIKI_VERSION:-latest}
     build:
       context: .
       dockerfile: docker/Dockerfile.app
@@ -80,7 +80,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-}
       - DB_NAME=${DB_NAME:-}
       - TZ=${TZ:-Asia/Shanghai}
-      - WEKNORA_LANGUAGE=${WEKNORA_LANGUAGE:-zh-CN}
+      - XINWIKI_LANGUAGE=${XINWIKI_LANGUAGE:-zh-CN}
       # ========== Langfuse (optional observability) ==========
       # Enabled automatically when LANGFUSE_PUBLIC_KEY + LANGFUSE_SECRET_KEY are set.
       # See docs/Langfuse集成.md for the full list of tuning knobs.
@@ -103,11 +103,11 @@ services:
       - ELASTICSEARCH_INDEX=${ELASTICSEARCH_INDEX:-}
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=${QDRANT_PORT:-6334}
-      - QDRANT_COLLECTION=${QDRANT_COLLECTION:-weknora_embeddings}
+      - QDRANT_COLLECTION=${QDRANT_COLLECTION:-xinwiki_embeddings}
       - QDRANT_API_KEY=${QDRANT_API_KEY:-}
       - QDRANT_USE_TLS=${QDRANT_USE_TLS:-false}
       - MILVUS_ADDRESS=milvus:19530
-      - MILVUS_COLLECTION=${MILVUS_COLLECTION:-weknora_embeddings}
+      - MILVUS_COLLECTION=${MILVUS_COLLECTION:-xinwiki_embeddings}
       - MILVUS_METRIC_TYPE=${MILVUS_METRIC_TYPE:-IP}
       - DOCREADER_ADDR=${DOCREADER_ADDR:-docreader:50051}
       - DOCREADER_TRANSPORT=${DOCREADER_TRANSPORT:-grpc}
@@ -125,10 +125,10 @@ services:
       - WEAVIATE_API_KEY=${WEAVIATE_API_KEY:-}
       - DORIS_ADDR=${DORIS_ADDR:-doris-fe:9030}
       - DORIS_HTTP_PORT=${DORIS_HTTP_PORT:-8030}
-      - DORIS_DATABASE=${DORIS_DATABASE:-weknora}
+      - DORIS_DATABASE=${DORIS_DATABASE:-xinwiki}
       - DORIS_USERNAME=${DORIS_USERNAME:-root}
       - DORIS_PASSWORD=${DORIS_PASSWORD:-}
-      - DORIS_TABLE_PREFIX=${DORIS_TABLE_PREFIX:-weknora_embeddings}
+      - DORIS_TABLE_PREFIX=${DORIS_TABLE_PREFIX:-xinwiki_embeddings}
       - DORIS_COMPAT_MODE=${DORIS_COMPAT_MODE:-auto}
       - STORAGE_TYPE=${STORAGE_TYPE:-}
       - LOCAL_STORAGE_BASE_DIR=${LOCAL_STORAGE_BASE_DIR:-}
@@ -180,21 +180,21 @@ services:
       # File size limit (in MB)
       - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-50}
       # Agent Skills Sandbox
-      - WEKNORA_SANDBOX_MODE=${WEKNORA_SANDBOX_MODE:-docker}
-      - WEKNORA_SANDBOX_TIMEOUT=${WEKNORA_SANDBOX_TIMEOUT:-60}
-      - WEKNORA_SANDBOX_DOCKER_IMAGE=${WEKNORA_SANDBOX_DOCKER_IMAGE:-wechatopenai/weknora-sandbox:${WEKNORA_VERSION:-latest}}
+      - XINWIKI_SANDBOX_MODE=${XINWIKI_SANDBOX_MODE:-docker}
+      - XINWIKI_SANDBOX_TIMEOUT=${XINWIKI_SANDBOX_TIMEOUT:-60}
+      - XINWIKI_SANDBOX_DOCKER_IMAGE=${XINWIKI_SANDBOX_DOCKER_IMAGE:-xinwiki/xinwiki-sandbox:${XINWIKI_VERSION:-latest}}
       # Agent LLM call timeout
-      - WEKNORA_AGENT_LLM_TIMEOUT=${WEKNORA_AGENT_LLM_TIMEOUT:-}
-      - WEKNORA_AGENT_TOOL_APPROVAL_TIMEOUT=${WEKNORA_AGENT_TOOL_APPROVAL_TIMEOUT:-}
+      - XINWIKI_AGENT_LLM_TIMEOUT=${XINWIKI_AGENT_LLM_TIMEOUT:-}
+      - XINWIKI_AGENT_TOOL_APPROVAL_TIMEOUT=${XINWIKI_AGENT_TOOL_APPROVAL_TIMEOUT:-}
       # Tenant / RBAC（详见 docs/RBAC说明.md 与 .env.example 注释）
-      # - WEKNORA_TENANT_ENABLE_RBAC: 是否启用租户角色强制鉴权（true / false），默认 true
-      # - WEKNORA_TENANT_MAX_OWNED_PER_USER: 单个非超管自助创建租户的上限
+      # - XINWIKI_TENANT_ENABLE_RBAC: 是否启用租户角色强制鉴权（true / false），默认 true
+      # - XINWIKI_TENANT_MAX_OWNED_PER_USER: 单个非超管自助创建租户的上限
       #   >0 强制限额；=0 走 handler 默认；<0 关闭限额（不建议共享部署使用）
-      - WEKNORA_TENANT_ENABLE_RBAC=${WEKNORA_TENANT_ENABLE_RBAC:-}
-      - WEKNORA_TENANT_MAX_OWNED_PER_USER=${WEKNORA_TENANT_MAX_OWNED_PER_USER:-}
-      - WEKNORA_ASYNQ_CONCURRENCY=${WEKNORA_ASYNQ_CONCURRENCY:-32}
+      - XINWIKI_TENANT_ENABLE_RBAC=${XINWIKI_TENANT_ENABLE_RBAC:-}
+      - XINWIKI_TENANT_MAX_OWNED_PER_USER=${XINWIKI_TENANT_MAX_OWNED_PER_USER:-}
+      - XINWIKI_ASYNQ_CONCURRENCY=${XINWIKI_ASYNQ_CONCURRENCY:-32}
       - APK_MIRROR_ARG=${APK_MIRROR_ARG:-}
-      - WEKNORA_BOOTSTRAP_SYSTEM_ADMIN_EMAIL=${WEKNORA_BOOTSTRAP_SYSTEM_ADMIN_EMAIL:-}
+      - XINWIKI_BOOTSTRAP_SYSTEM_ADMIN_EMAIL=${XINWIKI_BOOTSTRAP_SYSTEM_ADMIN_EMAIL:-}
     depends_on:
       redis:
         condition: service_started
@@ -210,7 +210,7 @@ services:
 
   # Sandbox 镜像：仅用于 build/pull，非常驻服务；app 执行 Skills 时按需 docker run 该镜像，用毕即释
   sandbox:
-    image: wechatopenai/weknora-sandbox:${WEKNORA_VERSION:-latest}
+    image: xinwiki/xinwiki-sandbox:${XINWIKI_VERSION:-latest}
     container_name: XinWiki-sandbox
     build:
       context: .
@@ -221,7 +221,7 @@ services:
     restart: "no"
 
   docreader:
-    image: wechatopenai/weknora-docreader:${WEKNORA_VERSION:-latest}
+    image: xinwiki/xinwiki-docreader:${XINWIKI_VERSION:-latest}
     build:
       context: .
       dockerfile: docker/Dockerfile.docreader
@@ -275,7 +275,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.odl-hybrid
-    image: weknora-odl-hybrid:local
+    image: xinwiki-odl-hybrid:local
     container_name: XinWiki-odl-hybrid
     profiles:
       - odl-hybrid
@@ -347,12 +347,12 @@ services:
       - searxng_config:/etc/searxng
     environment:
       - SEARXNG_BASE_URL=http://localhost:${SEARXNG_PORT:-8888}/
-      - INSTANCE_NAME=weknora-searxng
+      - INSTANCE_NAME=xinwiki-searxng
       # Default value lets `docker compose --profile searxng up` work zero-config.
       # Override via .env (e.g. `openssl rand -hex 32`) before exposing the
       # instance beyond the default 127.0.0.1 bind, since secret_key signs
       # image-proxy URLs and a shared default would be guessable by anyone.
-      - SEARXNG_SECRET=${SEARXNG_SECRET:-weknora-default-searxng-secret-rotate-before-exposing-publicly}
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-xinwiki-default-searxng-secret-rotate-before-exposing-publicly}
     cap_drop:
       - ALL
     cap_add:
@@ -691,10 +691,10 @@ services:
       # SALT / ENCRYPTION_KEY 生产环境务必重新生成：
       #   SALT: openssl rand -base64 32
       #   ENCRYPTION_KEY: openssl rand -hex 32
-      SALT: ${LANGFUSE_SALT:-weknora-langfuse-dev-salt-change-me}
+      SALT: ${LANGFUSE_SALT:-xinwiki-langfuse-dev-salt-change-me}
       ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
       NEXTAUTH_URL: ${LANGFUSE_NEXTAUTH_URL:-http://localhost:3000}
-      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-weknora-langfuse-dev-nextauth-secret-change-me}
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-xinwiki-langfuse-dev-nextauth-secret-change-me}
       TELEMETRY_ENABLED: ${LANGFUSE_TELEMETRY_ENABLED:-false}
       LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
       CLICKHOUSE_URL: http://langfuse-clickhouse:8123
@@ -772,8 +772,8 @@ services:
     ports:
       - "${MCP_PORT:-8082}:8000"
     environment:
-      - WEKNORA_BASE_URL=http://app:8080/api/v1
-      - WEKNORA_API_KEY=${WEKNORA_API_KEY:-}
+      - XINWIKI_BASE_URL=http://app:8080/api/v1
+      - XINWIKI_API_KEY=${XINWIKI_API_KEY:-}
     depends_on:
       app:
         condition: service_healthy

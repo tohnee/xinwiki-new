@@ -266,17 +266,19 @@ func (b *EmbeddingBatcher) processBatch(batch []*EmbedBatchRequest) {
 		return
 	}
 
-	// Distribute results to all waiting requests
-	textIdx := 0
-	for _, originalIdxs := range textToIdx {
+	// Distribute results to all waiting requests.
+	// We MUST iterate in the same order as `texts` (first-occurrence order),
+	// because results[i] corresponds to texts[i]. Map iteration in Go is
+	// randomized, so iterating textToIdx directly would misroute embeddings.
+	for i, text := range texts {
+		originalIdxs := textToIdx[text]
 		var res []float32
-		if textIdx < len(results) {
-			res = results[textIdx]
+		if i < len(results) {
+			res = results[i]
 		}
 		for _, idx := range originalIdxs {
 			batch[idx].ResultChan <- res
 		}
-		textIdx++
 	}
 
 	b.mu.Lock()

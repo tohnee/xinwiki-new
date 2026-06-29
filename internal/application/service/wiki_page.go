@@ -1674,7 +1674,7 @@ func (s *wikiPageService) Supersede(ctx context.Context, kbID string, req *types
 	}
 
 	if req.OldPageSlug == req.NewPageSlug {
-		return nil, errors.New("old page and new page cannot be the same")
+		return nil, repository.ErrWikiSamePageSupersession
 	}
 
 	oldPage, err := s.repo.GetBySlug(ctx, kbID, req.OldPageSlug)

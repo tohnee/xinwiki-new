@@ -3,7 +3,6 @@ package handler
 import (
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/Tencent/XinWiki/internal/errors"
 	"github.com/Tencent/XinWiki/internal/types"
@@ -146,7 +145,7 @@ func (h *ConflictDetectionHandler) ResolveConflict(c *gin.Context) {
 
 	req.ConflictID = conflictID
 
-	err := h.conflictService.ResolveConflict(ctx, tenantID, &req)
+	_, err := h.conflictService.ResolveConflict(ctx, tenantID, &req)
 	if err != nil {
 		c.Error(errors.Internal("failed to resolve conflict", err))
 		return
@@ -166,17 +165,8 @@ func (h *ConflictDetectionHandler) GetConflictSummary(c *gin.Context) {
 	}
 
 	kbID := c.Query("kb_id")
-	days := 30
-	if d := c.Query("days"); d != "" {
-		if v, err := strconv.Atoi(d); err == nil && v > 0 && v <= 365 {
-			days = v
-		}
-	}
 
-	to := time.Now()
-	from := to.AddDate(0, 0, -days)
-
-	summary, err := h.conflictService.GetConflictSummary(ctx, tenantID, kbID, from, to)
+	summary, err := h.conflictService.GetConflictSummary(ctx, tenantID, kbID)
 	if err != nil {
 		c.Error(errors.Internal("failed to get conflict summary", err))
 		return

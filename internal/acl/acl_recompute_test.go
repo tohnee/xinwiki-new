@@ -24,9 +24,6 @@ func (m *mockWikiRepo) UpdateMeta(_ context.Context, page *types.WikiPage) error
 	m.updatedPages = append(m.updatedPages, page)
 	return nil
 }
-func (m *mockWikiRepo) ListPagesCursor(_ context.Context, _ string, _ string, _ int) ([]*types.WikiPage, string, error) {
-	return nil, "", nil
-}
 
 func TestACLRecomputer_SourceSecurityLevelUpgrade(t *testing.T) {
 	// 场景：来源 Chunk 密级 L1→L3，派生 Wiki 应自动升为 L3

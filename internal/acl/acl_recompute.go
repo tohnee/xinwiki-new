@@ -12,17 +12,27 @@ import (
 	"github.com/Tencent/XinWiki/internal/types/interfaces"
 )
 
+// aclRecomputeWikiRepo is the minimal subset of WikiPageRepository that
+// ACLRecomputer actually depends on. Using a narrow interface keeps tests
+// from needing to implement dozens of unrelated methods.
+type aclRecomputeWikiRepo interface {
+	ListBySourceRef(ctx context.Context, kbID string, sourceKnowledgeID string) ([]*types.WikiPage, error)
+	UpdateMeta(ctx context.Context, page *types.WikiPage) error
+}
+
 // ACLRecomputer 监听权限变更事件，自动重算派生 Wiki 的 ACL
 type ACLRecomputer struct {
-	wikiRepo    interfaces.WikiPageRepository
+	wikiRepo    aclRecomputeWikiRepo
 	cacheSvc    interfaces.SemanticCacheService
 	processedMu sync.RWMutex
 	processed   map[string]time.Time // 事件ID -> 处理时间，用于幂等去重
 	dedupTTL    time.Duration
 }
 
-// NewACLRecomputer 创建 ACL 重算订阅者
-func NewACLRecomputer(wikiRepo interfaces.WikiPageRepository, cacheSvc interfaces.SemanticCacheService) *ACLRecomputer {
+// NewACLRecomputer 创建 ACL 重算订阅者。Accepts any value that provides the
+// two repository methods ACLRecomputer needs (ListBySourceRef + UpdateMeta),
+// which includes the full WikiPageRepository as well as narrower test doubles.
+func NewACLRecomputer(wikiRepo aclRecomputeWikiRepo, cacheSvc interfaces.SemanticCacheService) *ACLRecomputer {
 	return &ACLRecomputer{
 		wikiRepo:  wikiRepo,
 		cacheSvc:  cacheSvc,

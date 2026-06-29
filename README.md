@@ -5,204 +5,168 @@
 </p>
 
 <p align="center">
-  <picture>
-    <a href="https://trendshift.io/repositories/15289" target="_blank">
-      <img src="https://trendshift.io/api/badge/repositories/15289" alt="Tencent%2FXinWiki | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/>
+    <a href="https://github.com/tohnee/xinwiki-new" target="_blank">
+        <img alt="GitHub Repository" src="https://img.shields.io/badge/GitHub-tohnee/xinwiki--new-181717?logo=github">
     </a>
-  </picture>
-</p>
-<p align="center">
-    <a href="https://weknora.weixin.qq.com" target="_blank">
-        <img alt="Official Website" src="https://img.shields.io/badge/Official Website-XinWiki-4e6b99">
-    </a>
-    <a href="https://chatbot.weixin.qq.com" target="_blank">
-        <img alt="WeChat Dialog Open Platform" src="https://img.shields.io/badge/WeChat Dialog Open Platform-5ac725">
-    </a>
-    <a href="https://chromewebstore.google.com/detail/jpemjbopikggjlmikmclgbmkhhopjdgd" target="_blank">
-        <img alt="Chrome Extension" src="https://img.shields.io/badge/Chrome Extension-XinWiki-4285F4">
-    </a>
-    <a href="https://clawhub.ai/lyingbug/weknora" target="_blank">
-        <img alt="ClawHub Skill" src="https://img.shields.io/badge/ClawHub Skill-XinWiki-ff6b35">
-    </a>
-    <a href="https://github.com/Tencent/XinWiki/blob/main/LICENSE">
+    <a href="./LICENSE">
         <img src="https://img.shields.io/badge/License-MIT-ffffff?labelColor=d4eaf7&color=2e6cc4" alt="License">
     </a>
     <a href="./CHANGELOG.md">
-        <img alt="Version" src="https://img.shields.io/badge/version-0.6.2-2e6cc4?labelColor=d4eaf7">
+        <img alt="Version" src="https://img.shields.io/badge/version-1.0.0-2e6cc4?labelColor=d4eaf7">
     </a>
 </p>
 
 <p align="center">
-| <b>English</b> | <a href="./README_CN.md"><b>简体中文</b></a> | <a href="./README_JA.md"><b>日本語</b></a> | <a href="./README_KO.md"><b>한국어</b></a> |
+| <b>English</b> | <a href="./README_CN.md"><b>简体中文</b></a> |
 </p>
 
 <p align="center">
   <h4 align="center">
 
-  [Overview](#-overview) • [Architecture](#-architecture) • [Key Features](#-key-features) • [Getting Started](#-getting-started) • [API Reference](#-api-reference) • [Developer Guide](#-developer-guide)
-  
+  [Overview](#-overview) • [Architecture](#-architecture) • [Key Features](#-key-features) • [Getting Started](#-getting-started) • [Deployment Guide](#-deployment-guide) • [Developer Guide](#-developer-guide)
+
   </h4>
 </p>
 
-# 💡 XinWiki — Turn Documents into Living Knowledge with RAG, Agents and Auto-Wiki
+# 💡 XinWiki — Agent-Powered Knowledge Work Platform
 
 ## 📌 Overview
 
-[**XinWiki**](https://weknora.weixin.qq.com) is an open-source, LLM-powered knowledge framework built for enterprise-grade document understanding, semantic retrieval, and autonomous reasoning.
+**XinWiki** is an open-source, LLM-powered enterprise knowledge management and intelligent Q&A platform featuring an Apple-inspired bright tech design and NotebookLM-style interaction, built for team knowledge consolidation and efficient collaboration.
 
-It is organized around three core capabilities: **RAG-based Quick Q&A** for everyday lookups, a **ReAct Agent** that autonomously orchestrates retrieval, MCP tools and web search to handle complex multi-step tasks, and a brand-new **Wiki Mode** in which agents distill raw documents into a self-maintaining, interlinked markdown knowledge base with an interactive knowledge graph. Combined with multi-source ingestion (Feishu / Notion / Yuque, and growing), 20+ LLM provider integrations, full Langfuse observability, **enterprise-ready multi-tenant RBAC** (4-tier role matrix + per-resource ownership + per-tenant audit log), and a fully self-hostable modular architecture, XinWiki turns scattered documents into a queryable, reasoning-capable, continuously evolving knowledge asset.
+The platform is built around three core capabilities: a **Hybrid Retrieval Engine** (BM25 + vector retrieval + knowledge graph) for high-precision Q&A, a **ReAct Agent** that autonomously orchestrates knowledge retrieval, MCP tools, and web search for complex multi-step tasks, and a brand-new **Wiki Mode** where agents automatically generate structured, interlinked knowledge bases and visual knowledge graphs from raw documents. Combined with a three-column Workspace layout, thinking chain visualization, integration with 20+ major LLM providers, enterprise-grade multi-tenant RBAC (with UUM authentication integration), and a fully modular architecture for private deployment, XinWiki helps teams turn scattered documents into queryable, reasoning-capable, continuously evolving knowledge assets.
 
-The framework supports auto-syncing knowledge from Feishu, Notion, and Yuque (more data sources coming soon), handles 10+ document formats including PDF, Word, images, and Excel, and can serve Q&A directly through IM channels like WeCom, Feishu, Slack, and Telegram. It is compatible with major LLM providers including OpenAI, DeepSeek, Qwen (Alibaba Cloud), Zhipu, Hunyuan, Gemini, MiniMax, NVIDIA, and Ollama. Its fully modular design allows swapping LLMs, vector databases, and storage backends, with support for local and private cloud deployment ensuring complete data sovereignty. XinWiki also integrates with **Langfuse** for comprehensive observability into agent reasoning, token usage, and pipeline tracing.
+XinWiki supports automatic knowledge sync from Feishu, Notion, and Yuque, covers 10+ document formats including PDF, Word, images, and Excel, and is compatible with major LLM providers including OpenAI, Anthropic Claude, DeepSeek, Qwen, Zhipu, Doubao, Gemini, and Ollama. The fully modular design allows flexible swapping of LLMs, vector databases, and storage backends, with support for local and private cloud deployment ensuring complete data sovereignty.
 
+## ✨ Key Features
 
-## ✨ Latest Updates
+### 🤖 Intelligent Conversation & Reasoning
+- **Thinking Chain Visualization**: Complete display of Agent thought process, tool calls, and Token consumption statistics
+- **Hybrid Retrieval Engine**: BM25 sparse recall + Dense dense recall + GraphRAG enhancement with HNSW vector acceleration
+- **ReAct Agents**: Progressive multi-step reasoning with custom Agent skills and sandboxed execution
+- **Wiki Mode**: Agent-driven automatic generation of structured, interlinked Markdown Wiki pages
+- **Model Routing**: Dynamic optimal model selection based on cost/latency with Prompt version management
+- **Contradiction Detection**: Automatically identifies and marks contradictory information in documents
+- **Observability**: Full-chain tracing with real-time Token usage, cost, and latency statistics
 
-- **v0.6.2** — Per-upload process configuration with upload-confirm dialog; document reparse with `process_config`; `weknora` CLI v0.9 (bundled Agent Skills, `session stop`, auth/profile harmonization); KB marquee multi-select; HNSW index for 1024-dim pgvector embeddings; chat resources store refactor; Langfuse-only tracing (Jaeger removed). See [`CHANGELOG.md`](./CHANGELOG.md).
-- **v0.6.1** — Document parsing trace timeline (Langfuse-style span tree with stage-by-stage progress + stop-parse); OpenSearch vector store driver; declarative built-in models via YAML; system admin & consolidated platform settings + audit log; new-user onboarding guide; settings UI redesign; `weknora` CLI v0.7 / v0.8 (agent-first wire contract, NDJSON, `--dry-run`); OpenDataLoader + PaddleOCR-VL parsers; MCP server multi-transport (stdio / SSE / HTTP); per-model thinking-mode config; Tencent LKEAP rerank + native Gemini embeddings + MiniMax-M3. See [`CHANGELOG.md`](./CHANGELOG.md).
-- **v0.6.0** — Tenant RBAC (4-tier role matrix `Owner` / `Admin` / `Contributor` / `Viewer` + per-KB ownership + per-tenant audit log), tenant member management & multi-workspace UX, self-service workspaces; `weknora` CLI v0.4 GA with `mcp serve`; KB retrieval fan-out across vector stores; AES-256-GCM credential encryption + docreader gRPC TLS + Token; Zhipu embedder + Huawei OBS; server-side user preferences; Go 1.26.0. See [`docs/RBAC说明.md`](./docs/RBAC说明.md) and [`CHANGELOG.md`](./CHANGELOG.md).
-- **v0.5.2** — Wiki ingest scales to 40k-document KBs (task queue + DLQ); MCP human-in-the-loop tool approval; Anthropic / Apache Doris / Tencent VectorDB / KS3 / SearXNG backends; adaptive 3-tier chunking with live preview; global ⌘K command palette; Yuque connector + WeChat Mini Program; `weknora` CLI preview.
-- **v0.5.1** — Knowledge-base batch management; tenant-wide IM channels overview; session search + user-scoped pinning; unified Model / Web Search / MCP settings cards; per-agent LLM timeout; desktop tenant switching.
-- **v0.5.0** — Wiki Mode GA — agents auto-generate structured, interlinked Markdown wiki pages with a knowledge graph; wiki browser + visual graph in the UI.
-- **v0.4.0** — XinWiki Cloud (hosted LLM + parsing); Chrome Extension; ClawHub Skill; WeChat IM; attachment processing; Azure OpenAI / Alibaba OSS; Notion connector; Baidu + Ollama web search; VectorStore management.
-- **v0.3.6** — ASR (audio); Feishu data-source auto-sync; OIDC; IM quote-reply context + thread-based sessions; document summarization; Tavily search; parallel tool calling; agent @mention scope restriction.
-- **v0.3.5** — Telegram / DingTalk / Mattermost IM; IM slash commands + QA queue; suggested questions; VLM auto-describe MCP tool images; Novita AI; channel tracking.
-- **v0.3.4** — WeCom / Feishu / Slack IM; multimodal image support; NVIDIA model API; Weaviate; AWS S3; AES-256-GCM API-key encryption; built-in MCP service; hybrid-search optimization; `final_answer` tool.
-- **v0.3.3** — Parent-child chunking; KB pinning; fallback response; passage cleaning for rerank; storage auto-creation; Milvus.
-- **v0.3.2** — Knowledge Search entry; per-source parser & storage engine config; image rendering in local storage; document preview; Volcengine TOS; Mermaid rendering; batch session management; memory graph preview.
-- **v0.3.0** — Shared Space; Agent Skills + sandboxed execution; custom agents; Data Analyst agent; thinking mode; Bing / Google web search; API Key auth; Helm chart; Korean i18n; Qdrant.
-- **v0.2.0** — Agent Mode (ReACT); multi-type knowledge bases (FAQ + document); conversation strategy config; DuckDuckGo web search; MCP tool integration; new UI with agent mode switching; MQ async task management.
+### 📚 Knowledge Management
+- **Multiple Knowledge Base Types**: Support for FAQ/Document/Wiki types with folder import, URL import, and tag management
+- **High-Performance Compilation**: Incremental compilation engine with millisecond-level knowledge base updates
+- **Multi-Source Sync**: Automatic sync from Feishu/Notion/Yuque with incremental and full sync support
+- **Multi-Format Support**: PDF/Word/Txt/Markdown/HTML/Images/CSV/Excel/PPT/JSON
+- **Semantic Cache**: 0.95 similarity threshold with strict per-tenant isolation, automatically degrades to in-memory storage when Redis is unavailable
+- **Embedding Batching**: Dual-trigger mechanism (time window + batch size), per-model independent queues with automatic deduplication
 
+### 🔐 Enterprise Security & Permissions
+- **Multi-Tenant RBAC**: Four-tier role matrix (Owner/Admin/Contributor/Viewer) with resource-level permission control
+- **UUM Authentication Integration**: Support for enterprise unified user management with organizational structure and department permission inheritance
+- **Data Security**: AES-256-GCM encryption at rest, gRPC TLS communication, SSRF protection, Agent sandbox isolation
+- **Audit Logs**: Full tenant operation audit trails
+
+### 🎨 Modern Interface
+- **Three-Column Workspace**: NotebookLM-inspired design with left navigation, center conversation, right generation panel
+- **Apple Bright Tech Style**: Blue theme (#007AFF), glassmorphism effects, smooth animations
+- **Responsive Design**: Perfectly adapts to desktop and mobile
+- **Dark/Light Mode**: Automatically follows system theme
 
 ## 📱 Interface Showcase
 
 <table>
   <tr>
-    <td colspan="2" align="center"><b>💬 Intelligent Q&A Conversation</b><br/><img src="./docs/images/qa.png" alt="Intelligent Q&A Conversation" width="100%"></td>
+    <td colspan="2" align="center"><b>💬 Three-Column Workspace</b><br/><img src="./docs/images/workspace.png" alt="Three-Column Workspace" width="100%"></td>
   </tr>
   <tr>
-    <td width="50%" align="center"><b>📖 Wiki Browser</b><br/><img src="./docs/images/wiki-browser.png" alt="Wiki Browser" width="100%"></td>
+    <td width="50%" align="center"><b>🧠 Thinking Chain Visualization</b><br/><img src="./docs/images/thinking-chain.png" alt="Thinking Chain Visualization" width="100%"></td>
     <td width="50%" align="center"><b>🕸️ Wiki Knowledge Graph</b><br/><img src="./docs/images/wiki-graph.png" alt="Wiki Knowledge Graph" width="100%"></td>
   </tr>
   <tr>
-    <td width="50%" align="center"><b>🤖 Agent Mode · Tool Call Process</b><br/><img src="./docs/images/agent-qa.png" alt="Agent Mode Tool Call Process" width="100%"></td>
-    <td width="50%" align="center"><b>⚙️ Conversation Settings</b><br/><img src="./docs/images/settings.png" alt="Conversation Settings" width="100%"></td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center"><b>🔭 Observability · Langfuse Tracing</b><br/><img src="./docs/images/langfuse.png" alt="Observability Langfuse Tracing" width="100%"></td>
+    <td width="50%" align="center"><b>📊 Cost & Usage Dashboard</b><br/><img src="./docs/images/cost-dashboard.png" alt="Cost Dashboard" width="100%"></td>
+    <td width="50%" align="center"><b>⚙️ System Settings</b><br/><img src="./docs/images/settings.png" alt="System Settings" width="100%"></td>
   </tr>
 </table>
 
 ## 🏗️ Architecture
 
-![weknora-architecture.png](./docs/images/architecture.png)
-
-Fully modular pipeline from document parsing, vectorization, and retrieval to LLM inference — every component is swappable and extensible. Supports local / private cloud deployment with full data sovereignty and a zero-barrier Web UI for quick onboarding.
-
-## 🧩 Feature Overview
-
-**Intelligent Conversation**
-
-| Capability | Details |
-|------------|---------|
-| Intelligent Reasoning | ReACT progressive multi-step reasoning, autonomously orchestrating knowledge retrieval, MCP tools, and web search; custom agent support |
-| Quick Q&A | RAG-based Q&A over knowledge bases for fast and accurate answers |
-| Wiki Mode | Agent-driven auto-generation of structured, interlinked markdown Wiki pages from raw documents |
-| Tool Calling | Built-in tools, MCP tools, web search |
-| Conversation Strategy | Online Prompt editing, retrieval threshold tuning, multi-turn context awareness |
-| Suggested Questions | Auto-generated question suggestions based on knowledge base content |
-
-**Knowledge Management**
-
-| Capability | Details |
-|------------|---------|
-| Knowledge Base Types | FAQ / Document / Wiki with folder import, URL import, tag management, and online entry |
-| Per-Upload Process Config | Override parser, chunking, multimodal (VLM / ASR), graph extraction, and question generation per upload batch via upload-confirm dialog or `process_config` API; reparse with new settings |
-| Data Source Import | Auto-sync from Feishu / Notion / Yuque (more data sources coming soon); incremental and full sync |
-| Document Formats | PDF / Word / Txt / Markdown / HTML / Images / CSV / Excel / PPT / JSON |
-| Retrieval Strategies | BM25 sparse / Dense retrieval / GraphRAG / parent-child chunking / HNSW-accelerated pgvector (1024-dim) / multi-dimensional indexing |
-| Batch Selection | Marquee drag-select multiple documents in the KB list for batch operations |
-| E2E Testing | Full-pipeline visualization with recall hit rate, BLEU / ROUGE metric evaluation |
-
-**Integrations & Extensions**
-
-| Capability | Details |
-|------------|---------|
-| LLMs | OpenAI / Azure OpenAI / Anthropic (Claude) / DeepSeek / Qwen (Alibaba Cloud) / Zhipu / Hunyuan / Doubao (Volcengine) / Gemini / MiniMax / NVIDIA / Novita AI / SiliconFlow / OpenRouter / Ollama |
-| Embeddings | Ollama / BGE / GTE / Zhipu / OpenAI-compatible APIs |
-| Vector DBs | PostgreSQL (pgvector) / Elasticsearch / OpenSearch / Milvus / Weaviate / Qdrant / Apache Doris / Tencent VectorDB |
-| Object Storage | Local / MinIO / AWS S3 / Volcengine TOS / Alibaba Cloud OSS / Kingsoft Cloud KS3 / Huawei Cloud OBS |
-| IM Channels | WeCom / Feishu / Slack / Telegram / DingTalk / Mattermost / WeChat |
-| Web Search | DuckDuckGo / Bing / Google / Tavily / Baidu / Ollama / SearXNG |
-
-**Platform**
-
-| Capability | Details |
-|------------|---------|
-| Deployment | Local / Docker / Kubernetes (Helm) with private and offline support |
-| UI | Web UI / RESTful API / CLI (`weknora`) / Chrome Extension / WeChat Mini Program |
-| Access Control | Tenant RBAC with 4-tier role matrix (Owner / Admin / Contributor / Viewer), per-KB resource ownership, per-tenant audit log, invite-only workspaces, self-service tenant creation, cross-tenant superuser |
-| Security | AES-256-GCM at-rest encryption for API keys and MCP / data-source credentials with graceful key rotation; gRPC TLS + Token between app and docreader; SSRF-safe HTTP client; sandbox isolation for agent skills |
-| Observability | Integrated Langfuse (sole tracing backend) for ReAct loops, token tracking, tool calls, and pipeline tracing; built-in Langfuse-style document parsing trace timeline with stage-by-stage progress |
-| Task Management | MQ async tasks, automatic database migration on version upgrade |
-| Model Management | Centralized config, declarative built-in models via YAML, per-knowledge-base model selection, per-model thinking-mode config, multi-tenant built-in model sharing, XinWiki Cloud hosted models and parsing |
-
-## 🧩 Chrome Extension
-
-[**XinWiki Chrome Extension**](https://chromewebstore.google.com/detail/jpemjbopikggjlmikmclgbmkhhopjdgd) lets you capture web content directly into your XinWiki knowledge base. Select text, images, or entire pages in the browser and save them as knowledge entries with one click — no copy-paste or file upload needed.
-
-
-## 📱 WeChat Mini Program
-
-The [XinWiki Mini Program](./miniprogram/README.md) provides a lightweight mobile client for configuring XinWiki API access, selecting knowledge bases, importing URLs, and asking knowledge chat from WeChat.
-
-
-## 🦞 ClawHub Skill
-
-[**XinWiki ClawHub Skill**](https://clawhub.ai/lyingbug/weknora) is a XinWiki skill published on the ClawHub platform. Once installed, it enables document import (file / URL / Markdown), hybrid search (vector + keyword) across knowledge bases, and knowledge entry management — all through the XinWiki REST API.
-
-- **Document Import** — Upload files, import web pages, or write Markdown knowledge via the agent
-- **Hybrid Search** — Search within or across knowledge bases with vector + keyword retrieval
-- **Knowledge Management** — List, browse, edit, and delete knowledge entries programmatically
-
-## ⌨️ Command-Line Interface
-
-`weknora` is the official CLI for driving the API from a terminal or AI agent.
-The command surface mirrors `gh` CLI's `<noun> <verb>` convention; output is
-human-readable by default and switches to a stable JSON envelope with `--json`.
-v0.9 ships bundled Agent Skills (`weknora-rag-search`, `weknora-shared`), adds
-`session stop`, and harmonizes auth/profile workflows (see [`cli/CHANGELOG.md`](./cli/CHANGELOG.md)).
-
-```bash
-weknora auth login --host https://kb.example.com
-weknora kb list
-weknora link --kb my-knowledge-base    # bind the current directory
-weknora doc upload notes.md
-weknora chat "summarise the design doc"
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Frontend (Vue 3 + TDesign)               │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
+│  │  Left Nav   │  │  Chat Area  │  │  Right Panel (Wiki/PPT) │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
+└──────────────────────────────────┬──────────────────────────────┘
+                                   │ HTTP/WebSocket
+┌──────────────────────────────────▼──────────────────────────────┐
+│                         Backend (Go + Gin)                      │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐ │
+│  │  Router  │  │  Handler │  │ Service  │  │  Agent Engine    │ │
+│  └──────────┘  └──────────┘  └──────────┘  │  ┌────────────┐  │ │
+│                                              │  │ Think/Act  │  │ │
+│  ┌──────────────────────────────────────┐    │  └────────────┘  │ │
+│  │  RBAC + UUM Auth + Multi-Tenant      │    └──────────────────┘ │
+│  └──────────────────────────────────────┘                         │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐ │
+│  │ Semantic │  │ Embedding│  │  Model   │  │ Cost Tracking    │ │
+│  │  Cache   │  │ Batcher  │  │ Router   │  │ + Aggregation    │ │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────────────┘ │
+└─────────────┬──────────────────┬──────────────────┬──────────────┘
+              │                  │                  │
+┌─────────────▼──────┐  ┌────────▼────────┐  ┌──────▼──────────────┐
+│  Vector Stores     │  │  LLM Providers  │  │  Document Parser    │
+│  (pgvector/ES/     │  │  (OpenAI/Claude/│  │  (PaddleOCR-VL/     │
+│   Milvus/Qdrant)   │  │   DeepSeek/...) │  │   OpenDataLoader)   │
+└────────────────────┘  └─────────────────┘  └─────────────────────┘
+              │                  │                  │
+┌─────────────▼──────────────────▼──────────────────▼──────────────┐
+│                    Infrastructure Services                       │
+│  ┌────────┐  ┌─────────┐  ┌───────┐  ┌────────┐  ┌────────────┐ │
+│  │  Redis │  │PostgreSQL│ │ MinIO │  │ Neo4j  │  │  Langfuse  │ │
+│  └────────┘  └─────────┘  └───────┘  └────────┘  └────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-See [`cli/README.md`](./cli/README.md) for install + 5-minute quickstart
-and [`cli/AGENTS.md`](./cli/AGENTS.md) for the operational contract that
-AI agents (Claude Code, Cursor, Aider, …) can rely on.
+## 🧩 Tech Stack
+
+| Layer | Technologies |
+|-------|--------------|
+| **Frontend** | Vue 3 + TypeScript + Vite + TDesign + Pinia |
+| **Backend** | Go 1.24+ + Gin + GORM + Wire (DI) |
+| **Document Parser** | Python + PaddleOCR-VL + OpenDataLoader |
+| **Vector Databases** | PostgreSQL (pgvector) / Elasticsearch / OpenSearch / Milvus / Qdrant |
+| **Relational DB** | PostgreSQL 15+ |
+| **Cache** | Redis 7+ (semantic cache, session storage) |
+| **Object Storage** | MinIO / S3 / Alibaba Cloud OSS / Tencent Cloud COS / Volcengine TOS |
+| **Knowledge Graph** | Neo4j (optional) |
+| **Observability** | Langfuse + Prometheus |
+| **Deployment** | Docker Compose / Kubernetes (Helm) |
 
 ## 🚀 Getting Started
 
 ### 🛠 Prerequisites
 
-- [Docker](https://www.docker.com/) & [Docker Compose](https://docs.docker.com/compose/)
-- [Git](https://git-scm.com/)
+- Docker 24.0+ & Docker Compose v2+
+- Git
+- At least 4 CPU cores and 8GB RAM (8 cores/16GB recommended for best experience)
 
-### 📦 Installation & Launch
+### 📦 One-Click Start (Docker Compose)
 
 ```bash
-git clone https://github.com/Tencent/XinWiki.git
-cd XinWiki
-cp .env.example .env   # Edit .env as needed, see comments in the file
-docker compose up -d   # Start core services
+# 1. Clone the repository
+git clone https://github.com/tohnee/xinwiki-new.git
+cd xinwiki-new
+
+# 2. Copy environment configuration
+cp .env.example .env
+
+# 3. Edit .env file, configure necessary parameters (at least one LLM API Key)
+# vim .env
+
+# 4. Start core services
+docker compose up -d
 ```
 
-Once started, visit **http://localhost** to get started.
+Once started, visit **http://localhost** to get started. Default admin credentials: `admin@xinwiki.com` / `admin123`.
 
-> To use a local Ollama model, run `ollama serve > /dev/null 2>&1 &` first.
+> First startup will automatically initialize the database and create default tenant and admin account. Please change the default password immediately.
 
 ### 🔧 Optional Services (Docker Compose Profiles)
 
@@ -210,8 +174,8 @@ Add `--profile` flags to enable additional components. Multiple profiles can be 
 
 | Profile | Description | Command |
 |---------|-------------|---------|
-| _(default)_ | Core services | `docker compose up -d` |
-| `full` | All features | `docker compose --profile full up -d` |
+| _(default)_ | Core services (Web+App+PostgreSQL+Redis) | `docker compose up -d` |
+| `full` | All features (all optional components) | `docker compose --profile full up -d` |
 | `neo4j` | Knowledge Graph (Neo4j) | `docker compose --profile neo4j up -d` |
 | `minio` | Object Storage (MinIO) | `docker compose --profile minio up -d` |
 | `langfuse` | Tracing (Langfuse) | `docker compose --profile langfuse up -d` |
@@ -220,96 +184,133 @@ Combine profiles: `docker compose --profile neo4j --profile minio up -d`
 
 Stop services: `docker compose down`
 
+Stop services and remove data: `docker compose down -v` ⚠️ This deletes all data
+
 ### 🌐 Service URLs
 
-| Service | URL |
-|---------|-----|
-| Web UI | `http://localhost` |
-| Backend API | `http://localhost:8080` |
-| Langfuse Tracing | `http://localhost:3000` |
+| Service | URL | Default Credentials/Notes |
+|---------|-----|---------------------------|
+| XinWiki Web UI | http://localhost | admin@xinwiki.com / admin123 |
+| Backend API | http://localhost:8080 | API docs: /swagger/index.html |
+| MinIO Console | http://localhost:9001 | minioadmin / minioadmin |
+| Langfuse Tracing | http://localhost:3000 | See .env configuration |
+| Neo4j Browser | http://localhost:7474 | neo4j / neo4jpassword |
+| pgAdmin | http://localhost:5050 | pgadmin@xinwiki.com / pgadmin123 |
 
-## MCP Server
+## 📖 Deployment Documentation
 
-Please refer to the [MCP Configuration Guide](./mcp-server/MCP_CONFIG.md) for the necessary setup.
+### Local Development Deployment
 
-## 🔌 Using WeChat Dialog Open Platform
+Please refer to the [Development Setup Guide](./docs/开发指南.md) for local development environment configuration.
 
-XinWiki serves as the core technology framework for the [WeChat Dialog Open Platform](https://chatbot.weixin.qq.com), providing a more convenient usage approach:
+### Production Deployment
 
-- **Zero-code Deployment**: Simply upload knowledge to quickly deploy intelligent Q&A services within the WeChat ecosystem, achieving an "ask and answer" experience
-- **Efficient Question Management**: Support for categorized management of high-frequency questions, with rich data tools to ensure accurate, reliable, and easily maintainable answers
-- **WeChat Ecosystem Integration**: Through the WeChat Dialog Open Platform, XinWiki's intelligent Q&A capabilities can be seamlessly integrated into WeChat Official Accounts, Mini Programs, and other WeChat scenarios, enhancing user interaction experiences
-
-
-
-## 📘 API Reference
-
-Troubleshooting FAQ: [Troubleshooting FAQ](./docs/QA.md)
-
-Detailed API documentation is available at: [API Docs](./docs/api/README.md)
-
-Product plans and upcoming features: [Roadmap](./docs/ROADMAP.md)
+For detailed production deployment instructions, please refer to the [XinWiki Production Deployment Guide](./docs/DEPLOYMENT.md), which covers:
+- Server configuration recommendations
+- Detailed environment variable descriptions
+- HTTPS configuration
+- Data backup and recovery
+- Performance tuning
+- Monitoring and alerting configuration
 
 ## 🧭 Developer Guide
 
-### ⚡ Fast Development Mode (Recommended)
+### ⚡ Fast Development Mode
 
-If you need to frequently modify code, **you don't need to rebuild Docker images every time**! Use fast development mode:
+If you need to modify code frequently, use fast development mode without rebuilding Docker images every time:
 
 ```bash
-# Start infrastructure
+# 1. Start infrastructure services (PostgreSQL, Redis, etc.)
 make dev-start
 
-# Start backend (new terminal)
+# 2. Start backend service (new terminal window)
 make dev-app
 
-# Start frontend (new terminal)
+# 3. Start frontend dev server (new terminal window)
 make dev-frontend
 ```
 
+Development server URLs:
+- Frontend: http://localhost:5174
+- Backend API: http://localhost:8080
+
 **Development Advantages:**
-- ✅ Frontend modifications auto hot-reload (no restart needed)
-- ✅ Backend modifications quick restart (5-10 seconds, supports Air hot-reload)
+- ✅ Frontend modifications auto hot-reload (Vite HMR, no refresh needed)
+- ✅ Backend modifications support Air hot-reload (second-level restart)
 - ✅ No need to rebuild Docker images
-- ✅ Support IDE breakpoint debugging
+- ✅ IDE breakpoint debugging support
 
-**Detailed Documentation:** [Development Environment Quick Start](./docs/开发指南.md)
+### 📋 Make Commands
 
+| Command | Description |
+|---------|-------------|
+| `make build` | Compile backend binary |
+| `make build-frontend` | Build frontend production package |
+| `make dev-start` | Start development infrastructure dependencies |
+| `make dev-app` | Start backend dev service (Air hot-reload) |
+| `make dev-frontend` | Start frontend dev server |
+| `make docker-build` | Build Docker images |
+| `make test` | Run all unit tests |
+| `make lint` | Run code checks |
+| `make clean` | Clean build artifacts |
+
+## 📁 Project Structure
+
+```
+xinwiki-new/
+├── cmd/                    # Entry points
+│   └── server/            # Backend service entry
+├── internal/              # Internal business code
+│   ├── agent/            # Agent engine (think/act/tool calls)
+│   ├── acl/              # ACL permission pure functions
+│   ├── application/      # Application service layer
+│   ├── auth/             # Authentication & RBAC (with UUM integration)
+│   ├── config/           # Configuration management
+│   ├── container/        # Dependency injection container
+│   ├── handler/          # HTTP handlers
+│   ├── infrastructure/   # Infrastructure (document parsing, vector stores, etc.)
+│   ├── models/           # LLM integrations (Chat/Embedding/Rerank/VLM)
+│   ├── router/           # Route configuration
+│   ├── types/            # Core type definitions
+│   └── wiki/             # Wiki engine (retrieval/compiler/QA)
+├── frontend/             # Frontend Vue project
+│   ├── src/
+│   │   ├── components/  # Components
+│   │   ├── views/       # Pages
+│   │   ├── stores/      # Pinia state management
+│   │   └── api/         # API call wrappers
+├── docreader/           # Python document parsing service
+├── mcp-server/          # MCP server
+├── deploy/              # Deployment configuration files
+├── docs/                # Documentation
+├── docker-compose.yml   # Docker Compose orchestration
+├── Makefile            # Build scripts
+└── .env.example        # Environment variable example
+```
 
 ## 🤝 Contributing
 
-Welcome to submit [Issues](https://github.com/Tencent/XinWiki/issues) or Pull Requests.
+Welcome to submit Issues or Pull Requests.
 
 **Process:** Fork → Create branch → Commit changes → Open PR
 
-**Standards:** Format code with `gofmt`, follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:` / `fix:` / `docs:` / `test:` / `refactor:`)
+**Standards:**
+- Backend code formatted with `gofmt`
+- Frontend code formatted with ESLint + Prettier
+- Follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:` / `fix:` / `docs:` / `test:` / `refactor:`)
 
 ## 🔒 Security Notice
 
-**Important:** Starting from v0.1.3, XinWiki includes login authentication functionality to enhance system security. For production deployments, we strongly recommend:
+For production deployments, we strongly recommend:
 
-- Deploy XinWiki services in internal/private network environments rather than public internet
-- Avoid exposing the service directly to public networks to prevent potential information leakage
-- Configure proper firewall rules and access controls for your deployment environment
-- Regularly update to the latest version for security patches and improvements
-
-## 👥 Contributors
-
-Thanks to these excellent contributors:
-
-[![Contributors](https://contrib.rocks/image?repo=Tencent/XinWiki)](https://github.com/Tencent/XinWiki/graphs/contributors)
+- Deploy XinWiki in internal/private network environments, avoid direct public internet exposure
+- Configure firewall rules and access controls to allow only trusted IPs
+- Change default admin password immediately
+- Configure HTTPS for encrypted transmission
+- Regular database backups
+- Update to latest version regularly for security patches
 
 ## 📄 License
 
 This project is licensed under the [MIT License](./LICENSE).
 You are free to use, modify, and distribute the code with proper attribution.
-
-## 📈 Project Statistics
-
-<a href="https://www.star-history.com/#Tencent/XinWiki&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Tencent/XinWiki&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Tencent/XinWiki&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Tencent/XinWiki&type=date&legend=top-left" />
- </picture>
-</a>

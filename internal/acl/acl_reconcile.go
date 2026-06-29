@@ -109,7 +109,7 @@ func (r *ACLReconciler) checkAndFix(ctx context.Context, page *types.WikiPage) b
 			continue
 		}
 		// 从 Chunk 仓库获取来源的当前 ACL
-		chunk, err := r.chunkRepo.GetByID(ctx, sourceID)
+		chunk, err := r.chunkRepo.GetChunkByIDOnly(ctx, sourceID)
 		if err != nil || chunk == nil {
 			// 来源不存在或已删除，跳过
 			continue

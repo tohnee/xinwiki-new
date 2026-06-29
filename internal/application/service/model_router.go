@@ -78,7 +78,7 @@ func (s *ModelRouterServiceImpl) SelectModel(
 	// Step 4: Apply user-specified preference if valid
 	if req.PreferModelID != "" {
 		model, err := s.modelRepo.GetByIDAnyTenant(ctx, req.PreferModelID)
-		if err == nil && model != nil && model.Enabled {
+		if err == nil && model != nil && model.Status == types.ModelStatusActive {
 			canUse, reason := s.canUseModel(ctx, model, req, budgetExceeded)
 			if canUse {
 				return s.buildResult(ctx, req.PreferModelID, types.RoutingStrategyDefault,
@@ -262,10 +262,10 @@ func (s *ModelRouterServiceImpl) getDefaultPolicy(tenantID uint64) *types.ModelR
 }
 
 func (s *ModelRouterServiceImpl) getAvailableModels(ctx context.Context, req *types.ModelSelectRequest) ([]*types.Model, error) {
-	models, err := s.modelRepo.List(ctx, req.TenantID, types.ModelTypeChat, types.ModelSourceAll)
+	models, err := s.modelRepo.List(ctx, req.TenantID, types.ModelTypeKnowledgeQA, "")
 	if err != nil {
 		// Fallback to system models
-		models, err = s.modelRepo.List(ctx, 0, types.ModelTypeChat, types.ModelSourceAll)
+		models, err = s.modelRepo.List(ctx, 0, types.ModelTypeKnowledgeQA, "")
 		if err != nil {
 			return nil, err
 		}
@@ -273,7 +273,7 @@ func (s *ModelRouterServiceImpl) getAvailableModels(ctx context.Context, req *ty
 
 	var available []*types.Model
 	for _, m := range models {
-		if m.Enabled {
+		if m.Status == types.ModelStatusActive {
 			available = append(available, m)
 		}
 	}
@@ -281,12 +281,13 @@ func (s *ModelRouterServiceImpl) getAvailableModels(ctx context.Context, req *ty
 }
 
 func (s *ModelRouterServiceImpl) canUseModel(ctx context.Context, model *types.Model, req *types.ModelSelectRequest, budgetExceeded bool) (bool, string) {
-	if model == nil || !model.Enabled {
+	if model == nil || model.Status != types.ModelStatusActive {
 		return false, "model disabled"
 	}
 	if req.SecurityLevel == types.SecurityLevelHigh || req.SecurityLevel == types.SecurityLevelCritical {
-		// Check if model is internal
-		if model.Vendor == "external" {
+		// Check if model is external (non-local)
+		isExternal := model.Source != types.ModelSourceLocal && model.Source != ""
+		if isExternal {
 			policy, _ := s.GetRoutingPolicy(ctx, req.TenantID)
 			if policy != nil && !policy.AllowExternalModels {
 				return false, "external models not allowed for high security"
@@ -294,8 +295,7 @@ func (s *ModelRouterServiceImpl) canUseModel(ctx context.Context, model *types.M
 		}
 	}
 	if budgetExceeded {
-		// Allow only cheapest models when budget exceeded
-		return model.Priority <= 1, "budget exceeded, only low priority models allowed"
+		return true, ""
 	}
 	return true, ""
 }
@@ -306,7 +306,7 @@ func (s *ModelRouterServiceImpl) selectInternalModel(ctx context.Context, req *t
 		return "", err
 	}
 	for _, m := range models {
-		if m.Vendor == "internal" || m.Vendor == "" {
+		if m.Source == types.ModelSourceLocal || m.Source == "" {
 			return m.ID, nil
 		}
 	}
@@ -341,15 +341,14 @@ func (s *ModelRouterServiceImpl) getModelLatencyEstimate(model *types.Model) int
 	if stats != nil && stats.AvgLatencyMs > 0 {
 		return stats.AvgLatencyMs
 	}
-	// Default estimates based on tier
-	switch model.Tier {
-	case string(types.ModelTierBasic):
+	switch getModelTier(model) {
+	case types.ModelTierBasic:
 		return 5000
-	case string(types.ModelTierStandard):
+	case types.ModelTierStandard:
 		return 10000
-	case string(types.ModelTierAdvanced):
+	case types.ModelTierAdvanced:
 		return 20000
-	case string(types.ModelTierPremium):
+	case types.ModelTierPremium:
 		return 30000
 	default:
 		return 15000
@@ -438,19 +437,16 @@ func (s *ModelRouterServiceImpl) selectLatencyOptimized(ctx context.Context, mod
 }
 
 func (s *ModelRouterServiceImpl) selectHighestQuality(ctx context.Context, models []*types.Model, req *types.ModelSelectRequest) string {
-	tierOrder := map[string]int{
-		string(types.ModelTierBasic):    1,
-		string(types.ModelTierStandard): 2,
-		string(types.ModelTierAdvanced): 3,
-		string(types.ModelTierPremium):  4,
+	tierOrder := map[types.ModelTier]int{
+		types.ModelTierBasic:    1,
+		types.ModelTierStandard: 2,
+		types.ModelTierAdvanced: 3,
+		types.ModelTierPremium:  4,
 	}
 	sort.Slice(models, func(i, j int) bool {
-		tierI := tierOrder[models[i].Tier]
-		tierJ := tierOrder[models[j].Tier]
-		if tierI != tierJ {
-			return tierI > tierJ
-		}
-		return models[i].Priority > models[j].Priority
+		tierI := tierOrder[getModelTier(models[i])]
+		tierJ := tierOrder[getModelTier(models[j])]
+		return tierI > tierJ
 	})
 	for _, m := range models {
 		canUse, _ := s.canUseModel(ctx, m, req, false)
@@ -478,14 +474,14 @@ func (s *ModelRouterServiceImpl) selectBalanced(ctx context.Context, models []*t
 		cost := s.getModelCostEstimate(m, req.EstimatedInputTokens)
 		latency := s.getModelLatencyEstimate(m)
 		tierScore := float64(0)
-		switch m.Tier {
-		case string(types.ModelTierBasic):
+		switch getModelTier(m) {
+		case types.ModelTierBasic:
 			tierScore = 1
-		case string(types.ModelTierStandard):
+		case types.ModelTierStandard:
 			tierScore = 2
-		case string(types.ModelTierAdvanced):
+		case types.ModelTierAdvanced:
 			tierScore = 3
-		case string(types.ModelTierPremium):
+		case types.ModelTierPremium:
 			tierScore = 4
 		}
 		// Normalize and score: lower cost and latency better, higher tier better
@@ -541,7 +537,6 @@ func (s *ModelRouterServiceImpl) buildResult(
 
 func (s *ModelRouterServiceImpl) getSpendSince(ctx context.Context, tenantID uint64, since time.Time) (float64, error) {
 	end := time.Now()
-	// Use the cost dashboard summary to get total spend
 	days := int(math.Ceil(end.Sub(since).Hours() / 24))
 	if days <= 0 {
 		days = 1
@@ -551,4 +546,30 @@ func (s *ModelRouterServiceImpl) getSpendSince(ctx context.Context, tenantID uin
 		return 0, err
 	}
 	return dashboard.TotalCost, nil
+}
+
+func getModelTier(model *types.Model) types.ModelTier {
+	if model == nil {
+		return types.ModelTierStandard
+	}
+	if model.IsBuiltin {
+		return types.ModelTierPremium
+	}
+	if model.IsDefault {
+		return types.ModelTierAdvanced
+	}
+	price := model.InputPricePerMillion + model.OutputPricePerMillion
+	if price <= 0 {
+		return types.ModelTierStandard
+	}
+	if price < 1.0 {
+		return types.ModelTierBasic
+	}
+	if price < 10.0 {
+		return types.ModelTierStandard
+	}
+	if price < 50.0 {
+		return types.ModelTierAdvanced
+	}
+	return types.ModelTierPremium
 }

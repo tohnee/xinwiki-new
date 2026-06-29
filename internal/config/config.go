@@ -155,10 +155,11 @@ type SummaryConfig struct {
 
 // ServerConfig 服务器配置
 type ServerConfig struct {
-	Port            int           `yaml:"port"             json:"port"`
-	Host            string        `yaml:"host"             json:"host"`
-	LogPath         string        `yaml:"log_path"         json:"log_path"`
-	ShutdownTimeout time.Duration `yaml:"shutdown_timeout" json:"shutdown_timeout" default:"30s"`
+	Port             int           `yaml:"port"             json:"port"`
+	Host             string        `yaml:"host"             json:"host"`
+	LogPath          string        `yaml:"log_path"         json:"log_path"`
+	ShutdownTimeout  time.Duration `yaml:"shutdown_timeout" json:"shutdown_timeout" default:"30s"`
+	CORSAllowedOrigins []string   `yaml:"cors_allowed_origins" json:"cors_allowed_origins"`
 }
 
 // KnowledgeBaseConfig 知识库配置
