@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
 )
 
 // TestCompletion_AllShells smoke-tests cobra's auto-registered completion
@@ -21,7 +21,7 @@ func TestCompletion_AllShells(t *testing.T) {
 	}{
 		{"bash", "bash completion", 1024},
 		{"zsh", "#compdef", 1024},
-		{"fish", "complete -c weknora", 1024},
+		{"fish", "complete -c xinwiki", 1024},
 		{"powershell", "Register-ArgumentCompleter", 1024},
 	}
 	for _, tc := range cases {

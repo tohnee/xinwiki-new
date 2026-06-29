@@ -7,20 +7,20 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/Tencent/WeKnora/internal/agent"
-	"github.com/Tencent/WeKnora/internal/agent/approval"
-	"github.com/Tencent/WeKnora/internal/agent/skills"
-	"github.com/Tencent/WeKnora/internal/agent/tools"
-	"github.com/Tencent/WeKnora/internal/config"
-	"github.com/Tencent/WeKnora/internal/event"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/mcp"
-	"github.com/Tencent/WeKnora/internal/models/chat"
-	"github.com/Tencent/WeKnora/internal/models/rerank"
-	"github.com/Tencent/WeKnora/internal/sandbox"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/agent"
+	"github.com/Tencent/XinWiki/internal/agent/approval"
+	"github.com/Tencent/XinWiki/internal/agent/skills"
+	"github.com/Tencent/XinWiki/internal/agent/tools"
+	"github.com/Tencent/XinWiki/internal/config"
+	"github.com/Tencent/XinWiki/internal/event"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/mcp"
+	"github.com/Tencent/XinWiki/internal/models/chat"
+	"github.com/Tencent/XinWiki/internal/models/rerank"
+	"github.com/Tencent/XinWiki/internal/sandbox"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 	"gorm.io/gorm"
 )
 
@@ -273,7 +273,7 @@ func (s *agentService) initializeSkillsManager(
 	// Initialize sandbox manager based on environment variables
 	// WEKNORA_SANDBOX_MODE: "docker", "local", "disabled" (default: "disabled")
 	// WEKNORA_SANDBOX_TIMEOUT: timeout in seconds (default: 60)
-	// WEKNORA_SANDBOX_DOCKER_IMAGE: custom Docker image (default: wechatopenai/weknora-sandbox:latest)
+	// WEKNORA_SANDBOX_DOCKER_IMAGE: custom Docker image (default: wechatopenai/xinwiki-sandbox:latest)
 	var sandboxMgr sandbox.Manager
 	var err error
 

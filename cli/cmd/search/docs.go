@@ -9,11 +9,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/output"
-	"github.com/Tencent/WeKnora/cli/internal/text"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/output"
+	"github.com/Tencent/XinWiki/cli/internal/text"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // docsPageSize is the default --page-size on `search docs`: how many
@@ -59,7 +59,7 @@ type DocsSearchService interface {
 	ListKnowledgeWithFilter(ctx context.Context, kbID string, page, pageSize int, filter sdk.KnowledgeListFilter) ([]sdk.Knowledge, int64, error)
 }
 
-// NewCmdDocs builds `weknora search docs "<query>" --kb <id-or-name>`.
+// NewCmdDocs builds `xinwiki search docs "<query>" --kb <id-or-name>`.
 // Pages through the KB's documents and surfaces every entry whose title
 // or file_name contains the query as a server-side case-sensitive LIKE
 // match. Useful for finding a specific upload to download or delete.
@@ -75,14 +75,14 @@ specific upload to download or delete by id.
 The query is a case-sensitive server-side LIKE filter (the server runs
 ` + "`LIKE %keyword%`" + ` against title and file_name). For case-insensitive
 matching, lower-case the query yourself, e.g.
-` + "`weknora search docs \"$(printf %s YOUR_QUERY | tr 'A-Z' 'a-z')\"`" + `, or
-fall back to ` + "`weknora api`" + ` with a custom filter.
+` + "`xinwiki search docs \"$(printf %s YOUR_QUERY | tr 'A-Z' 'a-z')\"`" + `, or
+fall back to ` + "`xinwiki api`" + ` with a custom filter.
 
 By default, --all-pages=true walks every server page until --limit is
 reached or the KB is exhausted. Pass --all-pages=false to stop after one page.`,
-		Example: `  weknora search docs "Q3 forecast" --kb finance
-  weknora search docs "spec" --kb engineering --limit 5
-  weknora search docs "spec" --kb engineering --all-pages=false`,
+		Example: `  xinwiki search docs "Q3 forecast" --kb finance
+  xinwiki search docs "spec" --kb engineering --limit 5
+  xinwiki search docs "spec" --kb engineering --all-pages=false`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			opts.Query = strings.TrimSpace(args[0])
@@ -122,7 +122,7 @@ reached or the KB is exhausted. Pass --all-pages=false to stop after one page.`,
 	cmdutil.SetAgentHelp(cmd, cmdutil.AgentHelp{
 		UsedFor:       "Find documents in a knowledge base by keyword (server-side LIKE filter on title/file_name). The KB comes from --kb (id or name), else WEKNORA_KB_ID, else the linked directory. Results come with meta.count; use --limit to cap and --all-pages=false to stop after one page.",
 		RequiredFlags: []string{"<query> (positional)", "--kb (or WEKNORA_KB_ID / linked directory)"},
-		Examples:      []string{`weknora search docs "spec" --kb engineering --format json`},
+		Examples:      []string{`xinwiki search docs "spec" --kb engineering --format json`},
 		Output:        "envelope.data is an array of Knowledge objects with id, title, file_name, parse_status; meta.count is the returned count; meta.has_more=true if more matched than --limit",
 	})
 	return cmd

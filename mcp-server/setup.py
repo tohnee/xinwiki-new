@@ -27,15 +27,15 @@ def read_requirements():
 
 
 setup(
-    name="weknora-mcp-server",
+    name="xinwiki-mcp-server",
     version="1.0.0",
     author="WeKnora Team",
-    author_email="support@weknora.com",
+    author_email="support@xinwiki.com",
     description="WeKnora MCP Server - Model Context Protocol server for WeKnora API",
     long_description=read_readme(),
     long_description_content_type="text/markdown",
     url="https://github.com/NannaOlympicBroadcast/WeKnoraMCP",
-    py_modules=["weknora_mcp_server", "main", "run_server", "run", "test_module"],
+    py_modules=["xinwiki_mcp_server", "main", "run_server", "run", "test_module"],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
@@ -53,13 +53,13 @@ setup(
     install_requires=read_requirements(),
     entry_points={
         "console_scripts": [
-            "weknora-mcp-server=main:sync_main",
-            "weknora-server=run_server:main",
+            "xinwiki-mcp-server=main:sync_main",
+            "xinwiki-server=run_server:main",
         ],
     },
     include_package_data=True,
     data_files=[
         ("", ["README.md", "requirements.txt", "LICENSE"]),
     ],
-    keywords="mcp model-context-protocol weknora knowledge-management api-server",
+    keywords="mcp model-context-protocol xinwiki knowledge-management api-server",
 )

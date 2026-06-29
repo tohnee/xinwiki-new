@@ -11,12 +11,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/Tencent/WeKnora/internal/config"
-	"github.com/Tencent/WeKnora/internal/errors"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/config"
+	"github.com/Tencent/XinWiki/internal/errors"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 )
 
 // AuthHandler implements HTTP request handlers for user authentication
@@ -731,7 +731,7 @@ func (h *AuthHandler) AutoSetup(c *gin.Context) {
 		return
 	}
 
-	const defaultEmail = "admin@weknora.local"
+	const defaultEmail = "admin@xinwiki.local"
 
 	user, _ := h.userService.GetUserByEmail(ctx, defaultEmail)
 	if user == nil {

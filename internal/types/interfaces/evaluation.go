@@ -2,34 +2,41 @@ package interfaces
 
 import (
 	"context"
+	"time"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
-// EvaluationService defines operations for evaluation tasks
-type EvaluationService interface {
-	// Evaluation starts a new evaluation task
-	Evaluation(ctx context.Context, datasetID string, knowledgeBaseID string,
-		chatModelID string, rerankModelID string,
-	) (*types.EvaluationDetail, error)
-	// EvaluationResult retrieves evaluation result by task ID
-	EvaluationResult(ctx context.Context, taskID string) (*types.EvaluationDetail, error)
+// RAGEvaluationService handles RAG quality evaluation including citation accuracy
+type RAGEvaluationService interface {
+	// EvaluateCitationAccuracy evaluates the accuracy of citations in a RAG response
+	EvaluateCitationAccuracy(ctx context.Context, req *types.CitationEvaluationRequest) (*types.CitationAccuracyReport, error)
+
+	// EvaluateBatch evaluates multiple queries in batch
+	EvaluateBatch(ctx context.Context, req *types.BatchEvaluationRequest) (*types.BatchEvaluationResult, error)
+
+	// GetReport retrieves a citation accuracy report by ID
+	GetReport(ctx context.Context, tenantID uint64, reportID string) (*types.CitationAccuracyReport, error)
+
+	// ListReports lists citation accuracy reports with filtering
+	ListReports(ctx context.Context, tenantID uint64, kbID string, from, to time.Time, page, pageSize int) ([]*types.CitationAccuracyReport, int, error)
+
+	// GetEvaluationSummary returns aggregate evaluation metrics
+	GetEvaluationSummary(ctx context.Context, tenantID uint64, kbID string, from, to time.Time) (*types.EvaluationSummary, error)
+
+	// ExtractCitations extracts citations from a response text
+	ExtractCitations(ctx context.Context, response string, chunks []*types.Chunk) ([]types.Citation, error)
+
+	// VerifyCitation verifies if a single citation is supported by the source chunk
+	VerifyCitation(ctx context.Context, claim string, sourceContent string) (*types.CitationEvaluation, error)
 }
 
-// Metrics defines interface for computing evaluation metrics
-type Metrics interface {
-	// Compute calculates metric score based on input data
-	Compute(metricInput *types.MetricInput) float64
-}
-
-// EvalHook defines interface for evaluation process hooks
-type EvalHook interface {
-	// Handle processes evaluation state change
-	Handle(ctx context.Context, state types.EvalState, index int, data interface{}) error
-}
-
-// DatasetService defines operations for dataset management
-type DatasetService interface {
-	// GetDatasetByID retrieves QA pairs from dataset by ID
-	GetDatasetByID(ctx context.Context, datasetID string) ([]*types.QAPair, error)
+// EvaluationRepository defines the data access layer for evaluation reports
+type EvaluationRepository interface {
+	CreateReport(ctx context.Context, report *types.CitationAccuracyReport) error
+	GetReport(ctx context.Context, tenantID uint64, id string) (*types.CitationAccuracyReport, error)
+	ListReports(ctx context.Context, tenantID uint64, kbID string, from, to time.Time, page, pageSize int) ([]*types.CitationAccuracyReport, int, error)
+	UpdateReport(ctx context.Context, report *types.CitationAccuracyReport) error
+	DeleteReport(ctx context.Context, tenantID uint64, id string) error
+	GetAggregateMetrics(ctx context.Context, tenantID uint64, kbID string, from, to time.Time) (precision, recall, f1, groundedness, hallucination float64, count int, err error)
 }

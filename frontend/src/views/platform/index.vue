@@ -189,7 +189,7 @@ const handleGlobalDrop = async (event: DragEvent) => {
 
     if (isChatDropRoute()) {
         event.stopPropagation();
-        window.dispatchEvent(new CustomEvent('weknora:chat-file-drop', {
+        window.dispatchEvent(new CustomEvent('xinwiki:chat-file-drop', {
             detail: { files: droppedFiles }
         }));
         return;

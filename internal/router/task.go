@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/application/service"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/middleware/asynqdl"
-	"github.com/Tencent/WeKnora/internal/tracing/langfuse"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/application/service"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/middleware/asynqdl"
+	"github.com/Tencent/XinWiki/internal/tracing/langfuse"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 	"github.com/hibiken/asynq"
 	"go.uber.org/dig"
 )

@@ -19,12 +19,12 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
-	apprepo "github.com/Tencent/WeKnora/internal/application/repository"
-	"github.com/Tencent/WeKnora/internal/config"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	apprepo "github.com/Tencent/XinWiki/internal/application/repository"
+	"github.com/Tencent/XinWiki/internal/config"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 )
 
 type oidcAuthorizationState struct {

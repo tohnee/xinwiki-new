@@ -8,13 +8,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	apprepo "github.com/Tencent/WeKnora/internal/application/repository"
-	"github.com/Tencent/WeKnora/internal/application/service"
-	apperrors "github.com/Tencent/WeKnora/internal/errors"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	apprepo "github.com/Tencent/XinWiki/internal/application/repository"
+	"github.com/Tencent/XinWiki/internal/application/service"
+	apperrors "github.com/Tencent/XinWiki/internal/errors"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 )
 
 // TenantMemberHandler exposes /tenants/:id/members CRUD. The route layer

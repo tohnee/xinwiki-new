@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // chunkViewFields enumerates the 23 SDK Chunk fields surfaced for `--format json`
@@ -37,7 +37,7 @@ const chunkViewLong = `Show a single chunk with all SDK fields.
 
 Text output is a key-value block; pass --format json for the bare 23-field SDK
 Chunk object. Content renders verbatim regardless of size — pipe to
-less or use --format json for large chunks. WeKnora chunks are typically bounded
+less or use --format json for large chunks. XinWiki chunks are typically bounded
 by the ingest pipeline (~1000 tokens / a few KB), so unconditional full
 rendering is reasonable.
 
@@ -53,11 +53,11 @@ invoke citation) is sufficient for view.
 Typed exit codes:
   resource.not_found    no chunk with the given id (exit 4)`
 
-const chunkViewExample = `  weknora chunk view chunk_abc
-  weknora chunk view chunk_abc --format json | jq '.content'
-  weknora chunk view chunk_abc --format json --jq '{id, chunk_index, is_enabled}'`
+const chunkViewExample = `  xinwiki chunk view chunk_abc
+  xinwiki chunk view chunk_abc --format json | jq '.content'
+  xinwiki chunk view chunk_abc --format json --jq '{id, chunk_index, is_enabled}'`
 
-// NewCmdView builds `weknora chunk view <chunk-id>`.
+// NewCmdView builds `xinwiki chunk view <chunk-id>`.
 func NewCmdView(f *cmdutil.Factory) *cobra.Command {
 	opts := &ViewOptions{}
 	cmd := &cobra.Command{
@@ -84,7 +84,7 @@ func NewCmdView(f *cmdutil.Factory) *cobra.Command {
 	cmdutil.SetAgentHelp(cmd, cmdutil.AgentHelp{
 		UsedFor:       "fetch one chunk's fields and content by id (scope-less; no --doc needed)",
 		RequiredFlags: []string{"<chunk-id> (positional)"},
-		Examples:      []string{"weknora chunk view chunk_abc"},
+		Examples:      []string{"xinwiki chunk view chunk_abc"},
 		Output:        "envelope.data is the chunk object (id, content, knowledge_id, ...)",
 	})
 	return cmd

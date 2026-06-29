@@ -1,4 +1,4 @@
-// Package profilecmd holds the `weknora profile` command tree
+// Package profilecmd holds the `xinwiki profile` command tree
 // (list / add / remove / use).
 //
 // Package name `profilecmd` (not `profile`) to keep the pattern consistent
@@ -9,10 +9,10 @@ package profilecmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
 )
 
-// NewCmd builds the `weknora profile` parent command.
+// NewCmd builds the `xinwiki profile` parent command.
 func NewCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "profile",

@@ -1,6 +1,6 @@
-// Package yuque implements the Yuque (语雀) data source connector for WeKnora.
+// Package yuque implements the Yuque (语雀) data source connector for XinWiki.
 //
-// It syncs documents from personal and group knowledge bases (books/repos) into WeKnora
+// It syncs documents from personal and group knowledge bases (books/repos) into XinWiki
 // knowledge bases, preserving Markdown formatting.
 //
 // Yuque API docs:
@@ -25,8 +25,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Tencent/WeKnora/internal/datasource"
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/datasource"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // DefaultBaseURL is the Yuque public cloud API base URL.

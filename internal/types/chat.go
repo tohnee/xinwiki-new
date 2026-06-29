@@ -7,9 +7,12 @@ import (
 
 // TokenUsage holds token consumption statistics returned by the model API.
 type TokenUsage struct {
-	PromptTokens     int `json:"prompt_tokens"`
-	CompletionTokens int `json:"completion_tokens"`
-	TotalTokens      int `json:"total_tokens"`
+	PromptTokens         int     `json:"prompt_tokens"`
+	CompletionTokens     int     `json:"completion_tokens"`
+	TotalTokens          int     `json:"total_tokens"`
+	CacheCreationTokens  int     `json:"cache_creation_tokens,omitempty"`
+	CacheReadTokens      int     `json:"cache_read_tokens,omitempty"`
+	Cost                 float64 `json:"cost,omitempty"`
 	// CachedTokens is the subset of PromptTokens that hit a provider-side
 	// prompt cache. Populated from `usage.prompt_tokens_details.cached_tokens`
 	// in OpenAI-compatible responses.

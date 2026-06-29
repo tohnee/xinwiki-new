@@ -3,7 +3,7 @@ package interfaces
 import (
 	"context"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // WikiPageService defines the wiki page service interface.
@@ -212,6 +212,68 @@ type WikiPageService interface {
 
 	// UpdateIssueStatus updates the status of an issue (e.g. pending -> resolved/ignored).
 	UpdateIssueStatus(ctx context.Context, issueID string, status string) error
+
+	// --- Review Workflow ---
+
+	// SubmitReview submits a draft page for review (draft -> reviewing).
+	// Caller must have at least Contributor role.
+	SubmitReview(ctx context.Context, kbID string, slug string, reason string) (*types.WikiReviewResult, error)
+
+	// Approve approves a page under review (reviewing -> published).
+	// Caller must have at least Admin role.
+	Approve(ctx context.Context, kbID string, slug string, reason string) (*types.WikiReviewResult, error)
+
+	// Reject rejects a page under review, sending it back to draft (reviewing -> draft).
+	// Caller must have at least Admin role.
+	Reject(ctx context.Context, kbID string, slug string, reason string) (*types.WikiReviewResult, error)
+
+	// Deprecate marks a published page as deprecated (published -> deprecated).
+	// Caller must have at least Admin role.
+	Deprecate(ctx context.Context, kbID string, slug string, reason string) (*types.WikiReviewResult, error)
+
+	// Archive archives a page (deprecated/superseded -> archived).
+	// Caller must have at least Admin role.
+	Archive(ctx context.Context, kbID string, slug string, reason string) (*types.WikiReviewResult, error)
+
+	// --- Supersession Relationships ---
+
+	// Supersede marks a page as superseded by another page (published -> superseded)
+	// and creates a WikiSupersession record.
+	// Caller must have at least Admin role.
+	Supersede(ctx context.Context, kbID string, req *types.WikiSupersedeRequest) (*types.WikiSupersession, error)
+
+	// GetSupersessionByOldPage returns the supersession record for a given old page, if any.
+	GetSupersessionByOldPage(ctx context.Context, kbID string, oldPageSlug string) (*types.WikiSupersession, error)
+
+	// ListSupersessionsByNewPage returns all supersession records where the given page is the new/replacement page.
+	ListSupersessionsByNewPage(ctx context.Context, kbID string, newPageSlug string) ([]*types.WikiSupersession, error)
+
+	// ListSupersessions returns all supersession records for a knowledge base.
+	ListSupersessions(ctx context.Context, kbID string) ([]*types.WikiSupersession, error)
+
+	// --- Milestone C: Confidence, Quality & Freshness ---
+
+	// RecordPageAccess records a page view, incrementing view count and updating last accessed time.
+	RecordPageAccess(ctx context.Context, kbID string, slug string) error
+
+	// RecordFeedback records user feedback (positive/negative) for a page and recalculates scores.
+	RecordFeedback(ctx context.Context, kbID string, slug string, isPositive bool) error
+
+	// SetExpertValidation marks a page as expert validated (or removes validation) and recalculates scores.
+	SetExpertValidation(ctx context.Context, kbID string, slug string, validated bool) error
+
+	// SetCriticalityLevel sets the criticality level (P0-P3) for a page.
+	SetCriticalityLevel(ctx context.Context, kbID string, slug string, level string) error
+
+	// RefreshScores recalculates confidence/quality/freshness scores for a single page.
+	RefreshScores(ctx context.Context, kbID string, slug string) (*types.WikiPage, error)
+
+	// RefreshAllScores recalculates scores for all pages in a knowledge base.
+	// Returns the number of pages refreshed.
+	RefreshAllScores(ctx context.Context, kbID string) (int, error)
+
+	// GetQualityScores returns the confidence/quality/freshness scores for a page.
+	GetQualityScores(ctx context.Context, kbID string, slug string) (*types.WikiQualityScores, error)
 }
 
 // WikiPageRepository defines the wiki page data persistence interface.
@@ -369,6 +431,46 @@ type WikiPageRepository interface {
 	// ListIssues retrieves issues with optional filtering by slug and status.
 	ListIssues(ctx context.Context, kbID string, slug string, status string) ([]*types.WikiPageIssue, error)
 
-	// UpdateIssueStatus updates an issue's status.
+	// UpdateIssueStatus updates the issue's status.
 	UpdateIssueStatus(ctx context.Context, issueID string, status string) error
+
+	// --- Status Management ---
+
+	// UpdateStatus updates only the status and updated_at fields of a page.
+	// This is a lightweight operation for review workflow transitions.
+	UpdateStatus(ctx context.Context, pageID string, status string) error
+
+	// --- Supersession Relationships ---
+
+	// CreateSupersession inserts a new wiki supersession record.
+	CreateSupersession(ctx context.Context, supersession *types.WikiSupersession) error
+
+	// GetSupersessionByOldPageID returns the supersession record for a given old page ID.
+	GetSupersessionByOldPageID(ctx context.Context, kbID string, oldPageID string) (*types.WikiSupersession, error)
+
+	// ListSupersessionsByNewPageID returns all supersession records where the given page is the new/replacement page.
+	ListSupersessionsByNewPageID(ctx context.Context, kbID string, newPageID string) ([]*types.WikiSupersession, error)
+
+	// ListSupersessions returns all supersession records for a knowledge base.
+	ListSupersessions(ctx context.Context, kbID string) ([]*types.WikiSupersession, error)
+
+	// --- Milestone C: Confidence, Quality & Freshness ---
+
+	// IncrementViewCount atomically increments view count and updates last_accessed_at.
+	IncrementViewCount(ctx context.Context, pageID string) error
+
+	// IncrementFeedback atomically increments positive or negative feedback count.
+	IncrementFeedback(ctx context.Context, pageID string, isPositive bool) error
+
+	// SetExpertValidation atomically sets expert validation status and timestamp.
+	SetExpertValidation(ctx context.Context, pageID string, validated bool) error
+
+	// SetCriticalityLevel sets the criticality level for a page.
+	SetCriticalityLevel(ctx context.Context, pageID string, level string) error
+
+	// UpdateScores updates all scoring fields for a page (confidence, quality, freshness, boost).
+	UpdateScores(ctx context.Context, page *types.WikiPage) error
+
+	// ListAllNonDeleted returns all non-deleted pages for batch score refresh.
+	ListAllNonDeleted(ctx context.Context, kbID string) ([]*types.WikiPage, error)
 }

@@ -5,8 +5,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/prompt"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/prompt"
 )
 
 // confirmCaveat returns the trailing safety note shown after the interactive
@@ -38,7 +38,7 @@ func titleFirst(s string) string {
 //
 // Pass n = total count of items about to be deleted.
 // action is the namespaced action verb (e.g. "doc.delete") for the risk envelope.
-// retryCmd is the directly-executable retry argv (e.g. "weknora doc delete a b -y");
+// retryCmd is the directly-executable retry argv (e.g. "xinwiki doc delete a b -y");
 // pass "" when no clean retry argv is available.
 func ConfirmDestructiveBatch(p prompt.Prompter, yes, jsonOut bool, verb, what string, n int, action, retryCmd string) error {
 	if yes {
@@ -81,7 +81,7 @@ func ConfirmDestructiveBatch(p prompt.Prompter, yes, jsonOut bool, verb, what st
 //
 // `yes` should be sourced from the persistent global -y/--yes flag.
 // action is the namespaced action verb (e.g. "kb.delete") for the risk envelope.
-// retryCmd is the directly-executable retry argv (e.g. "weknora kb delete kb_x -y");
+// retryCmd is the directly-executable retry argv (e.g. "xinwiki kb delete kb_x -y");
 // pass "" when no clean retry argv is available.
 func ConfirmDestructive(p prompt.Prompter, yes, jsonOut bool, verb, what, id, action, retryCmd string) error {
 	if yes {

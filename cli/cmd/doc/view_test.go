@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // fakeViewSvc scripts a GetKnowledge response. Tests bypass cobra and call

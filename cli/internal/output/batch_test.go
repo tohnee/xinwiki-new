@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tencent/WeKnora/cli/internal/output"
+	"github.com/Tencent/XinWiki/cli/internal/output"
 )
 
 func TestWriteBatchEnvelope_AllSuccess(t *testing.T) {

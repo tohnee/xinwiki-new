@@ -3,7 +3,7 @@ package embedding
 import (
 	"context"
 
-	"github.com/Tencent/WeKnora/internal/tracing/langfuse"
+	"github.com/Tencent/XinWiki/internal/tracing/langfuse"
 )
 
 // langfuseEmbedder wraps an Embedder and reports each call as a Langfuse

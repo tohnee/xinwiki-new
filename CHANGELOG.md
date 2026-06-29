@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2026-06-28
+
+### D4 里程碑：向量数据库读写分离架构
+
+#### New Features
+
+- **NEW**: **读写分离路由器 (VectorStoreRouter)** — 根据一致性级别（Strong/Session/Eventual）自动路由读请求到主节点或副本，支持 LSN 水位追踪和会话一致性保证
+- **NEW**: **熔断器机制** — 主节点和副本节点独立熔断，连续失败达阈值后自动隔离故障节点，恢复后自动关闭熔断
+- **NEW**: **负载均衡器** — 支持 RoundRobin 和 LeastConnections 两种策略
+- **NEW**: **写入缓冲 (WriteBuffer)** — 批量写入缓冲，按 batch size 或 timeout 触发刷盘，多 worker 并发处理
+- **NEW**: **引擎适配器 (RWCapableEngine)** — 零侵入包装现有引擎，自动扩展 WriteToken/LSN/HealthCheck 能力
+- **NEW**: **透明包装器 (RouterWrapper)** — 将路由器包装为 RetrieveEngineService 接口，上层代码零改动
+- **NEW**: **Prometheus 指标埋点** — read/write 请求计数、熔断器状态、健康检查延迟、副本 LSN 延迟等
+- **NEW**: **结构化日志** — 路由决策、熔断状态变化、健康检查结果等关键路径全覆盖 `[VectorStoreRouter]` 前缀日志
+
+#### Bug Fixes
+
+- **FIX**: 修复 `service ↔ service/retriever` 导入循环 — `retriever/registry.go` 直接导入 `application/service` 包导致循环依赖。引入 `Router` 接口和 `EngineWrapper` 函数类型，通过 `SetRouterFactory()` 工厂注册模式打破循环。`container.go` 在初始化时注册工厂，`retriever` 包内置 `noopRouter` 作为默认实现保证 nil 安全
+- **FIX**: 修复 `vectorstore_router.go` 类型不匹配 — `lsnLag`（int64）与 `MaxReplicationLag`（time.Duration）比较导致编译错误。改为使用 `health.ReplicationLag`（time.Duration）进行延迟比较
+- **FIX**: 修复 `rw_engine_adapter.go` HealthCheck 始终返回健康 — `rwEngineAdapter.HealthCheck()` 硬编码 `Healthy: true`，导致熔断器测试无法模拟故障。改为委托给底层引擎的 HealthCheck，并覆盖 NodeID/IsMaster/LSN 字段
+- **FIX**: 修复 `embedding_batcher_test.go` 函数签名不匹配 — `NewEmbeddingBatcher` 新增 `modelKey` 参数后测试未同步更新
+- **FIX**: 修复 `model_delete_test.go` uint 类型不一致 — stub 中 `ClearDefaultByType` 使用 `uint64`，接口定义为 `uint`
+- **FIX**: 修复 `semantic_cache_redis.go` fmt 格式化错误 — `fmt.Sprintf(semanticCacheEntry, "*", "*")` 中 `%d` 占位符收到 string 参数，改为直接使用字面量 pattern
+
+#### Test Coverage
+
+- 新增 `load_balancer_test.go` — 5 个测试（空节点池、单节点、轮询、最小连接）
+- 新增 `rw_engine_adapter_test.go` — 12 个测试（LSN 递增、Token 生成、错误传播、委托）
+- 新增 `write_buffer_test.go` — 10 个测试（批量刷盘、超时刷盘、关闭、并发、默认配置）
+- 新增 `vectorstore_router_wrapper_test.go` — 14 个测试（读写路由、全接口委托、StoreID 解析）
+- 扩展 `vectorstore_router_test.go` — 新增 3 个熔断机制测试（主节点故障触发、恢复重置、副本故障降级）
+- D4 相关测试合计 54 个，全部通过
+
 ## [0.6.2] - 2026-06-10
 
 ### New Features
@@ -142,7 +175,7 @@ All notable changes to this project will be documented in this file.
 
 ### New Features
 
-- **NEW**: **Tenant RBAC (Role-Based Access Control)** — the headline of this release (#1303). WeKnora now enforces a per-tenant role matrix on every mutating route, with per-KB resource ownership. Highlights:
+- **NEW**: **Tenant RBAC (Role-Based Access Control)** — the headline of this release (#1303). XinWiki now enforces a per-tenant role matrix on every mutating route, with per-KB resource ownership. Highlights:
   - **4-tier role matrix**: `Owner` (one per tenant; can additionally delete the tenant) ⊃ `Admin` ⊃ `Contributor` (full owner of own resources, read-only on others) ⊃ `Viewer` (read-only). Two exceptions: cross-tenant superuser (`User.CanAccessAllTenants=true`) is implicit Admin in any tenant they switch into; API-Key-synthesized virtual users are pinned Admin in their owning tenant.
   - **Per-KB resource ownership**: `chunk → knowledge → kb → creator_id`; same chain applies to FAQ entries, generated questions, KB tags and wiki pages. `custom_agents.creator_id` + `custom_agents.runnable_by_viewer` (default true) control agent ownership and viewer-callability.
   - **Two guard families**: role guards (`Viewer()` / `Contributor()` / `Admin()` / `Owner()`) for tenant-level infra (models, vector stores, IM channels, …) and ownership guards (`OwnedKBOrAdmin()`, `OwnedAgentOrAdmin()`, `OwnedChunkKBOrAdmin()`, …) for resource writes. KB-access guard wired at the route layer for chunk / knowledge / knowledgebase routes (no per-handler helpers).
@@ -160,7 +193,7 @@ All notable changes to this project will be documented in this file.
   - `auth`: new `refresh` and `token` verbs; transparent 401 retry transport.
   - `context` CRUD: add / list / remove / use.
   - `link` / `unlink` for project-level KB binding.
-  - `mcp serve` — curated stdio MCP server so AI clients (Claude Code, Cursor, …) can drive WeKnora directly; includes MCP `chunk_list` tool.
+  - `mcp serve` — curated stdio MCP server so AI clients (Claude Code, Cursor, …) can drive XinWiki directly; includes MCP `chunk_list` tool.
   - **Globals**: `--format`, `--json` field-select, `--jq`, `--paginate`, `--all-pages` (canonical catch-up), `--input`, `--log-level`, `--from-url`, NDJSON output, bare-JSON output path, signal-aware contexts.
   - **Removed**: envelope infrastructure (errors → stderr); `--dry-run`; `internal/agent` aiclient package; v0.0 scaffolding.
 - **NEW**: **KB Retrieval Fan-out Across Vector Stores** — a single KB can now bind to multiple vector stores; retrieval engine fans out queries across all bound stores and merges results. KB editor validates bindings on create / copy / delete. Retriever resolution introduces a factory pattern for KB-scoped engine selection.
@@ -170,7 +203,7 @@ All notable changes to this project will be documented in this file.
 - **NEW**: **Huawei Cloud OBS** object storage joins Local / MinIO / AWS S3 / Volcengine TOS / Alibaba Cloud OSS / Kingsoft Cloud KS3 / Huawei OBS.
 - **NEW**: **vLLM URL configuration for MinerU** doc parser.
 - **NEW**: **Apache Doris compatibility modes** — configurable Doris compat modes with mode-switch guards.
-- **NEW**: **Docreader image URL whitelist** — trusted URLs can be served as-is without re-uploading into WeKnora storage.
+- **NEW**: **Docreader image URL whitelist** — trusted URLs can be served as-is without re-uploading into XinWiki storage.
 - **NEW**: **Server-Side User Preferences** — per-user font / theme / memory-feature toggle persisted on the server; per-user KB pinning replaces tenant-wide pin model; "Shared by me" label across surfaces.
 - **NEW**: **User favorites & recents** under the user menu.
 - **NEW**: **`creator_name` on agents and knowledge bases** for visibility across surfaces.
@@ -340,7 +373,7 @@ All notable changes to this project will be documented in this file.
 ## [0.5.1] - 2026-04-30
 
 ### 🚀 New Features
-- **NEW**: WeChat Mini Program — added a lightweight mobile client (`miniprogram/`) for configuring WeKnora API access, selecting knowledge bases, importing URLs, and chatting from inside WeChat, extending WeKnora from desktop to mobile.
+- **NEW**: WeChat Mini Program — added a lightweight mobile client (`miniprogram/`) for configuring XinWiki API access, selecting knowledge bases, importing URLs, and chatting from inside WeChat, extending XinWiki from desktop to mobile.
 - **NEW**: Knowledge Base — document list view with multi-select, floating batch action bar, and batch delete to streamline managing large knowledge bases.
 - **NEW**: IM — tenant-wide IM Channels Overview entry under the user menu so administrators can inspect every IM channel of the tenant from a single page.
 - **NEW**: Sessions — keyword search across the conversation list, user-scoped pinning of important sessions, and clear IM-source visibility for chats originating from IM channels.
@@ -415,11 +448,11 @@ All notable changes to this project will be documented in this file.
 ## [0.4.0] - 2026-04-14
 
 ### 🚀 New Features
-- **NEW**: Cloud Knowledge Assistant — [WeKnora Platform](https://weknora.weixin.qq.com/platform), a cloud-hosted knowledge assistant service for quick onboarding without local deployment
-- **NEW**: WeKnora Cloud — WeKnora Cloud provider integration, providing hosted LLM models and document parsing capabilities, with credential management, status checks, and UI feedback
+- **NEW**: Cloud Knowledge Assistant — [XinWiki Platform](https://weknora.weixin.qq.com/platform), a cloud-hosted knowledge assistant service for quick onboarding without local deployment
+- **NEW**: XinWiki Cloud — XinWiki Cloud provider integration, providing hosted LLM models and document parsing capabilities, with credential management, status checks, and UI feedback
 - **NEW**: Chrome Extension — browser extension support with menu entry and quick access integration for seamless knowledge capture from web pages
 - **NEW**: WeChat IM Integration — WeChat channel adapter with QR code login and long-polling message support
-- **NEW**: ClawHub Skill — WeKnora Skill published on ClawHub platform, enabling document import, hybrid search, and knowledge management via the WeKnora REST API
+- **NEW**: ClawHub Skill — XinWiki Skill published on ClawHub platform, enabling document import, hybrid search, and knowledge management via the XinWiki REST API
 - **NEW**: Attachment Processing — file attachment support in chat pipeline with enhanced error handling, content formatting, and image/attachment metadata injection in queries
 - **NEW**: Azure OpenAI Provider — full Azure OpenAI support for chat, VLM, and embedding models with deployment name preservation, configurable dimensions parameter, provider registration with metadata, URL auto-detection, and frontend provider integration with i18n
 - **NEW**: Alibaba Cloud OSS Storage — object storage support via S3-compatible mode with configuration UI, connectivity test, status reporting, OSS TypeScript types, docreader OssStorage class, factory and container registration, and multi-language i18n (Korean, Russian)
@@ -456,7 +489,7 @@ All notable changes to this project will be documented in this file.
 ### 🔧 Refactoring
 - Replaced CryptoService with lightweight utils AES helpers, simplifying encryption logic across the codebase
 - Optimized OSS storage initialization, URL formatting, and security handling for improved S3 compatibility
-- Enhanced WeKnora Cloud internationalization and UI feedback for credential management operations
+- Enhanced XinWiki Cloud internationalization and UI feedback for credential management operations
 
 ### 📚 Documentation
 - Added VectorStore CRUD API endpoint documentation with Swagger annotations
@@ -1279,7 +1312,7 @@ All notable changes to this project will be documented in this file.
 - Improved initialization configuration handling
 
 ### 🛡️ Security Recommendations
-- Deploy WeKnora services in internal/private network environments
+- Deploy XinWiki services in internal/private network environments
 - Avoid direct exposure to public internet
 - Configure proper firewall rules and access controls
 - Regular updates for security patches and improvements
@@ -1297,7 +1330,7 @@ All notable changes to this project will be documented in this file.
 
 ## [0.1.0] - 2025-09-08
 
-- Initial public release of WeKnora.
+- Initial public release of XinWiki.
 - Web UI for knowledge upload, chat, configuration, and settings.
 - RAG pipeline with chunking, embedding, retrieval, reranking, and generation.
 - Initialization wizard for configuring models (LLM, embedding, rerank, retriever).
@@ -1307,27 +1340,27 @@ All notable changes to this project will be documented in this file.
 - Docker Compose for quick startup and service orchestration.
 - MCP server support for integrating with MCP-compatible clients.
 
-[0.5.0]: https://github.com/Tencent/WeKnora/tree/v0.5.0
-[0.4.0]: https://github.com/Tencent/WeKnora/tree/v0.4.0
-[0.3.6]: https://github.com/Tencent/WeKnora/tree/v0.3.6
-[0.3.5]: https://github.com/Tencent/WeKnora/tree/v0.3.5
-[0.3.4]: https://github.com/Tencent/WeKnora/tree/v0.3.4
-[0.3.3]: https://github.com/Tencent/WeKnora/tree/v0.3.3
-[0.3.2]: https://github.com/Tencent/WeKnora/tree/v0.3.2
-[0.3.1]: https://github.com/Tencent/WeKnora/tree/v0.3.1
-[0.3.0]: https://github.com/Tencent/WeKnora/tree/v0.3.0
-[0.2.10]: https://github.com/Tencent/WeKnora/tree/v0.2.10
-[0.2.9]: https://github.com/Tencent/WeKnora/tree/v0.2.9
-[0.2.8]: https://github.com/Tencent/WeKnora/tree/v0.2.8
-[0.2.7]: https://github.com/Tencent/WeKnora/tree/v0.2.7
-[0.2.6]: https://github.com/Tencent/WeKnora/tree/v0.2.6
-[0.2.5]: https://github.com/Tencent/WeKnora/tree/v0.2.5
-[0.2.4]: https://github.com/Tencent/WeKnora/tree/v0.2.4
-[0.2.3]: https://github.com/Tencent/WeKnora/tree/v0.2.3
-[0.2.2]: https://github.com/Tencent/WeKnora/tree/v0.2.2
-[0.2.1]: https://github.com/Tencent/WeKnora/tree/v0.2.1
-[0.2.0]: https://github.com/Tencent/WeKnora/tree/v0.2.0
-[0.1.4]: https://github.com/Tencent/WeKnora/tree/v0.1.4
-[0.1.3]: https://github.com/Tencent/WeKnora/tree/v0.1.3
-[0.1.2]: https://github.com/Tencent/WeKnora/tree/v0.1.2
-[0.1.0]: https://github.com/Tencent/WeKnora/tree/v0.1.0
+[0.5.0]: https://github.com/Tencent/XinWiki/tree/v0.5.0
+[0.4.0]: https://github.com/Tencent/XinWiki/tree/v0.4.0
+[0.3.6]: https://github.com/Tencent/XinWiki/tree/v0.3.6
+[0.3.5]: https://github.com/Tencent/XinWiki/tree/v0.3.5
+[0.3.4]: https://github.com/Tencent/XinWiki/tree/v0.3.4
+[0.3.3]: https://github.com/Tencent/XinWiki/tree/v0.3.3
+[0.3.2]: https://github.com/Tencent/XinWiki/tree/v0.3.2
+[0.3.1]: https://github.com/Tencent/XinWiki/tree/v0.3.1
+[0.3.0]: https://github.com/Tencent/XinWiki/tree/v0.3.0
+[0.2.10]: https://github.com/Tencent/XinWiki/tree/v0.2.10
+[0.2.9]: https://github.com/Tencent/XinWiki/tree/v0.2.9
+[0.2.8]: https://github.com/Tencent/XinWiki/tree/v0.2.8
+[0.2.7]: https://github.com/Tencent/XinWiki/tree/v0.2.7
+[0.2.6]: https://github.com/Tencent/XinWiki/tree/v0.2.6
+[0.2.5]: https://github.com/Tencent/XinWiki/tree/v0.2.5
+[0.2.4]: https://github.com/Tencent/XinWiki/tree/v0.2.4
+[0.2.3]: https://github.com/Tencent/XinWiki/tree/v0.2.3
+[0.2.2]: https://github.com/Tencent/XinWiki/tree/v0.2.2
+[0.2.1]: https://github.com/Tencent/XinWiki/tree/v0.2.1
+[0.2.0]: https://github.com/Tencent/XinWiki/tree/v0.2.0
+[0.1.4]: https://github.com/Tencent/XinWiki/tree/v0.1.4
+[0.1.3]: https://github.com/Tencent/XinWiki/tree/v0.1.3
+[0.1.2]: https://github.com/Tencent/XinWiki/tree/v0.1.2
+[0.1.0]: https://github.com/Tencent/XinWiki/tree/v0.1.0

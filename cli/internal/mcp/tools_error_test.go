@@ -6,9 +6,9 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/output"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/output"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // TestToolErrorResult_TypedError_PopulatesStructuredContent verifies the
@@ -29,8 +29,8 @@ func TestToolErrorResult_TypedError_PopulatesStructuredContent(t *testing.T) {
 	if sc.Type != "auth.unauthenticated" {
 		t.Errorf("type: got %v want auth.unauthenticated", sc.Type)
 	}
-	// retry_command should fall back to "weknora auth login" via cmdutil default
-	if sc.RetryCommand != "weknora auth login" {
+	// retry_command should fall back to "xinwiki auth login" via cmdutil default
+	if sc.RetryCommand != "xinwiki auth login" {
 		t.Errorf("retry_command: got %v", sc.RetryCommand)
 	}
 }

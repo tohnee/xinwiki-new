@@ -1,4 +1,4 @@
-# WeKnora MCP Server 可运行模组包 - 项目总结
+# XinWiki MCP Server 可运行模组包 - 项目总结
 
 ## 🎉 项目完成状态
 
@@ -7,7 +7,7 @@
 ## 📁 项目结构
 
 ```
-WeKnoraMCP/
+XinWikiMCP/
 ├── 📦 核心文件
 │   ├── __init__.py              # 包初始化文件
 │   ├── weknora_mcp_server.py   # MCP 服务器核心实现
@@ -168,7 +168,7 @@ python test_module.py
 
 ### 测试结果
 ```
-WeKnora MCP Server 模组测试
+XinWiki MCP Server 模组测试
 ==================================================
 ✓ 模块导入测试通过
 ✓ 环境配置测试通过  
@@ -230,7 +230,7 @@ CMD ["weknora-mcp-server"]
 ### 4. 系统服务
 ```ini
 [Unit]
-Description=WeKnora MCP Server
+Description=XinWiki MCP Server
 
 [Service]
 ExecStart=/usr/local/bin/weknora-mcp-server
@@ -272,6 +272,6 @@ python test_module.py            # 运行测试
 ---
 
 **项目状态**: ✅ 完成并可投入使用
-**项目仓库**: https://github.com/NannaOlympicBroadcast/WeKnoraMCP
+**项目仓库**: https://github.com/NannaOlympicBroadcast/XinWikiMCP
 **最后更新**: 2025年10月
 **版本**: 1.0.0

@@ -8,9 +8,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Tencent/WeKnora/internal/application/service"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/application/service"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 	"github.com/gin-gonic/gin"
 )
 
@@ -189,7 +189,7 @@ func (f *fakeTenantService) GetTenantByIDForUser(
 	return f.tenant, nil
 }
 
-func (f *fakeTenantService) GetWeKnoraCloudCredentials(ctx context.Context) *types.WeKnoraCloudCredentials {
+func (f *fakeTenantService) GetXinWikiCloudCredentials(ctx context.Context) *types.XinWikiCloudCredentials {
 	return nil
 }
 

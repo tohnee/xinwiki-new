@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/config"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/config"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
 )
 
 func TestList_Empty(t *testing.T) {

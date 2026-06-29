@@ -26,7 +26,7 @@ test("normalizeBaseUrl trims trailing slashes", () => {
   assert.equal(normalizeBaseUrl(" https://example.com/// "), "https://example.com");
 });
 
-test("API helpers send WeKnora auth headers", async () => {
+test("API helpers send XinWiki auth headers", async () => {
   let capturedRequest;
   global.wx = {
     getStorageSync() {
@@ -75,12 +75,12 @@ test("URL import helper posts the selected URL payload", async () => {
     }
   };
 
-  await createKnowledgeFromURL("kb-1", "https://github.com/Tencent/WeKnora", true);
+  await createKnowledgeFromURL("kb-1", "https://github.com/Tencent/XinWiki", true);
 
   assert.equal(capturedRequest.method, "POST");
   assert.equal(capturedRequest.url, "https://weknora.example.com/api/v1/knowledge-bases/kb-1/knowledge/url");
   assert.deepEqual(capturedRequest.data, {
-    url: "https://github.com/Tencent/WeKnora",
+    url: "https://github.com/Tencent/XinWiki",
     enable_multimodel: true
   });
 });

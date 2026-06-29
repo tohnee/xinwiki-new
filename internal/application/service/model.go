@@ -5,18 +5,18 @@ import (
 	"errors"
 	"fmt"
 
-	apperrors "github.com/Tencent/WeKnora/internal/errors"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/models/asr"
-	"github.com/Tencent/WeKnora/internal/models/chat"
-	"github.com/Tencent/WeKnora/internal/models/embedding"
-	"github.com/Tencent/WeKnora/internal/models/provider"
-	"github.com/Tencent/WeKnora/internal/models/rerank"
-	"github.com/Tencent/WeKnora/internal/models/utils/ollama"
-	"github.com/Tencent/WeKnora/internal/models/vlm"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
-	"github.com/Tencent/WeKnora/internal/utils"
+	apperrors "github.com/Tencent/XinWiki/internal/errors"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/models/asr"
+	"github.com/Tencent/XinWiki/internal/models/chat"
+	"github.com/Tencent/XinWiki/internal/models/embedding"
+	"github.com/Tencent/XinWiki/internal/models/provider"
+	"github.com/Tencent/XinWiki/internal/models/rerank"
+	"github.com/Tencent/XinWiki/internal/models/utils/ollama"
+	"github.com/Tencent/XinWiki/internal/models/vlm"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/utils"
 )
 
 // ErrModelNotFound is returned when a model cannot be found in the repository
@@ -63,13 +63,13 @@ func (s *modelService) decryptAppSecret(encrypted string) string {
 	return encrypted
 }
 
-// resolveWeKnoraCloudCredentials 为 WeKnoraCloud 厂商模型补全 AppID/AppSecret。
+// resolveXinWikiCloudCredentials 为 XinWikiCloud 厂商模型补全 AppID/AppSecret。
 // 当模型自身参数中未存储凭证时，自动从租户配置中获取（SaveCredentials 保存的凭证）。
-func (s *modelService) resolveWeKnoraCloudCredentials(ctx context.Context, params *types.ModelParameters) (appID, appSecret string) {
+func (s *modelService) resolveXinWikiCloudCredentials(ctx context.Context, params *types.ModelParameters) (appID, appSecret string) {
 	appID = params.AppID
 	appSecret = s.decryptAppSecret(params.AppSecret)
 
-	if provider.ProviderName(params.Provider) != provider.ProviderWeKnoraCloud {
+	if provider.ProviderName(params.Provider) != provider.ProviderXinWikiCloud {
 		return
 	}
 	if appID != "" && appSecret != "" {
@@ -79,7 +79,7 @@ func (s *modelService) resolveWeKnoraCloudCredentials(ctx context.Context, param
 	if s.tenantService == nil {
 		return
 	}
-	creds := s.tenantService.GetWeKnoraCloudCredentials(ctx)
+	creds := s.tenantService.GetXinWikiCloudCredentials(ctx)
 	if creds == nil {
 		return
 	}
@@ -404,7 +404,7 @@ func (s *modelService) GetEmbeddingModel(ctx context.Context, modelId string) (e
 
 	logger.Infof(ctx, "Getting embedding model: %s, source: %s", model.Name, model.Source)
 
-	appID, appSecret := s.resolveWeKnoraCloudCredentials(ctx, &model.Parameters)
+	appID, appSecret := s.resolveXinWikiCloudCredentials(ctx, &model.Parameters)
 
 	embedder, err := embedding.NewEmbedder(embedding.ConfigFromModel(model, appID, appSecret), s.pooler, s.ollamaService)
 	if err != nil {
@@ -451,7 +451,7 @@ func (s *modelService) GetEmbeddingModelForTenant(ctx context.Context, modelId s
 
 	logger.Infof(ctx, "Getting cross-tenant embedding model: %s, source: %s, tenant: %d", model.Name, model.Source, tenantID)
 
-	appID, appSecret := s.resolveWeKnoraCloudCredentials(ctx, &model.Parameters)
+	appID, appSecret := s.resolveXinWikiCloudCredentials(ctx, &model.Parameters)
 
 	embedder, err := embedding.NewEmbedder(embedding.ConfigFromModel(model, appID, appSecret), s.pooler, s.ollamaService)
 	if err != nil {
@@ -481,7 +481,7 @@ func (s *modelService) GetRerankModel(ctx context.Context, modelId string) (rera
 
 	logger.Infof(ctx, "Getting rerank model: %s, source: %s", model.Name, model.Source)
 
-	appID, appSecret := s.resolveWeKnoraCloudCredentials(ctx, &model.Parameters)
+	appID, appSecret := s.resolveXinWikiCloudCredentials(ctx, &model.Parameters)
 
 	reranker, err := rerank.NewReranker(rerank.ConfigFromModel(model, appID, appSecret))
 	if err != nil {
@@ -524,7 +524,7 @@ func (s *modelService) GetChatModel(ctx context.Context, modelId string) (chat.C
 
 	logger.Infof(ctx, "Getting chat model: %s, source: %s", model.Name, model.Source)
 
-	appID, appSecret := s.resolveWeKnoraCloudCredentials(ctx, &model.Parameters)
+	appID, appSecret := s.resolveXinWikiCloudCredentials(ctx, &model.Parameters)
 
 	chatModel, err := chat.NewChat(chat.ConfigFromModel(model, appID, appSecret), s.ollamaService)
 	if err != nil {
@@ -561,7 +561,7 @@ func (s *modelService) GetVLMModel(ctx context.Context, modelId string) (vlm.VLM
 
 	logger.Infof(ctx, "Getting VLM model: %s, source: %s", model.Name, model.Source)
 
-	appID, appSecret := s.resolveWeKnoraCloudCredentials(ctx, &model.Parameters)
+	appID, appSecret := s.resolveXinWikiCloudCredentials(ctx, &model.Parameters)
 
 	vlmModel, err := vlm.NewVLM(vlm.ConfigFromModel(model, appID, appSecret), s.ollamaService)
 	if err != nil {

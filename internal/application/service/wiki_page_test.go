@@ -1,9 +1,10 @@
 package service
 
 import (
+	"context"
 	"testing"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 func TestParseOutLinks(t *testing.T) {
@@ -423,5 +424,196 @@ func TestComputeGraphSubset_EgoRejectsMissingCenter(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatalf("expected error for missing center slug")
+	}
+}
+
+// --- Review Workflow Tests ---
+
+func TestReviewActionRequiredRole(t *testing.T) {
+	tests := []struct {
+		action   string
+		required types.TenantRole
+	}{
+		{types.WikiReviewActionSubmit, types.TenantRoleContributor},
+		{types.WikiReviewActionApprove, types.TenantRoleAdmin},
+		{types.WikiReviewActionReject, types.TenantRoleAdmin},
+		{types.WikiReviewActionDeprecate, types.TenantRoleAdmin},
+		{types.WikiReviewActionArchive, types.TenantRoleAdmin},
+		{types.WikiReviewActionSupersede, types.TenantRoleAdmin},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.action, func(t *testing.T) {
+			got := reviewActionRequiredRole(tt.action)
+			if got != tt.required {
+				t.Errorf("reviewActionRequiredRole(%q) = %v, want %v", tt.action, got, tt.required)
+			}
+		})
+	}
+}
+
+func TestReviewActionTargetStatus(t *testing.T) {
+	tests := []struct {
+		action   string
+		from     string
+		wantTo   string
+		wantErr  bool
+	}{
+		// submit: draft -> reviewing
+		{types.WikiReviewActionSubmit, types.WikiPageStatusDraft, types.WikiPageStatusReviewing, false},
+		{types.WikiReviewActionSubmit, types.WikiPageStatusReviewing, "", true},
+
+		// approve: reviewing -> published
+		{types.WikiReviewActionApprove, types.WikiPageStatusReviewing, types.WikiPageStatusPublished, false},
+		{types.WikiReviewActionApprove, types.WikiPageStatusDraft, "", true},
+
+		// reject: reviewing -> draft
+		{types.WikiReviewActionReject, types.WikiPageStatusReviewing, types.WikiPageStatusDraft, false},
+		{types.WikiReviewActionReject, types.WikiPageStatusDraft, "", true},
+
+		// deprecate: published -> deprecated
+		{types.WikiReviewActionDeprecate, types.WikiPageStatusPublished, types.WikiPageStatusDeprecated, false},
+		{types.WikiReviewActionDeprecate, types.WikiPageStatusDraft, "", true},
+
+		// archive: deprecated -> archived
+		{types.WikiReviewActionArchive, types.WikiPageStatusDeprecated, types.WikiPageStatusArchived, false},
+		// archive: superseded -> archived
+		{types.WikiReviewActionArchive, types.WikiPageStatusSuperseded, types.WikiPageStatusArchived, false},
+		{types.WikiReviewActionArchive, types.WikiPageStatusPublished, "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.action+"_from_"+tt.from, func(t *testing.T) {
+			got, err := reviewActionTargetStatus(tt.action, tt.from)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("reviewActionTargetStatus(%q, %q) expected error, got status %q", tt.action, tt.from, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("reviewActionTargetStatus(%q, %q) unexpected error: %v", tt.action, tt.from, err)
+				return
+			}
+			if got != tt.wantTo {
+				t.Errorf("reviewActionTargetStatus(%q, %q) = %q, want %q", tt.action, tt.from, got, tt.wantTo)
+			}
+		})
+	}
+}
+
+func TestCheckReviewPermission(t *testing.T) {
+	tests := []struct {
+		name     string
+		action   string
+		role     types.TenantRole
+		allowed  bool
+	}{
+		// submit: contributor and above
+		{"viewer cannot submit", types.WikiReviewActionSubmit, types.TenantRoleViewer, false},
+		{"contributor can submit", types.WikiReviewActionSubmit, types.TenantRoleContributor, true},
+		{"admin can submit", types.WikiReviewActionSubmit, types.TenantRoleAdmin, true},
+		{"owner can submit", types.WikiReviewActionSubmit, types.TenantRoleOwner, true},
+
+		// approve: admin and above
+		{"viewer cannot approve", types.WikiReviewActionApprove, types.TenantRoleViewer, false},
+		{"contributor cannot approve", types.WikiReviewActionApprove, types.TenantRoleContributor, false},
+		{"admin can approve", types.WikiReviewActionApprove, types.TenantRoleAdmin, true},
+		{"owner can approve", types.WikiReviewActionApprove, types.TenantRoleOwner, true},
+
+		// reject: admin and above
+		{"viewer cannot reject", types.WikiReviewActionReject, types.TenantRoleViewer, false},
+		{"contributor cannot reject", types.WikiReviewActionReject, types.TenantRoleContributor, false},
+		{"admin can reject", types.WikiReviewActionReject, types.TenantRoleAdmin, true},
+
+		// deprecate: admin and above
+		{"contributor cannot deprecate", types.WikiReviewActionDeprecate, types.TenantRoleContributor, false},
+		{"admin can deprecate", types.WikiReviewActionDeprecate, types.TenantRoleAdmin, true},
+
+		// archive: admin and above
+		{"contributor cannot archive", types.WikiReviewActionArchive, types.TenantRoleContributor, false},
+		{"admin can archive", types.WikiReviewActionArchive, types.TenantRoleAdmin, true},
+
+		// supersede: admin and above
+		{"contributor cannot supersede", types.WikiReviewActionSupersede, types.TenantRoleContributor, false},
+		{"admin can supersede", types.WikiReviewActionSupersede, types.TenantRoleAdmin, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := checkReviewPermission(tt.action, tt.role)
+			if tt.allowed {
+				if err != nil {
+					t.Errorf("checkReviewPermission(%q, %v) unexpected error: %v", tt.action, tt.role, err)
+				}
+			} else {
+				if err == nil {
+					t.Errorf("checkReviewPermission(%q, %v) expected permission error, got nil", tt.action, tt.role)
+				}
+			}
+		})
+	}
+}
+
+func TestContextWithTenantRole(t *testing.T) {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, types.TenantRoleContextKey, types.TenantRoleAdmin)
+	role := types.TenantRoleFromContext(ctx)
+	if role != types.TenantRoleAdmin {
+		t.Errorf("TenantRoleFromContext = %v, want admin", role)
+	}
+}
+
+// --- Supersession Tests ---
+
+func TestNewWikiSupersession(t *testing.T) {
+	oldPage := &types.WikiPage{
+		ID:              "old-123",
+		Slug:            "old-page",
+		KnowledgeBaseID: "kb-1",
+	}
+	newPage := &types.WikiPage{
+		ID:              "new-456",
+		Slug:            "new-page",
+		KnowledgeBaseID: "kb-1",
+	}
+	reason := "content updated and restructured"
+	createdBy := "user-789"
+	tenantID := uint64(1)
+
+	ss := newWikiSupersession(oldPage, newPage, reason, createdBy, tenantID)
+
+	if ss.ID == "" {
+		t.Error("expected ID to be set")
+	}
+	if ss.OldPageID != oldPage.ID {
+		t.Errorf("OldPageID = %q, want %q", ss.OldPageID, oldPage.ID)
+	}
+	if ss.OldPageSlug != oldPage.Slug {
+		t.Errorf("OldPageSlug = %q, want %q", ss.OldPageSlug, oldPage.Slug)
+	}
+	if ss.NewPageID != newPage.ID {
+		t.Errorf("NewPageID = %q, want %q", ss.NewPageID, newPage.ID)
+	}
+	if ss.NewPageSlug != newPage.Slug {
+		t.Errorf("NewPageSlug = %q, want %q", ss.NewPageSlug, newPage.Slug)
+	}
+	if ss.Reason != reason {
+		t.Errorf("Reason = %q, want %q", ss.Reason, reason)
+	}
+	if ss.CreatedBy != createdBy {
+		t.Errorf("CreatedBy = %q, want %q", ss.CreatedBy, createdBy)
+	}
+	if ss.TenantID != tenantID {
+		t.Errorf("TenantID = %d, want %d", ss.TenantID, tenantID)
+	}
+	if ss.KnowledgeBaseID != oldPage.KnowledgeBaseID {
+		t.Errorf("KnowledgeBaseID = %q, want %q", ss.KnowledgeBaseID, oldPage.KnowledgeBaseID)
+	}
+	if ss.CreatedAt.IsZero() {
+		t.Error("expected CreatedAt to be set")
+	}
+	if ss.UpdatedAt.IsZero() {
+		t.Error("expected UpdatedAt to be set")
 	}
 }

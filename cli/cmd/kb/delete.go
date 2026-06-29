@@ -6,9 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/prompt"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/prompt"
 )
 
 // kbDeleteFields enumerates the fields surfaced for `--format json` discovery
@@ -32,7 +32,7 @@ type deleteResult struct {
 	Deleted bool   `json:"deleted"`
 }
 
-// NewCmdDelete builds `weknora kb delete`. The global -y/--yes persistent
+// NewCmdDelete builds `xinwiki kb delete`. The global -y/--yes persistent
 // flag is the single skip-prompt switch for the destructive-write
 // confirmation pattern.
 func NewCmdDelete(f *cmdutil.Factory) *cobra.Command {
@@ -49,9 +49,9 @@ AI agents: This is a high-risk write. Without -y/--yes the CLI exits 10
 and writes input.confirmation_required to stderr. NEVER auto-pass -y
 without the user's explicit go-ahead — the exit-10 protocol exists
 exactly to guard against unintended deletes.`,
-		Example: `  weknora kb delete kb_abc                      # interactive confirm
-  weknora kb delete kb_abc -y                   # no prompt
-  weknora kb delete kb_abc -y --format json     # bare {id, deleted:true} JSON`,
+		Example: `  xinwiki kb delete kb_abc                      # interactive confirm
+  xinwiki kb delete kb_abc -y                   # no prompt
+  xinwiki kb delete kb_abc -y --format json     # bare {id, deleted:true} JSON`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			fopts, err := cmdutil.CheckFormatFlag(c)
@@ -82,8 +82,8 @@ exactly to guard against unintended deletes.`,
 		UsedFor:       "permanently delete a knowledge base and all its contents",
 		RequiredFlags: []string{"<kb-id> (positional)"},
 		Examples: []string{
-			"weknora kb delete kb_abc -y",
-			"weknora kb delete kb_abc -y --format json",
+			"xinwiki kb delete kb_abc -y",
+			"xinwiki kb delete kb_abc -y --format json",
 		},
 		Warnings: []string{
 			"Requires explicit user approval (exit 10 / input.confirmation_required); never auto-add -y.",
@@ -94,7 +94,7 @@ exactly to guard against unintended deletes.`,
 }
 
 func runDelete(ctx context.Context, opts *DeleteOptions, fopts *cmdutil.FormatOptions, svc DeleteService, p prompt.Prompter, id string) error {
-	if err := cmdutil.ConfirmDestructive(p, opts.Yes, fopts.WantsJSON(), "delete", "knowledge base", id, "kb.delete", "weknora kb delete "+id+" -y"); err != nil {
+	if err := cmdutil.ConfirmDestructive(p, opts.Yes, fopts.WantsJSON(), "delete", "knowledge base", id, "kb.delete", "xinwiki kb delete "+id+" -y"); err != nil {
 		return err
 	}
 

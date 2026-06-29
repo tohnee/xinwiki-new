@@ -6,16 +6,16 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 	"github.com/google/uuid"
 	"github.com/qdrant/go-client/qdrant"
 )
 
 const (
 	envQdrantCollection   = "QDRANT_COLLECTION"
-	defaultCollectionName = "weknora_embeddings"
+	defaultCollectionName = "xinwiki_embeddings"
 	fieldContent          = "content"
 	fieldSourceID         = "source_id"
 	fieldSourceType       = "source_type"

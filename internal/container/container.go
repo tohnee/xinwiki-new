@@ -33,56 +33,57 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	"github.com/Tencent/WeKnora/internal/agent/approval"
-	"github.com/Tencent/WeKnora/internal/application/repository"
-	memoryRepo "github.com/Tencent/WeKnora/internal/application/repository/memory/neo4j"
-	dorisRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/doris"
-	elasticsearchRepoV7 "github.com/Tencent/WeKnora/internal/application/repository/retriever/elasticsearch/v7"
-	elasticsearchRepoV8 "github.com/Tencent/WeKnora/internal/application/repository/retriever/elasticsearch/v8"
-	milvusRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/milvus"
-	neo4jRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/neo4j"
-	openSearchRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/opensearch"
-	postgresRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/postgres"
-	qdrantRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/qdrant"
-	sqliteRetrieverRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/sqlite"
-	tencentVectorDBRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/tencentvectordb"
-	weaviateRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/weaviate"
-	"github.com/Tencent/WeKnora/internal/application/service"
-	chatpipeline "github.com/Tencent/WeKnora/internal/application/service/chat_pipeline"
-	"github.com/Tencent/WeKnora/internal/application/service/file"
-	memoryService "github.com/Tencent/WeKnora/internal/application/service/memory"
-	"github.com/Tencent/WeKnora/internal/application/service/retriever"
-	"github.com/Tencent/WeKnora/internal/config"
-	"github.com/Tencent/WeKnora/internal/database"
-	"github.com/Tencent/WeKnora/internal/datasource"
-	feishuConnector "github.com/Tencent/WeKnora/internal/datasource/connector/feishu"
-	notionConnector "github.com/Tencent/WeKnora/internal/datasource/connector/notion"
-	rssConnector "github.com/Tencent/WeKnora/internal/datasource/connector/rss"
-	yuqueConnector "github.com/Tencent/WeKnora/internal/datasource/connector/yuque"
-	"github.com/Tencent/WeKnora/internal/event"
-	"github.com/Tencent/WeKnora/internal/handler"
-	"github.com/Tencent/WeKnora/internal/handler/session"
-	imPkg "github.com/Tencent/WeKnora/internal/im"
-	"github.com/Tencent/WeKnora/internal/im/dingtalk"
-	"github.com/Tencent/WeKnora/internal/im/feishu"
-	"github.com/Tencent/WeKnora/internal/im/mattermost"
-	"github.com/Tencent/WeKnora/internal/im/slack"
-	"github.com/Tencent/WeKnora/internal/im/telegram"
-	"github.com/Tencent/WeKnora/internal/im/wechat"
-	"github.com/Tencent/WeKnora/internal/im/wecom"
-	"github.com/Tencent/WeKnora/internal/infrastructure/docparser"
-	infra_web_search "github.com/Tencent/WeKnora/internal/infrastructure/web_search"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/mcp"
-	"github.com/Tencent/WeKnora/internal/models/chat"
-	"github.com/Tencent/WeKnora/internal/models/embedding"
-	"github.com/Tencent/WeKnora/internal/models/utils/ollama"
-	"github.com/Tencent/WeKnora/internal/router"
-	"github.com/Tencent/WeKnora/internal/stream"
-	"github.com/Tencent/WeKnora/internal/tracing/langfuse"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/acl"
+	"github.com/Tencent/XinWiki/internal/agent/approval"
+	"github.com/Tencent/XinWiki/internal/application/repository"
+	memoryRepo "github.com/Tencent/XinWiki/internal/application/repository/memory/neo4j"
+	dorisRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/doris"
+	elasticsearchRepoV7 "github.com/Tencent/XinWiki/internal/application/repository/retriever/elasticsearch/v7"
+	elasticsearchRepoV8 "github.com/Tencent/XinWiki/internal/application/repository/retriever/elasticsearch/v8"
+	milvusRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/milvus"
+	neo4jRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/neo4j"
+	openSearchRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/opensearch"
+	postgresRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/postgres"
+	qdrantRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/qdrant"
+	sqliteRetrieverRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/sqlite"
+	tencentVectorDBRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/tencentvectordb"
+	weaviateRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/weaviate"
+	"github.com/Tencent/XinWiki/internal/application/service"
+	chatpipeline "github.com/Tencent/XinWiki/internal/application/service/chat_pipeline"
+	"github.com/Tencent/XinWiki/internal/application/service/file"
+	memoryService "github.com/Tencent/XinWiki/internal/application/service/memory"
+	"github.com/Tencent/XinWiki/internal/application/service/retriever"
+	"github.com/Tencent/XinWiki/internal/config"
+	"github.com/Tencent/XinWiki/internal/database"
+	"github.com/Tencent/XinWiki/internal/datasource"
+	feishuConnector "github.com/Tencent/XinWiki/internal/datasource/connector/feishu"
+	notionConnector "github.com/Tencent/XinWiki/internal/datasource/connector/notion"
+	rssConnector "github.com/Tencent/XinWiki/internal/datasource/connector/rss"
+	yuqueConnector "github.com/Tencent/XinWiki/internal/datasource/connector/yuque"
+	"github.com/Tencent/XinWiki/internal/event"
+	"github.com/Tencent/XinWiki/internal/handler"
+	"github.com/Tencent/XinWiki/internal/handler/session"
+	imPkg "github.com/Tencent/XinWiki/internal/im"
+	"github.com/Tencent/XinWiki/internal/im/dingtalk"
+	"github.com/Tencent/XinWiki/internal/im/feishu"
+	"github.com/Tencent/XinWiki/internal/im/mattermost"
+	"github.com/Tencent/XinWiki/internal/im/slack"
+	"github.com/Tencent/XinWiki/internal/im/telegram"
+	"github.com/Tencent/XinWiki/internal/im/wechat"
+	"github.com/Tencent/XinWiki/internal/im/wecom"
+	"github.com/Tencent/XinWiki/internal/infrastructure/docparser"
+	infra_web_search "github.com/Tencent/XinWiki/internal/infrastructure/web_search"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/mcp"
+	"github.com/Tencent/XinWiki/internal/models/chat"
+	"github.com/Tencent/XinWiki/internal/models/embedding"
+	"github.com/Tencent/XinWiki/internal/models/utils/ollama"
+	"github.com/Tencent/XinWiki/internal/router"
+	"github.com/Tencent/XinWiki/internal/stream"
+	"github.com/Tencent/XinWiki/internal/tracing/langfuse"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 	"github.com/tencent/vectordatabase-sdk-go/tcvectordb"
 	"github.com/weaviate/weaviate-go-client/v5/weaviate"
 	"github.com/weaviate/weaviate-go-client/v5/weaviate/auth"
@@ -142,7 +143,7 @@ func BuildContainer(container *dig.Container) *dig.Container {
 	must(container.Provide(repository.NewKnowledgeBaseRepository))
 	must(container.Provide(repository.NewKnowledgeRepository))
 	must(container.Provide(repository.NewKnowledgeSpanRepository))
-	must(container.Provide(repository.NewChunkRepository))
+	must(container.Provide(repository.NewChunkRepository)) // 自动注入 EventBus 参数（dig 按类型匹配）
 	must(container.Provide(repository.NewKnowledgeTagRepository))
 	must(container.Provide(repository.NewSessionRepository))
 	must(container.Provide(repository.NewMessageRepository))
@@ -169,6 +170,9 @@ func BuildContainer(container *dig.Container) *dig.Container {
 	must(container.Provide(repository.NewWikiLogEntryRepository))
 	must(container.Provide(repository.NewTaskPendingOpsRepository))
 	must(container.Provide(repository.NewTaskDeadLetterRepository))
+	must(container.Provide(repository.NewLLMCallLogRepository))
+	must(container.Provide(repository.NewConflictRepository))
+	must(container.Provide(repository.NewEvaluationRepository))
 
 	// MCP manager for managing MCP client connections
 	logger.Debugf(ctx, "[Container] Registering MCP manager...")
@@ -182,6 +186,7 @@ func BuildContainer(container *dig.Container) *dig.Container {
 	must(container.Provide(service.NewTenantInvitationService))
 	must(container.Provide(service.NewAuditLogService))
 	must(container.Provide(service.NewAuditLogRetentionRunner))
+	must(container.Provide(service.NewWikiScoreRefreshRunner))
 	must(container.Provide(service.NewKnowledgeBaseService))
 	must(container.Provide(service.NewOrganizationService))
 	must(container.Provide(service.NewKBShareService)) // KBShareService must be registered before KnowledgeService and KnowledgeTagService
@@ -192,11 +197,20 @@ func BuildContainer(container *dig.Container) *dig.Container {
 	must(container.Provide(service.NewKnowledgeTagService))
 	must(container.Provide(embedding.NewBatchEmbedder))
 	must(container.Provide(service.NewModelService))
+	must(container.Provide(service.NewCostTrackingService, dig.As(new(interfaces.CostTrackingService))))
+	must(container.Provide(service.NewModelRouterService, dig.As(new(interfaces.ModelRouterService))))
+	must(container.Provide(service.NewPromptTemplateService, dig.As(new(interfaces.PromptTemplateService))))
+	must(container.Provide(service.NewConflictDetectionService, dig.As(new(interfaces.ConflictDetectionService))))
+	must(container.Provide(service.NewRAGEvaluationService, dig.As(new(interfaces.RAGEvaluationService))))
+	must(container.Provide(initSemanticCacheService, dig.As(new(interfaces.SemanticCacheService))))
+	must(container.Provide(acl.NewACLRecomputer))
+	must(container.Provide(acl.NewACLReconciler))
+	must(container.Provide(initEmbeddingBatcher))
 	must(container.Provide(service.NewDatasetService))
 	must(container.Provide(service.NewEvaluationService))
 	must(container.Provide(service.NewUserService))
 	must(container.Provide(service.NewSystemSettingService))
-	must(container.Provide(service.NewWeKnoraCloudService))
+	must(container.Provide(service.NewXinWikiCloudService))
 
 	// Extract services - register individual extracters with names
 	must(container.Provide(service.NewChunkExtractService, dig.Name("chunkExtractor")))
@@ -227,6 +241,13 @@ func BuildContainer(container *dig.Container) *dig.Container {
 	must(container.Provide(retriever.NewVectorStoreRepoOwnership))
 	must(container.Provide(service.NewWebSearchService))
 	must(container.Provide(service.NewWebSearchProviderService))
+	// 注册读写分离路由器
+	must(container.Provide(func(cfg *config.Config) *service.VectorStoreRouter {
+		rwConfig := types.DefaultReadWriteSeparationConfig()
+		// 可以从配置或环境变量加载读写分离配置
+		return service.NewVectorStoreRouter(rwConfig)
+	}))
+
 	must(container.Provide(NewEngineFactory))
 	// StoreRegistry: same instance as RetrieveEngineRegistry, exposed as StoreRegistry interface.
 	// NewRetrieveEngineRegistry always returns *retriever.RetrieveEngineRegistry which implements both.
@@ -242,7 +263,10 @@ func BuildContainer(container *dig.Container) *dig.Container {
 	// Agent service layer (requires event bus, web search service)
 	// SessionService is passed as parameter to CreateAgentEngine method when creating AgentService
 	logger.Debugf(ctx, "[Container] Registering event bus and agent service...")
+	// ⚠️ 重要: EventBus 必须在 ChunkRepository 之前注册
+	// ChunkRepository 依赖 EventBus 发布权限变更事件
 	must(container.Provide(event.NewEventBus))
+
 	must(container.Provide(func(cfg *config.Config, s interfaces.MCPToolApprovalService, rdb *redis.Client) *approval.Gate {
 		return approval.NewGate(cfg, &approval.Adapter{Svc: s}, rdb)
 	}))
@@ -254,6 +278,21 @@ func BuildContainer(container *dig.Container) *dig.Container {
 	// SessionService is created after AgentService and passes itself to AgentService.CreateAgentEngine when needed
 	logger.Debugf(ctx, "[Container] Registering session service...")
 	must(container.Provide(service.NewSessionService))
+
+	// 注册 ACL 重算订阅者到 EventBus 并启动补偿任务
+	// 必须在 EventBus 初始化后执行
+	must(container.Invoke(func(bus *event.EventBus, recomputer *acl.ACLRecomputer) {
+		logger.Debugf(ctx, "[Container] Registering ACL recomputer subscribers...")
+		recomputer.RegisterSubscribers(bus)
+		logger.Debugf(ctx, "[Container] ACL recomputer subscribers registered")
+	}))
+
+	// 启动 ACL 补偿定时任务
+	must(container.Invoke(func(reconciler *acl.ACLReconciler) {
+		logger.Debugf(ctx, "[Container] Starting ACL reconciler...")
+		reconciler.Start(ctx)
+		logger.Debugf(ctx, "[Container] ACL reconciler started")
+	}))
 
 	logger.Debugf(ctx, "[Container] Registering task enqueuer...")
 	redisAvailable := os.Getenv("REDIS_ADDR") != ""
@@ -286,6 +325,8 @@ func BuildContainer(container *dig.Container) *dig.Container {
 	logger.Debugf(ctx, "[Container] Data source sync framework registered")
 	must(container.Invoke(startAuditLogRetention))
 	logger.Debugf(ctx, "[Container] Audit log retention runner registered")
+	must(container.Invoke(startWikiScoreRefresh))
+	logger.Debugf(ctx, "[Container] Wiki score refresh runner registered")
 	must(container.Provide(service.NewHousekeepingService))
 	must(container.Invoke(startHousekeepingService))
 	logger.Debugf(ctx, "[Container] Knowledge housekeeping runner registered")
@@ -351,8 +392,12 @@ func BuildContainer(container *dig.Container) *dig.Container {
 	must(container.Invoke(registerIMAdapterFactories))
 	must(container.Provide(handler.NewIMHandler))
 	must(container.Provide(handler.NewEmbedChannelHandler))
-	must(container.Provide(handler.NewWeKnoraCloudHandler))
-	logger.Debugf(ctx, "[Container] HTTP handlers registered")
+	must(container.Provide(handler.NewXinWikiCloudHandler))
+	must(container.Provide(handler.NewCostTrackingHandler))
+	must(container.Provide(handler.NewConflictDetectionHandler))
+	must(container.Provide(handler.NewRAGEvaluationHandler))
+	must(container.Provide(handler.NewModelRouterHandler))
+	logger.Debugf(ctx, "HTTP handlers registered")
 
 	// Wire the chat package's local image resolver so multimodal chat can read
 	// local:// images that live under a tenant's configured storage PathPrefix
@@ -512,7 +557,7 @@ func initDatabase(cfg *config.Config) (*gorm.DB, error) {
 	case "sqlite":
 		dbPath := os.Getenv("DB_PATH")
 		if dbPath == "" {
-			dbPath = "./data/weknora.db"
+			dbPath = "./data/xinwiki.db"
 		}
 		if dir := filepath.Dir(dbPath); dir != "." && dir != "" {
 			if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -744,7 +789,7 @@ func initFileService(cfg *config.Config) (interfaces.FileService, error) {
 		}
 		pathPrefix := os.Getenv("S3_PATH_PREFIX")
 		if pathPrefix == "" {
-			pathPrefix = "weknora/"
+			pathPrefix = "xinwiki/"
 		}
 		return file.NewS3FileService(
 			os.Getenv("S3_ENDPOINT"),
@@ -764,7 +809,7 @@ func initFileService(cfg *config.Config) (interfaces.FileService, error) {
 		obsRegion := os.Getenv("OBS_REGION")
 		obsPathPrefix := os.Getenv("OBS_PATH_PREFIX")
 		if obsPathPrefix == "" {
-			obsPathPrefix = "weknora/"
+			obsPathPrefix = "xinwiki/"
 		}
 		return file.NewObsFileService(
 			os.Getenv("OBS_ENDPOINT"),
@@ -784,7 +829,7 @@ func initFileService(cfg *config.Config) (interfaces.FileService, error) {
 		}
 		pathPrefix := os.Getenv("OSS_PATH_PREFIX")
 		if pathPrefix == "" {
-			pathPrefix = "weknora/"
+			pathPrefix = "xinwiki/"
 		}
 		return file.NewOssFileServiceWithTempBucket(
 			os.Getenv("OSS_ENDPOINT"),
@@ -821,8 +866,13 @@ func initFileService(cfg *config.Config) (interfaces.FileService, error) {
 //   - Configured retrieval engine registry
 //   - Error if initialization fails
 func initRetrieveEngineRegistry(
-	db *gorm.DB, cfg *config.Config, auditSvc interfaces.AuditLogService,
+	db *gorm.DB, cfg *config.Config, auditSvc interfaces.AuditLogService, router *service.VectorStoreRouter,
 ) (interfaces.RetrieveEngineRegistry, error) {
+	// 注册工厂函数，打破 service ↔ retriever 导入循环
+	retriever.SetRouterFactory(
+		func(cfg types.ReadWriteSeparationConfig) retriever.Router { return service.NewVectorStoreRouter(cfg) },
+		service.WrapEngineWithRWCapabilities,
+	)
 	registry := retriever.NewRetrieveEngineRegistry()
 	retrieveDriver := strings.Split(os.Getenv("RETRIEVE_DRIVER"), ",")
 	log := logger.GetLogger(context.Background())
@@ -831,11 +881,23 @@ func initRetrieveEngineRegistry(
 	// registration ctx below has no tenant, so those emits self-skip.
 	auditSink := newAuditSinkAdapter(auditSvc)
 
+	// wrapAndRegisterEnvEngine wraps an env-based engine with RW capabilities
+	// and registers it with both the router and the legacy registry.
+	wrapAndRegisterEnvEngine := func(envID string, engine interfaces.RetrieveEngineService, engineType string) error {
+		rwConfig := types.DefaultReadWriteSeparationConfig()
+		// RegisterEngineWithConfig内部自动包装，第一版不配置副本
+		if err := router.RegisterEngineWithConfig(envID, engine, rwConfig, nil); err != nil {
+			return err
+		}
+		wrapper := service.NewRouterWrapper(router, envID)
+		return registry.Register(wrapper)
+	}
+
 	if slices.Contains(retrieveDriver, "postgres") {
 		postgresRepo := postgresRepo.NewPostgresRetrieveEngineRepository(db)
-		if err := registry.Register(
-			retriever.NewKVHybridRetrieveEngine(postgresRepo, types.PostgresRetrieverEngineType),
-		); err != nil {
+		engine := retriever.NewKVHybridRetrieveEngine(postgresRepo, types.PostgresRetrieverEngineType)
+		envID := "env:" + types.PostgresRetrieverEngineType
+		if err := wrapAndRegisterEnvEngine(envID, engine, types.PostgresRetrieverEngineType); err != nil {
 			log.Errorf("Register postgres retrieve engine failed: %v", err)
 		} else {
 			log.Infof("Register postgres retrieve engine success")
@@ -843,9 +905,9 @@ func initRetrieveEngineRegistry(
 	}
 	if slices.Contains(retrieveDriver, "sqlite") {
 		sqliteRepo := sqliteRetrieverRepo.NewSQLiteRetrieveEngineRepository(db)
-		if err := registry.Register(
-			retriever.NewKVHybridRetrieveEngine(sqliteRepo, types.SQLiteRetrieverEngineType),
-		); err != nil {
+		engine := retriever.NewKVHybridRetrieveEngine(sqliteRepo, types.SQLiteRetrieverEngineType)
+		envID := "env:" + types.SQLiteRetrieverEngineType
+		if err := wrapAndRegisterEnvEngine(envID, engine, types.SQLiteRetrieverEngineType); err != nil {
 			log.Errorf("Register sqlite retrieve engine failed: %v", err)
 		} else {
 			log.Infof("Register sqlite retrieve engine success")
@@ -861,11 +923,9 @@ func initRetrieveEngineRegistry(
 			log.Errorf("Create elasticsearch_v8 client failed: %v", err)
 		} else {
 			elasticsearchRepo := elasticsearchRepoV8.NewElasticsearchEngineRepository(client, cfg, nil)
-			if err := registry.Register(
-				retriever.NewKVHybridRetrieveEngine(
-					elasticsearchRepo, types.ElasticsearchRetrieverEngineType,
-				),
-			); err != nil {
+			engine := retriever.NewKVHybridRetrieveEngine(elasticsearchRepo, types.ElasticsearchRetrieverEngineType)
+			envID := "env:elasticsearch_v8"
+			if err := wrapAndRegisterEnvEngine(envID, engine, types.ElasticsearchRetrieverEngineType); err != nil {
 				log.Errorf("Register elasticsearch_v8 retrieve engine failed: %v", err)
 			} else {
 				log.Infof("Register elasticsearch_v8 retrieve engine success")
@@ -883,11 +943,9 @@ func initRetrieveEngineRegistry(
 			log.Errorf("Create elasticsearch_v7 client failed: %v", err)
 		} else {
 			elasticsearchRepo := elasticsearchRepoV7.NewElasticsearchEngineRepository(client, cfg, nil)
-			if err := registry.Register(
-				retriever.NewKVHybridRetrieveEngine(
-					elasticsearchRepo, types.ElasticsearchRetrieverEngineType,
-				),
-			); err != nil {
+			engine := retriever.NewKVHybridRetrieveEngine(elasticsearchRepo, types.ElasticsearchRetrieverEngineType)
+			envID := "env:elasticsearch_v7"
+			if err := wrapAndRegisterEnvEngine(envID, engine, types.ElasticsearchRetrieverEngineType); err != nil {
 				log.Errorf("Register elasticsearch_v7 retrieve engine failed: %v", err)
 			} else {
 				log.Infof("Register elasticsearch_v7 retrieve engine success")
@@ -909,12 +967,14 @@ func initRetrieveEngineRegistry(
 			context.Background(), client, "", nil, openSearchRepo.WithAuditSink(auditSink),
 		); err != nil {
 			log.Errorf("Create opensearch repository failed: %v", err)
-		} else if err := registry.Register(
-			retriever.NewKVHybridRetrieveEngine(repo, types.OpenSearchRetrieverEngineType),
-		); err != nil {
-			log.Errorf("Register opensearch retrieve engine failed: %v", err)
 		} else {
-			log.Infof("Register opensearch retrieve engine success")
+			engine := retriever.NewKVHybridRetrieveEngine(repo, types.OpenSearchRetrieverEngineType)
+			envID := "env:" + types.OpenSearchRetrieverEngineType
+			if err := wrapAndRegisterEnvEngine(envID, engine, types.OpenSearchRetrieverEngineType); err != nil {
+				log.Errorf("Register opensearch retrieve engine failed: %v", err)
+			} else {
+				log.Infof("Register opensearch retrieve engine success")
+			}
 		}
 	}
 
@@ -954,11 +1014,9 @@ func initRetrieveEngineRegistry(
 			log.Errorf("Create qdrant client failed: %v", err)
 		} else {
 			qdrantRepository := qdrantRepo.NewQdrantRetrieveEngineRepository(client, nil)
-			if err := registry.Register(
-				retriever.NewKVHybridRetrieveEngine(
-					qdrantRepository, types.QdrantRetrieverEngineType,
-				),
-			); err != nil {
+			engine := retriever.NewKVHybridRetrieveEngine(qdrantRepository, types.QdrantRetrieverEngineType)
+			envID := "env:" + types.QdrantRetrieverEngineType
+			if err := wrapAndRegisterEnvEngine(envID, engine, types.QdrantRetrieverEngineType); err != nil {
 				log.Errorf("Register qdrant retrieve engine failed: %v", err)
 			} else {
 				log.Infof("Register qdrant retrieve engine success")
@@ -997,11 +1055,9 @@ func initRetrieveEngineRegistry(
 			log.Errorf("Create weaviate client failed: %v", err)
 		} else {
 			weaviateRepository := weaviateRepo.NewWeaviateRetrieveEngineRepository(weaviateClient, nil)
-			if err := registry.Register(
-				retriever.NewKVHybridRetrieveEngine(
-					weaviateRepository, types.WeaviateRetrieverEngineType,
-				),
-			); err != nil {
+			engine := retriever.NewKVHybridRetrieveEngine(weaviateRepository, types.WeaviateRetrieverEngineType)
+			envID := "env:" + types.WeaviateRetrieverEngineType
+			if err := wrapAndRegisterEnvEngine(envID, engine, types.WeaviateRetrieverEngineType); err != nil {
 				log.Errorf("Register weaviate retrieve engine failed: %v", err)
 			} else {
 				log.Infof("Register weaviate retrieve engine success")
@@ -1034,11 +1090,9 @@ func initRetrieveEngineRegistry(
 			log.Errorf("Create milvus client failed: %v", err)
 		} else {
 			milvusRepository := milvusRepo.NewMilvusRetrieveEngineRepository(milvusCli, nil)
-			if err := registry.Register(
-				retriever.NewKVHybridRetrieveEngine(
-					milvusRepository, types.MilvusRetrieverEngineType,
-				),
-			); err != nil {
+			engine := retriever.NewKVHybridRetrieveEngine(milvusRepository, types.MilvusRetrieverEngineType)
+			envID := "env:" + types.MilvusRetrieverEngineType
+			if err := wrapAndRegisterEnvEngine(envID, engine, types.MilvusRetrieverEngineType); err != nil {
 				log.Errorf("Register milvus retrieve engine failed: %v", err)
 			} else {
 				log.Infof("Register milvus retrieve engine success")
@@ -1053,7 +1107,7 @@ func initRetrieveEngineRegistry(
 		}
 		dorisDatabase := os.Getenv("DORIS_DATABASE")
 		if dorisDatabase == "" {
-			dorisDatabase = "weknora"
+			dorisDatabase = "xinwiki"
 		}
 		dorisUsername := os.Getenv("DORIS_USERNAME")
 		if dorisUsername == "" {
@@ -1081,11 +1135,9 @@ func initRetrieveEngineRegistry(
 			dorisRepository := dorisRepo.NewDorisRetrieveEngineRepository(
 				dorisDB, httpBase, dorisUsername, dorisPassword, dorisDatabase, nil,
 			)
-			if err := registry.Register(
-				retriever.NewKVHybridRetrieveEngine(
-					dorisRepository, types.DorisRetrieverEngineType,
-				),
-			); err != nil {
+			engine := retriever.NewKVHybridRetrieveEngine(dorisRepository, types.DorisRetrieverEngineType)
+			envID := "env:" + types.DorisRetrieverEngineType
+			if err := wrapAndRegisterEnvEngine(envID, engine, types.DorisRetrieverEngineType); err != nil {
 				log.Errorf("Register doris retrieve engine failed: %v", err)
 			} else {
 				log.Infof("Register doris retrieve engine success: %s db=%s", dorisAddr, dorisDatabase)
@@ -1111,11 +1163,9 @@ func initRetrieveEngineRegistry(
 					os.Getenv("TENCENT_VECTORDB_DATABASE"),
 					nil,
 				)
-				if err := registry.Register(
-					retriever.NewKVHybridRetrieveEngine(
-						tencentRepository, types.TencentVectorDBRetrieverEngineType,
-					),
-				); err != nil {
+				engine := retriever.NewKVHybridRetrieveEngine(tencentRepository, types.TencentVectorDBRetrieverEngineType)
+				envID := "env:" + types.TencentVectorDBRetrieverEngineType
+				if err := wrapAndRegisterEnvEngine(envID, engine, types.TencentVectorDBRetrieverEngineType); err != nil {
 					log.Errorf("Register tencent_vectordb retrieve engine failed: %v", err)
 				} else {
 					log.Infof("Register tencent_vectordb retrieve engine success")
@@ -1125,7 +1175,7 @@ func initRetrieveEngineRegistry(
 	}
 	// ─── DB store registration (byStoreID) ───
 	if storeReg, ok := registry.(*retriever.RetrieveEngineRegistry); ok {
-		loadDBStoresIntoRegistry(storeReg, db, cfg, auditSink)
+		loadDBStoresIntoRegistry(storeReg, db, cfg, auditSink, router)
 	}
 
 	return registry, nil
@@ -1134,7 +1184,7 @@ func initRetrieveEngineRegistry(
 // loadDBStoresIntoRegistry loads VectorStore records from DB and registers them
 // in the registry's byStoreID map. Failures are logged and skipped (non-fatal).
 func loadDBStoresIntoRegistry(
-	storeRegistry interfaces.StoreRegistry, db *gorm.DB, cfg *config.Config, auditSink openSearchRepo.AuditSink,
+	storeRegistry interfaces.StoreRegistry, db *gorm.DB, cfg *config.Config, auditSink openSearchRepo.AuditSink, router *service.VectorStoreRouter,
 ) {
 	ctx := context.Background()
 	log := logger.GetLogger(ctx)
@@ -1152,7 +1202,7 @@ func loadDBStoresIntoRegistry(
 
 	log.Infof("Loading %d vector store(s) from database", len(stores))
 	for _, store := range stores {
-		svc, err := createEngineServiceFromStore(ctx, store, db, cfg, auditSink)
+		svc, err := createEngineServiceFromStore(ctx, store, db, cfg, auditSink, router)
 		if err != nil {
 			log.Errorf("Failed to create engine for store %s (%s): %v", store.ID, store.Name, err)
 			continue
@@ -1427,4 +1477,56 @@ func startAuditLogRetention(
 		runner.Stop()
 		return nil
 	})
+}
+
+// startWikiScoreRefresh spins up the daily wiki page score refresh runner
+// and registers shutdown cleanup. Runs 15 minutes after startup then daily
+// to recalculate confidence, quality, and freshness scores.
+func startWikiScoreRefresh(
+	runner *service.WikiScoreRefreshRunner, cleaner interfaces.ResourceCleaner,
+) {
+	runner.Start(context.Background())
+	cleaner.RegisterWithName("WikiScoreRefreshRunner", func() error {
+		runner.Stop()
+		return nil
+	})
+}
+
+func initSemanticCacheService(redisClient *redis.Client) (interfaces.SemanticCacheService, error) {
+	cfg := types.DefaultSemanticCacheConfig()
+	if os.Getenv("SEMANTIC_CACHE_ENABLED") == "false" {
+		cfg.Enabled = false
+		return nil, nil
+	}
+	if redisClient != nil {
+		logger.Infof(context.Background(), "[SemanticCache] Using Redis backend")
+		return service.NewRedisSemanticCache(redisClient, cfg), nil
+	}
+	logger.Infof(context.Background(), "[SemanticCache] Redis unavailable, using in-memory backend (Lite mode)")
+	return service.NewMemorySemanticCache(cfg), nil
+}
+
+func initEmbeddingBatcher() *service.EmbeddingBatcherManager {
+	cfg := service.DefaultEmbeddingBatcherConfig()
+
+	// Allow configuration via environment variables
+	if v := os.Getenv("EMBEDDING_BATCH_MAX_SIZE"); v != "" {
+		if size, err := strconv.Atoi(v); err == nil && size > 0 {
+			cfg.MaxBatchSize = size
+		}
+	}
+	if v := os.Getenv("EMBEDDING_BATCH_MAX_WAIT_MS"); v != "" {
+		if ms, err := strconv.Atoi(v); err == nil && ms > 0 {
+			cfg.MaxWaitTime = time.Duration(ms) * time.Millisecond
+		}
+	}
+	if v := os.Getenv("EMBEDDING_BATCH_MAX_PENDING"); v != "" {
+		if pending, err := strconv.Atoi(v); err == nil && pending > 0 {
+			cfg.MaxPendingRequests = pending
+		}
+	}
+
+	logger.Infof(context.Background(), "[EmbeddingBatcher] Initialized with MaxBatchSize=%d, MaxWaitTime=%v, MaxPendingRequests=%d",
+		cfg.MaxBatchSize, cfg.MaxWaitTime, cfg.MaxPendingRequests)
+	return service.NewEmbeddingBatcherManager(cfg)
 }

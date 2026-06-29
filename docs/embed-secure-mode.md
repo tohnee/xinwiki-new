@@ -15,13 +15,13 @@
 
 | 名称 | 格式 | 谁持有 | 用途 |
 |------|------|--------|------|
-| 发布 Token | `em_…` | 仅你的服务端 | 向 WeKnora 换取短时令牌；在管理端「渠道密钥」查看 |
+| 发布 Token | `em_…` | 仅你的服务端 | 向 XinWiki 换取短时令牌；在管理端「渠道密钥」查看 |
 | 会话 Token | `ems_…` | 访客浏览器（iframe 内） | 调聊天、上传等 embed API；约 30 分钟过期，Widget 会自动刷新 |
 
 ## 工作流程
 
 ```
-访客浏览器                 你的后端（shop 的服务器）              WeKnora
+访客浏览器                 你的后端（shop 的服务器）              XinWiki
      │                              │                              │
      │ 1. 加载 Widget               │                              │
      │    data-token-endpoint       │                              │
@@ -43,7 +43,7 @@
 
 ## 集成步骤
 
-### 第 1 步：在 WeKnora 创建渠道
+### 第 1 步：在 XinWiki 创建渠道
 
 - 记下 **渠道 ID** 和 **发布 Token**（`em_…`）
 - 配置域名白名单（见下）
@@ -58,7 +58,7 @@
 **你必须做**：
 
 - 校验调用方是合法访客（Session Cookie、JWT 等），未登录返回 `401`
-- 用发布 Token 调 WeKnora exchange
+- 用发布 Token 调 XinWiki exchange
 - 成功时返回 JSON：`{ "token": "<ems_…>", "expiresIn": 1800 }`
 
 **调 exchange 的约定**：
@@ -172,7 +172,7 @@ func embedTokenHandler(w http.ResponseWriter, r *http.Request) {
 | exchange 返回 **401** / `publish token required` | 发布 Token 错误、已轮换，或误用了 `ems_` 会话 Token |
 | exchange 或聊天 API 返回 **403** `origin not allowed` | 白名单未包含当前请求的 `Origin`；服务端 exchange 记得手动加 `Origin` 头 |
 | iframe 一直「等待 Token」 | `token-endpoint` 未返回 `{ token, expiresIn }`，或 CORS 未允许 Widget 所在源站访问你的接口 |
-| 取令牌接口 **502** `mint failed` | WeKnora 不可达、渠道已停用，或 exchange 响应格式不对 |
+| 取令牌接口 **502** `mint failed` | XinWiki 不可达、渠道已停用，或 exchange 响应格式不对 |
 | 访客随便就能聊 | 取令牌接口未做登录校验——在 exchange 前加 Session / JWT 检查 |
 
 ## 相关

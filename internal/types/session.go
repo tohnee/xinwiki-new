@@ -82,7 +82,7 @@ type Session struct {
 	// Tenant ID
 	TenantID uint64 `json:"tenant_id"   gorm:"index"`
 	// UserID is the owner of the session. Empty for legacy rows (visible at
-	// tenant level) and for IM-created sessions that do not map to a WeKnora user.
+	// tenant level) and for IM-created sessions that do not map to a XinWiki user.
 	UserID string `json:"user_id,omitempty" gorm:"type:varchar(36);index"`
 	// IsPinned indicates whether the session is pinned in the list.
 	IsPinned bool `json:"is_pinned" gorm:"default:false"`

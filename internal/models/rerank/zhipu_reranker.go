@@ -8,8 +8,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/Tencent/WeKnora/internal/logger"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/logger"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 )
 
 // ZhipuReranker implements a reranking system based on Zhipu AI models

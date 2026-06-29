@@ -6,16 +6,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tencent/WeKnora/internal/config"
-	apperrors "github.com/Tencent/WeKnora/internal/errors"
-	"github.com/Tencent/WeKnora/internal/event"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/models/chat"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/config"
+	apperrors "github.com/Tencent/XinWiki/internal/errors"
+	"github.com/Tencent/XinWiki/internal/event"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/models/chat"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 	"github.com/google/uuid"
 
-	chatpipeline "github.com/Tencent/WeKnora/internal/application/service/chat_pipeline"
+	chatpipeline "github.com/Tencent/XinWiki/internal/application/service/chat_pipeline"
 )
 
 func sessionUserIDFromContext(ctx context.Context) string {

@@ -1,5 +1,5 @@
-// Package linkcmd implements `weknora link` - binds the current working
-// directory to a knowledge base by writing .weknora/project.yaml. Always
+// Package linkcmd implements `xinwiki link` - binds the current working
+// directory to a knowledge base by writing .xinwiki/project.yaml. Always
 // overwrites an existing link silently rather than refusing when one is
 // already present. The cobra Long: text covers the user-facing modes
 // (--kb / TTY / non-TTY).
@@ -14,9 +14,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/projectlink"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/projectlink"
 )
 
 // linkFields enumerates the fields surfaced for `--format json` discovery on
@@ -36,13 +36,13 @@ type linkResult struct {
 	ProjectLinkPath string `json:"project_link_path"`
 }
 
-// NewCmd builds the `weknora link` command.
+// NewCmd builds the `xinwiki link` command.
 func NewCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &Options{}
 	cmd := &cobra.Command{
 		Use:   "link",
 		Short: "Bind the current directory to a knowledge base",
-		Long: `Writes .weknora/project.yaml in the current working directory pointing
+		Long: `Writes .xinwiki/project.yaml in the current working directory pointing
 at the supplied knowledge base. Subsequent commands run from this directory
 (or any subdirectory) automatically resolve --kb from the link unless
 overridden by the --kb flag or WEKNORA_KB_ID env var.
@@ -53,9 +53,9 @@ any existing link - re-run to switch.
 
 AI agents: link writes to the user's working directory. Only run it when the
 user explicitly asked to bind this directory; don't run it as a side effect.`,
-		Example: `  weknora link --kb a32a63ff-fb36-4874-bcaa-30f48570a694    # explicit UUID
-  weknora link --kb engineering                             # name → id
-  weknora link                                              # interactive (TTY)`,
+		Example: `  xinwiki link --kb a32a63ff-fb36-4874-bcaa-30f48570a694    # explicit UUID
+  xinwiki link --kb engineering                             # name → id
+  xinwiki link                                              # interactive (TTY)`,
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			fopts, err := cmdutil.CheckFormatFlag(c)
@@ -88,7 +88,7 @@ user explicitly asked to bind this directory; don't run it as a side effect.`,
 	cmdutil.AddFormatFlag(cmd, linkFields...)
 	cmdutil.AddDryRunFlag(cmd, &opts.DryRun)
 	cmdutil.SetAgentHelp(cmd, cmdutil.AgentHelp{
-		UsedFor:       "Bind the current directory to a knowledge base by writing .weknora/project.yaml. Requires --kb (non-interactive); only run when the user explicitly asks to link this directory.",
+		UsedFor:       "Bind the current directory to a knowledge base by writing .xinwiki/project.yaml. Requires --kb (non-interactive); only run when the user explicitly asks to link this directory.",
 		RequiredFlags: []string{"--kb (required when no TTY)"},
 		Output:        "envelope.data has kb_id, kb_name, project_link_path",
 	})
@@ -139,8 +139,8 @@ func runLink(ctx context.Context, opts *Options, fopts *cmdutil.FormatOptions, f
 }
 
 // resolveProfile picks the active profile to record in the link. There is no
-// per-invocation override flag on `weknora link` itself - to record under a
-// different profile, use the global persistent flag (`weknora --profile
+// per-invocation override flag on `xinwiki link` itself - to record under a
+// different profile, use the global persistent flag (`xinwiki --profile
 // staging link --kb my-kb`); the active profile at link time is what gets
 // written.
 func resolveProfile(f *cmdutil.Factory) (string, error) {
@@ -149,7 +149,7 @@ func resolveProfile(f *cmdutil.Factory) (string, error) {
 		return "", err
 	}
 	if cfg.CurrentProfile == "" {
-		return "", cmdutil.NewError(cmdutil.CodeAuthUnauthenticated, "no active profile; run `weknora auth login` first")
+		return "", cmdutil.NewError(cmdutil.CodeAuthUnauthenticated, "no active profile; run `xinwiki auth login` first")
 	}
 	return cfg.CurrentProfile, nil
 }

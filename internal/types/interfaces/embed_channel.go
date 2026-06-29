@@ -3,7 +3,7 @@ package interfaces
 import (
 	"context"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // EmbedChannelRepository persists web embed channel rows.

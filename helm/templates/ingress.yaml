@@ -2,17 +2,17 @@
 Copyright 2025 Tencent
 SPDX-License-Identifier: MIT
 
-Ingress resource for WeKnora.
+Ingress resource for XinWiki.
 Routes /api to backend, / to frontend.
 */}}
 {{- if .Values.ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "weknora.fullname" . }}
+  name: {{ include "xinwiki.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "weknora.componentLabels" (dict "component" "ingress" "context" .) | nindent 4 }}
+    {{- include "xinwiki.componentLabels" (dict "component" "ingress" "context" .) | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}

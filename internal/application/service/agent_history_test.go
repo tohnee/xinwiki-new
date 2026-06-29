@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	agenttools "github.com/Tencent/WeKnora/internal/agent/tools"
-	"github.com/Tencent/WeKnora/internal/models/chat"
-	"github.com/Tencent/WeKnora/internal/types"
+	agenttools "github.com/Tencent/XinWiki/internal/agent/tools"
+	"github.com/Tencent/XinWiki/internal/models/chat"
+	"github.com/Tencent/XinWiki/internal/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

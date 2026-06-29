@@ -4,13 +4,13 @@ import (
 	stderrors "errors"
 	"net/http"
 
-	"github.com/Tencent/WeKnora/internal/config"
-	"github.com/Tencent/WeKnora/internal/errors"
-	"github.com/Tencent/WeKnora/internal/infrastructure/docparser"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/config"
+	"github.com/Tencent/XinWiki/internal/errors"
+	"github.com/Tencent/XinWiki/internal/infrastructure/docparser"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 	"github.com/gin-gonic/gin"
 )
 

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	apperrors "github.com/Tencent/WeKnora/internal/errors"
+	apperrors "github.com/Tencent/XinWiki/internal/errors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -22,7 +22,7 @@ import (
 // and bounds the noise this endpoint can add to the user-create path.
 //
 // Local in-memory only — fine for typical deployments since both
-// endpoints handle low absolute volumes; if/when WeKnora horizontally
+// endpoints handle low absolute volumes; if/when XinWiki horizontally
 // scales the auth surface, swap to the Redis-backed limiter in
 // internal/ratelimit (shared with IM + embed surfaces).
 

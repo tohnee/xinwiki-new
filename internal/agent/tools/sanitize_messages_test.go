@@ -3,7 +3,7 @@ package tools
 import (
 	"testing"
 
-	"github.com/Tencent/WeKnora/internal/models/chat"
+	"github.com/Tencent/XinWiki/internal/models/chat"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

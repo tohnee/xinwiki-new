@@ -11,18 +11,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/application/service/retriever"
-	werrors "github.com/Tencent/WeKnora/internal/errors"
-	"github.com/Tencent/WeKnora/internal/infrastructure/chunker"
-	"github.com/Tencent/WeKnora/internal/infrastructure/docparser"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/models/chat"
-	"github.com/Tencent/WeKnora/internal/models/embedding"
-	"github.com/Tencent/WeKnora/internal/searchutil"
-	"github.com/Tencent/WeKnora/internal/tracing/langfuse"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/application/service/retriever"
+	werrors "github.com/Tencent/XinWiki/internal/errors"
+	"github.com/Tencent/XinWiki/internal/infrastructure/chunker"
+	"github.com/Tencent/XinWiki/internal/infrastructure/docparser"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/models/chat"
+	"github.com/Tencent/XinWiki/internal/models/embedding"
+	"github.com/Tencent/XinWiki/internal/searchutil"
+	"github.com/Tencent/XinWiki/internal/tracing/langfuse"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 )
@@ -3262,15 +3262,15 @@ func (s *knowledgeService) resolveDocReader(ctx context.Context, engine, fileTyp
 	switch engine {
 	case docparser.SimpleEngineName:
 		return &docparser.SimpleFormatReader{}
-	case docparser.WeKnoraCloudEngineName:
-		creds := s.tenantService.GetWeKnoraCloudCredentials(ctx)
+	case docparser.XinWikiCloudEngineName:
+		creds := s.tenantService.GetXinWikiCloudCredentials(ctx)
 		if creds == nil {
-			logger.Warnf(ctx, "[resolveDocReader] WeKnoraCloud: no tenant credentials (fileType=%s)", fileType)
+			logger.Warnf(ctx, "[resolveDocReader] XinWikiCloud: no tenant credentials (fileType=%s)", fileType)
 			return nil
 		}
-		reader, err := docparser.NewWeKnoraCloudSignedDocumentReader(creds.AppID, creds.AppSecret)
+		reader, err := docparser.NewXinWikiCloudSignedDocumentReader(creds.AppID, creds.AppSecret)
 		if err != nil {
-			logger.Errorf(ctx, "[resolveDocReader] WeKnoraCloud reader init failed: %v", err)
+			logger.Errorf(ctx, "[resolveDocReader] XinWikiCloud reader init failed: %v", err)
 			return nil
 		}
 		return reader

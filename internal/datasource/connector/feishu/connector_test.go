@@ -11,7 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // ──────────────────────────────────────────────────────────────────────
@@ -470,7 +470,7 @@ func TestConnectorListResources(t *testing.T) {
 
 // TestConnectorListResources_LazyLoadsOneLevel verifies that ListResources loads
 // the wiki tree lazily — only the requested level — instead of recursing the whole
-// tree up front (Tencent/WeKnora#1672).
+// tree up front (Tencent/XinWiki#1672).
 func TestConnectorListResources_LazyLoadsOneLevel(t *testing.T) {
 	topNodes := []wikiNode{
 		{NodeToken: "nt-root", ObjToken: "obj-root", ObjType: "docx", Title: "Root", HasChild: true, ObjEditTime: "100"},

@@ -1,4 +1,4 @@
-// Package doc — create.go implements `weknora doc create --text "..."`.
+// Package doc — create.go implements `xinwiki doc create --text "..."`.
 // Allows creating a knowledge entry directly from inline text content without
 // uploading a file or fetching a remote URL.
 package doc
@@ -10,9 +10,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // docCreateFields enumerates the fields surfaced for `--format json` discovery
@@ -42,7 +42,7 @@ type CreateService interface {
 	) (*sdk.Knowledge, error)
 }
 
-// NewCmdCreate builds `weknora doc create --text "..."`.
+// NewCmdCreate builds `xinwiki doc create --text "..."`.
 func NewCmdCreate(f *cmdutil.Factory) *cobra.Command {
 	opts := &CreateOptions{}
 	cmd := &cobra.Command{
@@ -51,15 +51,15 @@ func NewCmdCreate(f *cmdutil.Factory) *cobra.Command {
 		Long: `Create a new knowledge entry by passing Markdown content directly via --text.
 Useful for short snippets, agent-generated content, or structured notes that
 don't require a file upload or remote URL. KB resolution follows the standard
-4-level chain: --kb flag > WEKNORA_KB_ID env > .weknora/project.yaml > error.
+4-level chain: --kb flag > WEKNORA_KB_ID env > .xinwiki/project.yaml > error.
 
   --text <content>    Document text in Markdown format (required).
   --name <title>      Display title stored with the entry.
   --tag-id <id>       Associate the new entry with a tag.
   --channel <name>    Override the ingestion-channel tag (default "api").`,
-		Example: `  weknora doc create --text "# Meeting Notes\n\nAction items: ..."
-  weknora doc create --text "$(cat notes.md)" --name "Sprint Notes" --kb my-kb
-  weknora doc create --text "API usage guide" --name "API Guide" --tag-id tag_abc`,
+		Example: `  xinwiki doc create --text "# Meeting Notes\n\nAction items: ..."
+  xinwiki doc create --text "$(cat notes.md)" --name "Sprint Notes" --kb my-kb
+  xinwiki doc create --text "API usage guide" --name "API Guide" --tag-id tag_abc`,
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			fopts, err := cmdutil.CheckFormatFlag(c)

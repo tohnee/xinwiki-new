@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/prompt"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/prompt"
 )
 
 // chunkDeleteFields enumerates the JSON discovery fields for `chunk delete`.
@@ -63,12 +63,12 @@ and writes input.confirmation_required to stderr. NEVER auto-pass -y
 without the user's explicit go-ahead — the exit-10 protocol exists
 exactly to guard against unintended deletes.`
 
-const chunkDeleteExample = `  weknora chunk delete chunk_abc --doc doc_xyz                  # interactive confirm
-  weknora chunk delete chunk_abc --doc doc_xyz -y               # no prompt
-  weknora chunk delete chunk_abc --doc doc_xyz -y --format json # bare {id, deleted:true} JSON
-  weknora chunk delete c1 c2 c3 --doc doc_xyz -y                # delete 3 chunks under same doc, keep-going`
+const chunkDeleteExample = `  xinwiki chunk delete chunk_abc --doc doc_xyz                  # interactive confirm
+  xinwiki chunk delete chunk_abc --doc doc_xyz -y               # no prompt
+  xinwiki chunk delete chunk_abc --doc doc_xyz -y --format json # bare {id, deleted:true} JSON
+  xinwiki chunk delete c1 c2 c3 --doc doc_xyz -y                # delete 3 chunks under same doc, keep-going`
 
-// NewCmdDelete builds `weknora chunk delete <chunk-id> [<chunk-id>...] --doc <doc-id>`.
+// NewCmdDelete builds `xinwiki chunk delete <chunk-id> [<chunk-id>...] --doc <doc-id>`.
 func NewCmdDelete(f *cmdutil.Factory) *cobra.Command {
 	opts := &DeleteOptions{}
 	cmd := &cobra.Command{
@@ -101,7 +101,7 @@ func NewCmdDelete(f *cmdutil.Factory) *cobra.Command {
 				opts.ChunkID = args[0]
 				return runDelete(c.Context(), opts, fopts, cli, f.Prompter())
 			}
-			if err := cmdutil.ConfirmDestructiveBatch(f.Prompter(), opts.Yes, fopts.WantsJSON(), "delete", "chunk", len(args), "chunk.delete", "weknora chunk delete "+strings.Join(args, " ")+" --doc "+opts.DocID+" -y"); err != nil {
+			if err := cmdutil.ConfirmDestructiveBatch(f.Prompter(), opts.Yes, fopts.WantsJSON(), "delete", "chunk", len(args), "chunk.delete", "xinwiki chunk delete "+strings.Join(args, " ")+" --doc "+opts.DocID+" -y"); err != nil {
 				return err
 			}
 			outcomes, runErr := cmdutil.RunBatch(c.Context(), args, func(ctx context.Context, id string) error {
@@ -130,9 +130,9 @@ func NewCmdDelete(f *cmdutil.Factory) *cobra.Command {
 		UsedFor:       "permanently delete one or more chunks from a document",
 		RequiredFlags: []string{"<chunk-id>... (positional, at least one)", "--doc <doc-id>"},
 		Examples: []string{
-			"weknora chunk delete chunk_abc --doc doc_xyz -y",
-			"weknora chunk delete c1 c2 c3 --doc doc_xyz -y",
-			"weknora chunk delete chunk_abc --doc doc_xyz -y --format json",
+			"xinwiki chunk delete chunk_abc --doc doc_xyz -y",
+			"xinwiki chunk delete c1 c2 c3 --doc doc_xyz -y",
+			"xinwiki chunk delete chunk_abc --doc doc_xyz -y --format json",
 		},
 		Warnings: []string{
 			"Requires explicit user approval (exit 10 / input.confirmation_required); never auto-add -y.",
@@ -143,7 +143,7 @@ func NewCmdDelete(f *cmdutil.Factory) *cobra.Command {
 }
 
 func runDelete(ctx context.Context, opts *DeleteOptions, fopts *cmdutil.FormatOptions, svc DeleteService, p prompt.Prompter) error {
-	if err := cmdutil.ConfirmDestructive(p, opts.Yes, fopts.WantsJSON(), "delete", "chunk", opts.ChunkID, "chunk.delete", "weknora chunk delete "+opts.ChunkID+" --doc "+opts.DocID+" -y"); err != nil {
+	if err := cmdutil.ConfirmDestructive(p, opts.Yes, fopts.WantsJSON(), "delete", "chunk", opts.ChunkID, "chunk.delete", "xinwiki chunk delete "+opts.ChunkID+" --doc "+opts.DocID+" -y"); err != nil {
 		return err
 	}
 	if err := svc.DeleteChunk(ctx, opts.DocID, opts.ChunkID); err != nil {

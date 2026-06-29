@@ -1,4 +1,4 @@
-module github.com/Tencent/WeKnora
+module github.com/Tencent/XinWiki
 
 go 1.26.0
 

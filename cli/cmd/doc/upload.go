@@ -10,9 +10,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // uploadChannel is the default ingestion-channel tag the server records for
@@ -66,7 +66,7 @@ type UploadService interface {
 	) (*sdk.Knowledge, error)
 }
 
-// NewCmdUpload builds `weknora doc upload <file>`.
+// NewCmdUpload builds `xinwiki doc upload <file>`.
 func NewCmdUpload(f *cmdutil.Factory) *cobra.Command {
 	opts := &UploadOptions{}
 	cmd := &cobra.Command{
@@ -74,7 +74,7 @@ func NewCmdUpload(f *cmdutil.Factory) *cobra.Command {
 		Short: "Upload a local file to the knowledge base",
 		Long: `Uploads a file (PDF / DOCX / Markdown / TXT / etc.) to the resolved
 knowledge base. KB resolution follows the standard 4-level chain:
---kb flag > WEKNORA_KB_ID env > .weknora/project.yaml > error. The --kb
+--kb flag > WEKNORA_KB_ID env > .xinwiki/project.yaml > error. The --kb
 flag accepts either a KB UUID (passed through) or a name (resolved via list).
 
 Pass --name to override the recorded file name (useful when the local file
@@ -83,8 +83,8 @@ has a generic name like "report.pdf" but you want to surface it as e.g.
 
 The two input modes (positional file / --recursive directory walk) are
 mutually exclusive - pass exactly one. Use --recursive --glob to upload a
-directory tree (see Examples). To ingest a remote URL use "weknora doc fetch";
-to create an entry from inline text use "weknora doc create".
+directory tree (see Examples). To ingest a remote URL use "xinwiki doc fetch";
+to create an entry from inline text use "xinwiki doc create".
 
 Server-side ingestion knobs:
 
@@ -97,12 +97,12 @@ Server-side ingestion knobs:
                            input.invalid_argument.
   --channel <name>         Override the ingestion-channel tag (default "api").
                            Applies to file / --recursive.`,
-		Example: `  weknora doc upload report.pdf
-  weknora doc upload notes.md --kb a32a63ff-fb36-4874-bcaa-30f48570a694
-  weknora doc upload notes.md --kb my-kb
-  weknora doc upload q3.pdf --name "Q3 Marketing Report.pdf"
-  weknora doc upload report.pdf --enable-multimodel --metadata team=alpha --metadata sprint=Q4
-  weknora doc upload ./docs --recursive --glob '*.pdf' --metadata team=alpha`,
+		Example: `  xinwiki doc upload report.pdf
+  xinwiki doc upload notes.md --kb a32a63ff-fb36-4874-bcaa-30f48570a694
+  xinwiki doc upload notes.md --kb my-kb
+  xinwiki doc upload q3.pdf --name "Q3 Marketing Report.pdf"
+  xinwiki doc upload report.pdf --enable-multimodel --metadata team=alpha --metadata sprint=Q4
+  xinwiki doc upload ./docs --recursive --glob '*.pdf' --metadata team=alpha`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			fopts, err := cmdutil.CheckFormatFlag(c)
@@ -244,7 +244,7 @@ func validateUploadFlags(opts *UploadOptions, args []string) error {
 		// MinimumNArgs(1) would emit — consistent with every other command
 		// that requires a positional argument.
 		return cmdutil.NewFlagError(errors.New(
-			"a file path is required (or use `weknora doc fetch` for URLs, `weknora doc create` for inline text)"))
+			"a file path is required (or use `xinwiki doc fetch` for URLs, `xinwiki doc create` for inline text)"))
 	}
 	return nil
 }

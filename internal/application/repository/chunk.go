@@ -8,20 +8,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/common"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/common"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 	"gorm.io/gorm"
 )
 
 // chunkRepository implements the ChunkRepository interface
 type chunkRepository struct {
-	db *gorm.DB
+	db       *gorm.DB
+	eventBus *event.EventBus
 }
 
 // NewChunkRepository creates a new chunk repository
-func NewChunkRepository(db *gorm.DB) interfaces.ChunkRepository {
-	return &chunkRepository{db: db}
+// 注: 可选注入 EventBus 用于发布权限变更事件；未注入时跳过事件发布（无依赖问题）
+func NewChunkRepository(db *gorm.DB, bus *event.EventBus) interfaces.ChunkRepository {
+	return &chunkRepository{db: db, eventBus: bus}
 }
 
 // CreateChunks creates multiple chunks in batches.
@@ -288,8 +290,44 @@ func (r *chunkRepository) ListChunksByParentIDs(
 // UpdateChunk updates a chunk using GORM Save, which updates ALL fields
 // except SeqID (auto-increment, must not be overwritten).
 // Make sure the chunk object is complete (e.g., fetched from DB) before calling this method.
+// 当 SecurityLevel/AllowedUserIDs/AllowedGroupIDs 变更时自动发布权限变更事件。
 func (r *chunkRepository) UpdateChunk(ctx context.Context, chunk *types.Chunk) error {
-	return r.db.WithContext(ctx).Omit("SeqID").Save(chunk).Error
+	// 1. 获取更新前的旧数据用于比较 ACL 变更
+	var oldChunk types.Chunk
+	if err := r.db.WithContext(ctx).Where("id = ?", chunk.ID).First(&oldChunk).Error; err != nil {
+		// 查不到旧数据时直接更新（新创建等场景），不触发事件
+		return r.db.WithContext(ctx).Omit("SeqID").Save(chunk).Error
+	}
+
+	// 2. 执行数据库更新
+	if err := r.db.WithContext(ctx).Omit("SeqID").Save(chunk).Error; err != nil {
+		return err
+	}
+
+	// 3. 检测 ACL 相关字段是否变更，变更则发布权限事件
+	aclChanged := (oldChunk.SecurityLevel != chunk.SecurityLevel) ||
+		!reflect.DeepEqual(oldChunk.AllowedUserIDs, chunk.AllowedUserIDs) ||
+		!reflect.DeepEqual(oldChunk.AllowedGroupIDs, chunk.AllowedGroupIDs)
+
+	if aclChanged && r.eventBus != nil {
+		evt := event.NewEvent(event.EventPermissionChanged, &event.PermissionChangedData{
+			TenantID:          chunk.TenantID,
+			KBID:              chunk.KnowledgeBaseID,
+			ResourceType:      "chunk",
+			ResourceID:        chunk.ID,
+			OldSecurityLevel:  oldChunk.SecurityLevel,
+			NewSecurityLevel:  chunk.SecurityLevel,
+			OldAllowedUserIDs: oldChunk.AllowedUserIDs,
+			NewAllowedUserIDs: chunk.AllowedUserIDs,
+			OldAllowedGroupIDs: oldChunk.AllowedGroupIDs,
+			NewAllowedGroupIDs: chunk.AllowedGroupIDs,
+			Reason:            "chunk_acl_updated",
+		})
+		// 异步发布，不阻塞更新流程
+		go r.eventBus.Emit(ctx, evt)
+	}
+
+	return nil
 }
 
 // UpdateChunks updates chunks in batch using raw SQL for efficiency.

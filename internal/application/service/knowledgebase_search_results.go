@@ -5,18 +5,20 @@ import (
 	"encoding/json"
 	"slices"
 
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/searchutil"
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/acl"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/searchutil"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // processSearchResults handles the processing of search results, optimizing database queries.
+// Returns (searchResults, chunkMap, error) - chunkMap is needed for semantic cache ACL re-filtering.
 func (s *knowledgeBaseService) processSearchResults(ctx context.Context,
 	chunks []*types.IndexWithScore,
 	skipEnrichment bool,
-) ([]*types.SearchResult, error) {
+) ([]*types.SearchResult, map[string]*types.Chunk, error) {
 	if len(chunks) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	tenantID := types.MustTenantIDFromContext(ctx)
@@ -28,7 +30,7 @@ func (s *knowledgeBaseService) processSearchResults(ctx context.Context,
 	logger.Infof(ctx, "Fetching knowledge data for %d IDs", len(index.knowledgeIDs))
 	knowledgeMap, err := s.fetchKnowledgeDataWithShared(ctx, tenantID, index.knowledgeIDs)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Batch fetch chunks (include shared KB chunks)
@@ -39,7 +41,7 @@ func (s *knowledgeBaseService) processSearchResults(ctx context.Context,
 			"tenant_id": tenantID,
 			"chunk_ids": index.chunkIDs,
 		})
-		return nil, err
+		return nil, nil, err
 	}
 	logger.Infof(ctx, "Chunk data fetched successfully, count: %d", len(allChunks))
 
@@ -81,26 +83,29 @@ func (s *knowledgeBaseService) processSearchResults(ctx context.Context,
 		}
 	}
 
-	// Build final search results
+	// Build final search results (before ACL filtering - cached results will be filtered per-user)
 	searchResults := s.assembleSearchResults(ctx, chunks, chunkMap, knowledgeMap, index, skipEnrichment)
 
-	// Apply application-layer ACL post-filtering (defense in depth)
-	// This catches any leaks that metadata-level filtering might miss.
+	// Enrich results with image info before returning
+	searchutil.EnrichSearchResultsImageInfo(ctx, s.chunkRepo, tenantID, searchResults)
+
+	logger.Infof(ctx, "Search results assembled, count: %d", len(searchResults))
+	return searchResults, chunkMap, nil
+}
+
+// applyACLFilter applies ACL filtering to search results and logs removals
+func (s *knowledgeBaseService) applyACLFilter(ctx context.Context, results []*types.SearchResult, chunkMap map[string]*types.Chunk) []*types.SearchResult {
 	userSecurityLevel := types.UserSecurityLevelFromContext(ctx)
 	userID, _ := types.UserIDFromContext(ctx)
 	userGroupIDs := types.UserGroupIDsFromContext(ctx)
-	beforeCount := len(searchResults)
-	searchResults = FilterSearchResultChunksByACL(searchResults, chunkMap, userSecurityLevel, userID, userGroupIDs)
-	afterCount := len(searchResults)
+	beforeCount := len(results)
+	filtered := acl.FilterSearchResultChunksByACL(results, chunkMap, userSecurityLevel, userID, userGroupIDs)
+	afterCount := len(filtered)
 	if beforeCount != afterCount {
 		logger.Warnf(ctx, "ACL post-filter removed %d/%d search results (defense-in-depth)",
 			beforeCount-afterCount, beforeCount)
 	}
-
-	searchutil.EnrichSearchResultsImageInfo(ctx, s.chunkRepo, tenantID, searchResults)
-
-	logger.Infof(ctx, "Search results processed, total: %d", len(searchResults))
-	return searchResults, nil
+	return filtered
 }
 
 // chunkIndex holds pre-computed lookup structures for processing search results.

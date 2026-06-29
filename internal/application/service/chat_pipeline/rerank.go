@@ -8,11 +8,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Tencent/WeKnora/internal/models/rerank"
-	"github.com/Tencent/WeKnora/internal/searchutil"
-	"github.com/Tencent/WeKnora/internal/tracing/langfuse"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/models/rerank"
+	"github.com/Tencent/XinWiki/internal/searchutil"
+	"github.com/Tencent/XinWiki/internal/tracing/langfuse"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 )
 
 // PluginRerank implements reranking functionality for chat pipeline

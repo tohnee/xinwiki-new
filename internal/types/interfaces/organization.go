@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // OrganizationService defines the organization service interface.

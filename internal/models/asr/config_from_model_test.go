@@ -3,7 +3,7 @@ package asr
 import (
 	"testing"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 func TestConfigFromModel(t *testing.T) {

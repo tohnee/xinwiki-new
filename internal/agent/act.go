@@ -9,12 +9,12 @@ import (
 	"sync"
 	"time"
 
-	agenttools "github.com/Tencent/WeKnora/internal/agent/tools"
-	"github.com/Tencent/WeKnora/internal/common"
-	"github.com/Tencent/WeKnora/internal/event"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/tracing/langfuse"
-	"github.com/Tencent/WeKnora/internal/types"
+	agenttools "github.com/Tencent/XinWiki/internal/agent/tools"
+	"github.com/Tencent/XinWiki/internal/common"
+	"github.com/Tencent/XinWiki/internal/event"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/tracing/langfuse"
+	"github.com/Tencent/XinWiki/internal/types"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -337,6 +337,20 @@ func (e *AgentEngine) runToolCall(
 
 	toolCallStartTime := time.Now()
 
+	// Start tool call tracking in thinking chain
+	var toolCallStep *types.ThinkingStep
+	if e.thinkingTracker != nil && e.thinkingTracker.IsTracingEnabled() {
+		toolCallStep = e.thinkingTracker.StartStep(types.ThinkingTypeToolCall,
+			fmt.Sprintf("Calling tool: %s", tc.Function.Name))
+		if toolCallStep != nil {
+			toolCallStep.Metadata = map[string]interface{}{
+				"tool_name":    tc.Function.Name,
+				"arguments":    args,
+				"tool_call_id": tc.ID,
+			}
+		}
+	}
+
 	// Emit tool hint for UI progress display
 	toolHint := formatToolHint(tc.Function.Name, args)
 	e.eventBus.Emit(ctx, event.Event{
@@ -439,6 +453,44 @@ func (e *AgentEngine) runToolCall(
 	}
 
 	finishToolSpan(toolSpan, toolCall, err, duration)
+
+	// End tool call step and add tool result to thinking chain
+	if toolCallStep != nil {
+		e.thinkingTracker.EndStep(nil)
+
+		// Add tool result step
+		resultContent := ""
+		resultSuccess := false
+		if toolCall.Result != nil {
+			resultSuccess = toolCall.Result.Success
+			if toolCall.Result.Output != "" {
+				// Truncate long results for thinking chain
+				if len(toolCall.Result.Output) > 1000 {
+					resultContent = toolCall.Result.Output[:1000] + "...(truncated)"
+				} else {
+					resultContent = toolCall.Result.Output
+				}
+			}
+			if toolCall.Result.Error != "" {
+				resultContent = fmt.Sprintf("Error: %s", toolCall.Result.Error)
+			}
+		}
+
+		resultStep := e.thinkingTracker.StartStep(types.ThinkingTypeToolResult,
+			fmt.Sprintf("Tool %s returned: %s", tc.Function.Name,
+				map[bool]string{true: "success", false: "failed"}[resultSuccess]))
+		if resultStep != nil {
+			resultStep.Metadata = map[string]interface{}{
+				"tool_name":    tc.Function.Name,
+				"success":      resultSuccess,
+				"duration_ms":  duration,
+				"result":       resultContent,
+				"tool_call_id": tc.ID,
+			}
+			resultStep.Duration = 0
+		}
+		e.thinkingTracker.EndStep(nil)
+	}
 
 	// Pipeline event for monitoring
 	toolSuccess := toolCall.Result != nil && toolCall.Result.Success

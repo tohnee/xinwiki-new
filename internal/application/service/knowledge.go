@@ -9,14 +9,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/application/repository"
-	"github.com/Tencent/WeKnora/internal/application/service/retriever"
-	"github.com/Tencent/WeKnora/internal/config"
-	werrors "github.com/Tencent/WeKnora/internal/errors"
-	"github.com/Tencent/WeKnora/internal/infrastructure/docparser"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/application/repository"
+	"github.com/Tencent/XinWiki/internal/application/service/retriever"
+	"github.com/Tencent/XinWiki/internal/config"
+	werrors "github.com/Tencent/XinWiki/internal/errors"
+	"github.com/Tencent/XinWiki/internal/infrastructure/docparser"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 	"github.com/redis/go-redis/v9"
 )
 

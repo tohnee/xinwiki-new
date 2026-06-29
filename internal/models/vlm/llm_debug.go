@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/logger"
+	"github.com/Tencent/XinWiki/internal/logger"
 )
 
 // debugVLM wraps a VLM with LLM debug logging.

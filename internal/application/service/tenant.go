@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
-	"github.com/Tencent/WeKnora/internal/utils"
-	werrors "github.com/Tencent/WeKnora/internal/errors"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/utils"
+	werrors "github.com/Tencent/XinWiki/internal/errors"
 )
 
 var apiKeySecret = func() []byte {
@@ -385,11 +385,11 @@ func (s *tenantService) GetTenantByIDForUser(ctx context.Context, tenantID uint6
 	return tenant, nil
 }
 
-func (s *tenantService) GetWeKnoraCloudCredentials(ctx context.Context) *types.WeKnoraCloudCredentials {
+func (s *tenantService) GetXinWikiCloudCredentials(ctx context.Context) *types.XinWikiCloudCredentials {
 	// Try to get tenant info from context first (already loaded by middleware).
 	// CredentialsConfig.Scan handles decryption, so credentials are ready to use.
 	if tenant, ok := types.TenantInfoFromContext(ctx); ok {
-		if creds := tenant.Credentials.GetWeKnoraCloud(); creds != nil {
+		if creds := tenant.Credentials.GetXinWikiCloud(); creds != nil {
 			return creds
 		}
 	}
@@ -404,7 +404,7 @@ func (s *tenantService) GetWeKnoraCloudCredentials(ctx context.Context) *types.W
 	if err != nil || tenant == nil {
 		return nil
 	}
-	return tenant.Credentials.GetWeKnoraCloud()
+	return tenant.Credentials.GetXinWikiCloud()
 }
 
 func (s *tenantService) validateStorageBucketUniqueness(ctx context.Context, tenant *types.Tenant) error {

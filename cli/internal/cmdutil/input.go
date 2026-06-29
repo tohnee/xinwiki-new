@@ -4,7 +4,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
 )
 
 // OpenInput returns a reader for path. If path == "-", returns stdin

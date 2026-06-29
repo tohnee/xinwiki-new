@@ -6,9 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 type RefreshOptions struct {
@@ -22,12 +22,12 @@ var authRefreshFields = []string{"profile"}
 // refreshResult is the typed payload emitted under data on success. Token
 // values are intentionally NOT included - emitting them would leak secrets
 // into stdout / agent transcripts. Agents needing to verify the new token
-// can re-run `weknora auth status` (live API check).
+// can re-run `xinwiki auth status` (live API check).
 type refreshResult struct {
 	Profile string `json:"profile"`
 }
 
-// NewCmdRefresh builds `weknora auth refresh`. Renews the JWT access
+// NewCmdRefresh builds `xinwiki auth refresh`. Renews the JWT access
 // token by spending the stored refresh_token via POST /auth/refresh -
 // the standard OAuth refresh-token grant.
 //
@@ -38,14 +38,14 @@ func NewCmdRefresh(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "refresh",
 		Short: "Renew the JWT access token using the stored refresh token",
-		Long: `Reads the refresh token previously stored by ` + "`weknora auth login`" + ` and
+		Long: `Reads the refresh token previously stored by ` + "`xinwiki auth login`" + ` and
 exchanges it for a new access + refresh token pair via POST /api/v1/auth/refresh.
 Both new tokens replace the existing entries in the OS keyring.
 
 API-key profiles are rejected with input.invalid_argument - they have no
 refresh semantic. Rotate the key in the server UI instead.`,
-		Example: `  weknora auth refresh                      # refresh the active profile
-  weknora --profile staging auth refresh   # refresh a specific profile`,
+		Example: `  xinwiki auth refresh                      # refresh the active profile
+  xinwiki --profile staging auth refresh   # refresh a specific profile`,
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			fopts, err := cmdutil.CheckFormatFlag(c)
@@ -63,7 +63,7 @@ refresh semantic. Rotate the key in the server UI instead.`,
 			name := cfg.CurrentProfile
 			if name == "" {
 				return cmdutil.NewError(cmdutil.CodeAuthUnauthenticated,
-					"no active profile configured; run `weknora auth login` to set one up")
+					"no active profile configured; run `xinwiki auth login` to set one up")
 			}
 			prof, ok := cfg.Profiles[name]
 			if !ok {
@@ -75,9 +75,9 @@ refresh semantic. Rotate the key in the server UI instead.`,
 					fmt.Sprintf("profile %q has no host", name))
 			}
 			if prof.RefreshRef == "" {
-				hint := "api-key profiles can't be refreshed - rotate the key in the server UI and run `weknora auth login --with-token`"
+				hint := "api-key profiles can't be refreshed - rotate the key in the server UI and run `xinwiki auth login --with-token`"
 				if prof.APIKeyRef == "" {
-					hint = "no refresh token stored - run `weknora auth login` to authenticate"
+					hint = "no refresh token stored - run `xinwiki auth login` to authenticate"
 				}
 				return &cmdutil.Error{
 					Code:    cmdutil.CodeInputInvalidArgument,
@@ -118,7 +118,7 @@ func runRefresh(ctx context.Context, opts *RefreshOptions, fopts *cmdutil.Format
 	name := cfg.CurrentProfile
 	if name == "" {
 		return cmdutil.NewError(cmdutil.CodeAuthUnauthenticated,
-			"no active profile configured; run `weknora auth login` to set one up")
+			"no active profile configured; run `xinwiki auth login` to set one up")
 	}
 	c, ok := cfg.Profiles[name]
 	if !ok {
@@ -130,9 +130,9 @@ func runRefresh(ctx context.Context, opts *RefreshOptions, fopts *cmdutil.Format
 			fmt.Sprintf("profile %q has no host", name))
 	}
 	if c.RefreshRef == "" {
-		hint := "api-key profiles can't be refreshed - rotate the key in the server UI and run `weknora auth login --with-token`"
+		hint := "api-key profiles can't be refreshed - rotate the key in the server UI and run `xinwiki auth login --with-token`"
 		if c.APIKeyRef == "" {
-			hint = "no refresh token stored - run `weknora auth login` to authenticate"
+			hint = "no refresh token stored - run `xinwiki auth login` to authenticate"
 		}
 		return &cmdutil.Error{
 			Code:    cmdutil.CodeInputInvalidArgument,

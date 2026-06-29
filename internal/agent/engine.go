@@ -7,17 +7,18 @@ import (
 	"strings"
 	"time"
 
-	agentmemory "github.com/Tencent/WeKnora/internal/agent/memory"
-	"github.com/Tencent/WeKnora/internal/agent/skills"
-	agenttoken "github.com/Tencent/WeKnora/internal/agent/token"
-	agenttools "github.com/Tencent/WeKnora/internal/agent/tools"
-	"github.com/Tencent/WeKnora/internal/common"
-	appconfig "github.com/Tencent/WeKnora/internal/config"
-	"github.com/Tencent/WeKnora/internal/event"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/models/chat"
-	"github.com/Tencent/WeKnora/internal/tracing/langfuse"
-	"github.com/Tencent/WeKnora/internal/types"
+	agentmemory "github.com/Tencent/XinWiki/internal/agent/memory"
+	"github.com/Tencent/XinWiki/internal/agent/skills"
+	"github.com/Tencent/XinWiki/internal/agent/thinking"
+	agenttoken "github.com/Tencent/XinWiki/internal/agent/token"
+	agenttools "github.com/Tencent/XinWiki/internal/agent/tools"
+	"github.com/Tencent/XinWiki/internal/common"
+	appconfig "github.com/Tencent/XinWiki/internal/config"
+	"github.com/Tencent/XinWiki/internal/event"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/models/chat"
+	"github.com/Tencent/XinWiki/internal/tracing/langfuse"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // langfuseQueryPreview caps the query length we ship as the agent.execute
@@ -47,6 +48,7 @@ type AgentEngine struct {
 	memoryConsolidator   *agentmemory.Consolidator // Memory consolidator for LLM-powered summarization (optional)
 	lastUsage            types.TokenUsage          // Token usage from the most recent LLM call
 	lastSentMsgCount     int                       // Number of messages sent in the most recent LLM call
+	thinkingTracker      *thinking.Tracker         // Thinking chain tracker for monitoring
 }
 
 // ImageDescriberFunc generates a text description of an image.
@@ -216,6 +218,12 @@ func (e *AgentEngine) Execute(
 		KnowledgeRefs: []*types.SearchResult{},
 		IsComplete:    false,
 		CurrentRound:  0,
+	}
+
+	// Initialize thinking chain tracker
+	e.thinkingTracker = thinking.NewTracker(sessionID, true)
+	if e.config.Model != "" {
+		e.thinkingTracker.SetModelID(e.config.Model)
 	}
 
 	// Build system prompt using progressive RAG prompt

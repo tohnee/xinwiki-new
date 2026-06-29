@@ -1,6 +1,6 @@
-# WeKnora HTTP Client
+# XinWiki HTTP Client
 
-This package provides a client library for interacting with WeKnora services, supporting all HTTP-based interface calls, making it easier for other modules to integrate with WeKnora services without having to write HTTP request code directly.
+This package provides a client library for interacting with XinWiki services, supporting all HTTP-based interface calls, making it easier for other modules to integrate with XinWiki services without having to write HTTP request code directly.
 
 ## Main Features
 
@@ -23,7 +23,7 @@ The client includes the following main functional modules:
 ```go
 import (
     "context"
-    "github.com/Tencent/WeKnora/client"
+    "github.com/Tencent/XinWiki/client"
     "time"
 )
 

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 func makeNotionConfig(cfg *Config, baseURL string, resourceIDs []string) *types.DataSourceConfig {

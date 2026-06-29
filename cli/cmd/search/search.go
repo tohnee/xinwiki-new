@@ -1,14 +1,14 @@
-// Package search implements the `weknora search` command tree:
+// Package search implements the `xinwiki search` command tree:
 // chunks / kb / docs / sessions.
 package search
 
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
 )
 
-// NewCmdSearch builds the `weknora search` parent. Pure dispatcher to the
+// NewCmdSearch builds the `xinwiki search` parent. Pure dispatcher to the
 // four subcommands - users must pick a verb (chunks / kb / docs / sessions).
 func NewCmdSearch(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
@@ -20,10 +20,10 @@ func NewCmdSearch(f *cmdutil.Factory) *cobra.Command {
   search kb       "<q>"            find KBs by name / description
   search docs     "<q>" --kb X     find documents inside a KB
   search sessions "<q>"            find chat sessions by title / description`,
-		Example: `  weknora search chunks "what is RAG?" --kb engineering
-  weknora search kb     "marketing"
-  weknora search docs   "Q3 forecast" --kb finance
-  weknora search sessions "onboarding"`,
+		Example: `  xinwiki search chunks "what is RAG?" --kb engineering
+  xinwiki search kb     "marketing"
+  xinwiki search docs   "Q3 forecast" --kb finance
+  xinwiki search sessions "onboarding"`,
 	}
 
 	cmd.AddCommand(NewCmdChunks(f))

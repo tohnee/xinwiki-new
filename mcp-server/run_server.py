@@ -31,7 +31,7 @@ def main():
     check_environment()
 
     try:
-        from weknora_mcp_server import run
+        from xinwiki_mcp_server import run
 
         asyncio.run(run())
     except ImportError as e:

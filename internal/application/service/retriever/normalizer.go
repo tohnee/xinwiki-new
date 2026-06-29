@@ -4,7 +4,7 @@ import (
 	"context"
 	"math"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // ScoreNormalizer maps raw retriever scores to a common [0, 1] scale so that

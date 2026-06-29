@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/Tencent/WeKnora/internal/config"
+	"github.com/Tencent/XinWiki/internal/config"
 	"github.com/hibiken/asynq"
 )
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // ProviderName 模型服务商名称
@@ -67,7 +67,7 @@ const (
 func AllProviders() []ProviderName {
 	return []ProviderName{
 		ProviderGeneric,
-		ProviderWeKnoraCloud,
+		ProviderXinWikiCloud,
 		ProviderAliyun,
 		ProviderZhipu,
 		ProviderVolcengine,
@@ -264,8 +264,8 @@ func DetectProvider(baseURL string) ProviderName {
 		return ProviderNvidia
 	case containsAny(baseURL, "api.novita.ai", "novita.ai"):
 		return ProviderNovita
-	case containsAny(baseURL, "weknora.weixin.qq.com"):
-		return ProviderWeKnoraCloud
+	case containsAny(baseURL, "xinwiki.weixin.qq.com"):
+		return ProviderXinWikiCloud
 	default:
 		return ProviderGeneric
 	}

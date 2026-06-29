@@ -6,14 +6,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/agent/tools"
-	chatpipeline "github.com/Tencent/WeKnora/internal/application/service/chat_pipeline"
-	"github.com/Tencent/WeKnora/internal/common"
-	"github.com/Tencent/WeKnora/internal/event"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/models/chat"
-	"github.com/Tencent/WeKnora/internal/tracing/langfuse"
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/agent/tools"
+	chatpipeline "github.com/Tencent/XinWiki/internal/application/service/chat_pipeline"
+	"github.com/Tencent/XinWiki/internal/common"
+	"github.com/Tencent/XinWiki/internal/event"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/models/chat"
+	"github.com/Tencent/XinWiki/internal/tracing/langfuse"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // KnowledgeQA performs knowledge base question answering with LLM summarization

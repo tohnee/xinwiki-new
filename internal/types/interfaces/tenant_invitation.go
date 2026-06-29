@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // TenantInvitationRepository persists tenant_invitations rows that

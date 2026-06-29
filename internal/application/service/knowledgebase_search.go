@@ -2,14 +2,15 @@ package service
 
 import (
 	"context"
+	"strconv"
 
-	"github.com/Tencent/WeKnora/internal/application/service/retriever"
-	apperrors "github.com/Tencent/WeKnora/internal/errors"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/models/embedding"
-	"github.com/Tencent/WeKnora/internal/tracing/langfuse"
-	"github.com/Tencent/WeKnora/internal/types"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/application/service/retriever"
+	apperrors "github.com/Tencent/XinWiki/internal/errors"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/models/embedding"
+	"github.com/Tencent/XinWiki/internal/tracing/langfuse"
+	"github.com/Tencent/XinWiki/internal/types"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 )
 
 // GetQueryEmbedding computes the query embedding using the embedding model
@@ -24,18 +25,29 @@ func (s *knowledgeBaseService) GetQueryEmbedding(ctx context.Context, kbID strin
 
 	currentTenantID := types.MustTenantIDFromContext(ctx)
 	var embeddingModel embedding.Embedder
+	var modelKey string
 
 	if kb.TenantID != currentTenantID {
 		embeddingModel, err = s.modelService.GetEmbeddingModelForTenant(ctx, kb.EmbeddingModelID, kb.TenantID)
+		modelKey = kb.EmbeddingModelID + "|" + strconv.FormatUint(kb.TenantID, 10)
 	} else {
 		embeddingModel, err = s.modelService.GetEmbeddingModel(ctx, kb.EmbeddingModelID)
+		modelKey = kb.EmbeddingModelID
 	}
 	if err != nil {
 		logger.Errorf(ctx, "GetQueryEmbedding: failed to get embedding model %s: %v", kb.EmbeddingModelID, err)
 		return nil, err
 	}
 
-	return embeddingModel.Embed(ctx, queryText)
+	normalizedQuery := s.queryNormalizer.Normalize(queryText)
+	if normalizedQuery == "" {
+		normalizedQuery = queryText
+	}
+
+	if s.embeddingBatcher != nil {
+		return s.embeddingBatcher.Embed(ctx, modelKey, embeddingModel, normalizedQuery)
+	}
+	return embeddingModel.Embed(ctx, normalizedQuery)
 }
 
 // ResolveEmbeddingModelKeys resolves embedding model IDs to their actual model
@@ -171,6 +183,23 @@ func (s *knowledgeBaseService) HybridSearch(ctx context.Context,
 		params.QueryEmbedding = emb
 	}
 
+	// Semantic cache lookup - check cache before hitting vector stores
+	if s.semanticCache != nil && len(params.QueryEmbedding) > 0 {
+		cached, err := s.semanticCache.Get(ctx, requestTenantID, searchKBIDs, params.QueryEmbedding, 0)
+		if err != nil {
+			logger.Warnf(ctx, "Semantic cache get error: %v", err)
+		} else if cached != nil {
+			logger.Infof(ctx, "Semantic cache hit for query (similarity score)")
+			// Apply per-user ACL filtering on cached results
+			filteredResults := s.applyACLFilter(ctx, cached.Results, cached.ChunkMap)
+			if len(filteredResults) > params.MatchCount {
+				filteredResults = filteredResults[:params.MatchCount]
+			}
+			return filteredResults, nil
+		}
+		logger.Infof(ctx, "Semantic cache miss, proceeding to retrieval")
+	}
+
 	// Group KBs by (storeID, owner tenant), resolve the bound engine for
 	// each group, and build the per-group base RetrieveParams once.
 	groups, err := s.resolveStoreGroups(ctx, kb, kbs, params, matchCount)
@@ -251,7 +280,33 @@ func (s *knowledgeBaseService) HybridSearch(ctx context.Context,
 		deduplicatedChunks = deduplicatedChunks[:params.MatchCount]
 	}
 
-	return s.processSearchResults(ctx, deduplicatedChunks, params.SkipContextEnrichment)
+	// Process results - returns unfiltered results + chunkMap for caching
+	searchResults, chunkMap, err := s.processSearchResults(ctx, deduplicatedChunks, params.SkipContextEnrichment)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply per-user ACL filtering before returning
+	filteredResults := s.applyACLFilter(ctx, searchResults, chunkMap)
+
+	// Write to semantic cache (store unfiltered results + chunkMap with tenant isolation)
+	if s.semanticCache != nil && len(params.QueryEmbedding) > 0 && len(searchResults) > 0 {
+		cacheEntry := &types.SemanticCacheEntry{
+			TenantID:         requestTenantID,
+			KnowledgeBaseIDs: searchKBIDs,
+			QueryText:        params.QueryText,
+			QueryEmbedding:   params.QueryEmbedding,
+			Results:          searchResults,
+			ChunkMap:         chunkMap,
+		}
+		if err := s.semanticCache.Set(ctx, cacheEntry); err != nil {
+			logger.Warnf(ctx, "Failed to write to semantic cache: %v", err)
+		} else {
+			logger.Infof(ctx, "Search results written to semantic cache, result count: %d", len(searchResults))
+		}
+	}
+
+	return filteredResults, nil
 }
 
 // pickPrimary returns the KB whose ID matches id, or nil if id is not in
@@ -425,11 +480,14 @@ func (s *knowledgeBaseService) resolveQueryEmbedding(
 
 	var embeddingModel embedding.Embedder
 	var err error
+	var modelKey string
 	if kb.TenantID != currentTenantID {
 		logger.Infof(ctx, "Cross-tenant knowledge base detected, using source tenant's embedding model. KB tenant: %d, current tenant: %d", kb.TenantID, currentTenantID)
 		embeddingModel, err = s.modelService.GetEmbeddingModelForTenant(ctx, kb.EmbeddingModelID, kb.TenantID)
+		modelKey = kb.EmbeddingModelID + "|" + strconv.FormatUint(kb.TenantID, 10)
 	} else {
 		embeddingModel, err = s.modelService.GetEmbeddingModel(ctx, kb.EmbeddingModelID)
+		modelKey = kb.EmbeddingModelID
 	}
 	if err != nil {
 		logger.Errorf(ctx, "Failed to get embedding model, model ID: %s, error: %v", kb.EmbeddingModelID, err)
@@ -438,7 +496,12 @@ func (s *knowledgeBaseService) resolveQueryEmbedding(
 	logger.Infof(ctx, "Embedding model retrieved: %v", embeddingModel)
 
 	logger.Info(ctx, "Starting to generate query embedding")
-	queryEmbedding, err := embeddingModel.Embed(ctx, params.QueryText)
+	var queryEmbedding []float32
+	if s.embeddingBatcher != nil {
+		queryEmbedding, err = s.embeddingBatcher.Embed(ctx, modelKey, embeddingModel, params.QueryText)
+	} else {
+		queryEmbedding, err = embeddingModel.Embed(ctx, params.QueryText)
+	}
 	if err != nil {
 		logger.Errorf(ctx, "Failed to embed query text, query text: %s, error: %v", params.QueryText, err)
 		return nil, err

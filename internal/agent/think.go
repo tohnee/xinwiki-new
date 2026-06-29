@@ -6,13 +6,29 @@ import (
 	"strings"
 	"time"
 
-	agenttools "github.com/Tencent/WeKnora/internal/agent/tools"
-	"github.com/Tencent/WeKnora/internal/common"
-	"github.com/Tencent/WeKnora/internal/event"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/models/chat"
-	"github.com/Tencent/WeKnora/internal/types"
+	agenttools "github.com/Tencent/XinWiki/internal/agent/tools"
+	"github.com/Tencent/XinWiki/internal/common"
+	"github.com/Tencent/XinWiki/internal/event"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/models/chat"
+	"github.com/Tencent/XinWiki/internal/types"
 )
+
+// tokenUsageToDetail converts TokenUsage to TokenUsageDetail for thinking chain tracking
+func tokenUsageToDetail(usage *types.TokenUsage, modelID string) *types.TokenUsageDetail {
+	if usage == nil {
+		return nil
+	}
+	return &types.TokenUsageDetail{
+		InputTokens:         usage.PromptTokens,
+		OutputTokens:        usage.CompletionTokens,
+		CacheCreationTokens: usage.CacheCreationTokens,
+		CacheReadTokens:     usage.CacheReadTokens,
+		TotalTokens:         usage.TotalTokens,
+		Cost:                usage.Cost,
+		ModelID:             modelID,
+	}
+}
 
 // streamLLMResult holds accumulated output from a streaming LLM call.
 type streamLLMResult struct {
@@ -374,7 +390,25 @@ func (e *AgentEngine) callLLMWithRetry(
 	// Sanitize messages before sending to LLM (fix consecutive roles, orphaned tool results)
 	messages = agenttools.SanitizeMessages(messages)
 
+	// Start thinking step for LLM call
+	var thinkStep *types.ThinkingStep
+	if e.thinkingTracker != nil && e.thinkingTracker.IsTracingEnabled() {
+		thinkStep = e.thinkingTracker.StartStep(types.ThinkingTypeThought,
+			fmt.Sprintf("Round %d: Thinking and planning next action", round))
+	}
+
 	response, err := e.streamThinkingToEventBus(ctx, messages, tools, iteration, sessionID)
+
+	// End thinking step with token usage
+	if thinkStep != nil {
+		modelID := e.config.Model
+		if response != nil {
+			e.thinkingTracker.EndStep(tokenUsageToDetail(&response.Usage, modelID))
+		} else {
+			e.thinkingTracker.EndStep(nil)
+		}
+	}
+
 	if err != nil && isTransientError(err) {
 		// Retry transient errors (timeout, rate limit, server errors) up to maxLLMRetries times
 		for retry := 1; retry <= maxLLMRetries; retry++ {

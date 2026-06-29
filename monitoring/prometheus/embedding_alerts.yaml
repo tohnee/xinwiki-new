@@ -1,0 +1,75 @@
+groups:
+  - name: embedding_batcher_alerts
+    rules:
+      - alert: EmbeddingQueueHigh
+        expr: max(embedding_queue_size) > 200
+        for: 2m
+        labels:
+          severity: warning
+          component: embedding_batcher
+        annotations:
+          summary: "Embedding队列堆积超过200"
+          description: "模型 {{ $labels.model_key }} 队列长度 {{ $value | printf \"%.0f\" }}，超过阈值200，可能出现性能瓶颈，建议扩容或调整参数"
+          runbook_url: "https://github.com/yourorg/xinwiki/wiki/Embedding-Batcher-Troubleshooting#queue-high"
+
+      - alert: EmbeddingDegradationHigh
+        expr: sum(rate(embedding_requests_total{result="single"}[5m])) / sum(rate(embedding_requests_total{result=~"batched|single"}[5m])) > 0.2
+        for: 3m
+        labels:
+          severity: warning
+          component: embedding_batcher
+        annotations:
+          summary: "超过20%的请求降级到单次调用"
+          description: "降级比例 {{ $value | humanizePercentage }}，队列可能已满，批量合并机制效果不佳"
+
+      - alert: EmbeddingMergeRateLow
+        expr: (1 - sum(rate(embedding_api_calls_total[10m])) / sum(rate(embedding_requests_total{result=~"batched|single"}[10m]))) < 0.4
+        for: 10m
+        labels:
+          severity: info
+          component: embedding_batcher
+        annotations:
+          summary: "批量合并率低于40%"
+          description: "当前合并率 {{ $value | humanizePercentage }}，低于预期40%，可能并发量不足或MaxWaitTime设置过小"
+
+      - alert: EmbeddingBatchSizeSmall
+        expr: (sum(rate(embedding_batch_size_sum[10m])) / sum(rate(embedding_batch_size_count[10m]))) < 8
+        for: 10m
+        labels:
+          severity: info
+          component: embedding_batcher
+        annotations:
+          summary: "平均批次大小过小"
+          description: "当前平均批次大小 {{ $value | printf \"%.1f\" }}，建议增加MaxWaitTime或MaxBatchSize提高批量效率"
+
+      - alert: EmbeddingAPILatencyHigh
+        expr: histogram_quantile(0.99, sum(rate(embedding_batch_latency_seconds_bucket[5m])) by (le)) > 2
+        for: 5m
+        labels:
+          severity: critical
+          component: embedding_batcher
+        annotations:
+          summary: "Embedding API P99延迟超过2秒"
+          description: "模型API延迟过高，P99 {{ $value | printf \"%.2f\" }}s，请检查模型服务状态或网络连接"
+
+      - alert: EmbeddingErrorRateHigh
+        expr: sum(rate(embedding_requests_total{result="error"}[5m])) / sum(rate(embedding_requests_total[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          component: embedding_batcher
+        annotations:
+          summary: "Embedding错误率超过5%"
+          description: "当前错误率 {{ $value | humanizePercentage }}，请检查模型服务可用性"
+
+  - name: semantic_cache_alerts
+    rules:
+      - alert: SemanticCacheHitRateLow
+        expr: rate(semantic_cache_hits_total[10m]) / rate(semantic_cache_requests_total[10m]) < 0.7
+        for: 15m
+        labels:
+          severity: warning
+          component: semantic_cache
+        annotations:
+          summary: "语义缓存命中率低于70%"
+          description: "当前命中率 {{ $value | humanizePercentage }}，建议检查查询归一化逻辑或缓存TTL设置"

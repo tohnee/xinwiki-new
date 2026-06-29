@@ -5,11 +5,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/config"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/prompt"
-	"github.com/Tencent/WeKnora/cli/internal/secrets"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/config"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/prompt"
+	"github.com/Tencent/XinWiki/cli/internal/secrets"
 )
 
 type RemoveOptions struct {
@@ -30,7 +30,7 @@ type removeResult struct {
 	WasCurrent bool   `json:"was_current"`
 }
 
-// NewCmdRemove builds `weknora profile remove`. Drops the entry from
+// NewCmdRemove builds `xinwiki profile remove`. Drops the entry from
 // config.yaml and best-effort clears keyring references. Removing a
 // non-current profile is low-friction (no prompt). Removing the *current*
 // profile triggers the destructive-write confirmation protocol (exit 10),
@@ -41,15 +41,15 @@ func NewCmdRemove(f *cmdutil.Factory) *cobra.Command {
 		Use:   "remove <name>",
 		Short: "Remove a profile (drops entry, clears keyring refs)",
 		Long: `Deletes the named profile from config.yaml and best-effort clears any
-keyring references it owned (matches ` + "`weknora auth logout`" + `).
+keyring references it owned (matches ` + "`xinwiki auth logout`" + `).
 
 Removing the current profile also clears CurrentProfile - subsequent commands
-will error until you select another with ` + "`weknora profile use <name>`" + ` or pick
+will error until you select another with ` + "`xinwiki profile use <name>`" + ` or pick
 one up via the global ` + "`--profile`" + ` flag. Because that change is observable in
 every later command, removing the current profile requires explicit -y/--yes
 in scripted / --format json invocations (exit code 10; see cli/README.md).`,
-		Example: `  weknora profile remove staging              # remove non-current → no prompt
-  weknora profile remove production -y        # remove current → confirm`,
+		Example: `  xinwiki profile remove staging              # remove non-current → no prompt
+  xinwiki profile remove production -y        # remove current → confirm`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			fopts, err := cmdutil.CheckFormatFlag(c)
@@ -91,8 +91,8 @@ in scripted / --format json invocations (exit code 10; see cli/README.md).`,
 		UsedFor:       "remove a named profile and its stored credentials",
 		RequiredFlags: []string{"<name> (positional)"},
 		Examples: []string{
-			"weknora profile remove staging",
-			"weknora profile remove production -y",
+			"xinwiki profile remove staging",
+			"xinwiki profile remove production -y",
 		},
 		Warnings: []string{
 			"Requires explicit user approval (exit 10 / input.confirmation_required); never auto-add -y.",
@@ -117,7 +117,7 @@ func runRemove(opts *RemoveOptions, fopts *cmdutil.FormatOptions, name string, s
 	// Confirmation only fires for removing the current profile - non-current
 	// remove uses the same low-friction policy as `auth logout`.
 	if wasCurrent {
-		if err := cmdutil.ConfirmDestructive(p, opts.Yes, jsonOut, "remove", "current profile", name, "profile.remove", fmt.Sprintf("weknora profile remove %s -y", name)); err != nil {
+		if err := cmdutil.ConfirmDestructive(p, opts.Yes, jsonOut, "remove", "current profile", name, "profile.remove", fmt.Sprintf("xinwiki profile remove %s -y", name)); err != nil {
 			return err
 		}
 	}
@@ -138,7 +138,7 @@ func runRemove(opts *RemoveOptions, fopts *cmdutil.FormatOptions, name string, s
 		return fopts.Emit(iostreams.IO.Out, result, nil)
 	}
 	if wasCurrent {
-		fmt.Fprintf(iostreams.IO.Out, "✓ Removed profile %s (current profile cleared - run `weknora profile use <name>` to pick another)\n", name)
+		fmt.Fprintf(iostreams.IO.Out, "✓ Removed profile %s (current profile cleared - run `xinwiki profile use <name>` to pick another)\n", name)
 	} else {
 		fmt.Fprintf(iostreams.IO.Out, "✓ Removed profile %s\n", name)
 	}

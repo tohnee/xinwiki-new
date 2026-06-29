@@ -1,4 +1,4 @@
-// Package client provides the implementation for interacting with the WeKnora API
+// Package client provides the implementation for interacting with the XinWiki API
 // This package encapsulates CRUD operations for server resources and provides a friendly interface for callers
 // The Chunk related interfaces are used to manage document chunks in the knowledge base
 package client

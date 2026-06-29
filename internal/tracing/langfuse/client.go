@@ -56,7 +56,7 @@ func (c *client) ingest(ctx context.Context, events []ingestionEvent) error {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", c.auth)
-	req.Header.Set("User-Agent", "weknora-langfuse/1.0")
+	req.Header.Set("User-Agent", "xinwiki-langfuse/1.0")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

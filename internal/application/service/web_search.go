@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/config"
-	infra_web_search "github.com/Tencent/WeKnora/internal/infrastructure/web_search"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/searchutil"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/config"
+	infra_web_search "github.com/Tencent/XinWiki/internal/infrastructure/web_search"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/searchutil"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 )
 
 // WebSearchService provides web search functionality.

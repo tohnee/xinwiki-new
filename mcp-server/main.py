@@ -5,8 +5,8 @@ WeKnora MCP Server 主入口点
 这个文件提供了一个统一的入口点来启动 WeKnora MCP 服务器。
 可以通过多种方式运行：
 1. python main.py
-2. python -m weknora_mcp_server
-3. weknora-mcp-server (安装后)
+2. python -m xinwiki_mcp_server
+3. xinwiki-mcp-server (安装后)
 """
 
 import argparse
@@ -133,7 +133,7 @@ async def main():
     try:
         print(f"正在启动 WeKnora MCP Server (transport={args.transport})...")
 
-        from weknora_mcp_server import run_stdio, run_sse, run_http
+        from xinwiki_mcp_server import run_stdio, run_sse, run_http
 
         # Select transport mode based on CLI argument or MCP_TRANSPORT env var
         # - stdio: Default, used by VS Code Copilot for local integration

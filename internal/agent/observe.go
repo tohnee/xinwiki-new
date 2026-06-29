@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	agenttoken "github.com/Tencent/WeKnora/internal/agent/token"
-	agenttools "github.com/Tencent/WeKnora/internal/agent/tools"
-	"github.com/Tencent/WeKnora/internal/common"
-	"github.com/Tencent/WeKnora/internal/event"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/models/chat"
-	"github.com/Tencent/WeKnora/internal/types"
+	agenttoken "github.com/Tencent/XinWiki/internal/agent/token"
+	agenttools "github.com/Tencent/XinWiki/internal/agent/tools"
+	"github.com/Tencent/XinWiki/internal/common"
+	"github.com/Tencent/XinWiki/internal/event"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/models/chat"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // manageContextWindow consolidates or compresses messages if approaching the token limit.

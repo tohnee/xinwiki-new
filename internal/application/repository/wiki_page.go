@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 	"gorm.io/gorm"
 )
 
@@ -1073,4 +1073,185 @@ func (r *wikiPageRepository) UpdateIssueStatus(ctx context.Context, issueID stri
 	return r.db.WithContext(ctx).Model(&types.WikiPageIssue{}).
 		Where("id = ?", issueID).
 		Update("status", status).Error
+}
+
+// UpdateStatus updates only the status and updated_at fields of a page.
+func (r *wikiPageRepository) UpdateStatus(ctx context.Context, pageID string, status string) error {
+	result := r.db.WithContext(ctx).Model(&types.WikiPage{}).
+		Where("id = ?", pageID).
+		Updates(map[string]interface{}{
+			"status":     status,
+			"updated_at": gorm.Expr("NOW()"),
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrWikiPageNotFound
+	}
+	return nil
+}
+
+// CreateSupersession inserts a new wiki supersession record.
+func (r *wikiPageRepository) CreateSupersession(ctx context.Context, supersession *types.WikiSupersession) error {
+	return r.db.WithContext(ctx).Create(supersession).Error
+}
+
+// GetSupersessionByOldPageID returns the supersession record for a given old page ID.
+func (r *wikiPageRepository) GetSupersessionByOldPageID(ctx context.Context, kbID string, oldPageID string) (*types.WikiSupersession, error) {
+	var ss types.WikiSupersession
+	if err := r.db.WithContext(ctx).
+		Where("knowledge_base_id = ? AND old_page_id = ?", kbID, oldPageID).
+		First(&ss).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &ss, nil
+}
+
+// ListSupersessionsByNewPageID returns all supersession records where the given page is the new/replacement page.
+func (r *wikiPageRepository) ListSupersessionsByNewPageID(ctx context.Context, kbID string, newPageID string) ([]*types.WikiSupersession, error) {
+	var ss []*types.WikiSupersession
+	if err := r.db.WithContext(ctx).
+		Where("knowledge_base_id = ? AND new_page_id = ?", kbID, newPageID).
+		Order("created_at DESC").
+		Find(&ss).Error; err != nil {
+		return nil, err
+	}
+	return ss, nil
+}
+
+// ListSupersessions returns all supersession records for a knowledge base.
+func (r *wikiPageRepository) ListSupersessions(ctx context.Context, kbID string) ([]*types.WikiSupersession, error) {
+	var ss []*types.WikiSupersession
+	if err := r.db.WithContext(ctx).
+		Where("knowledge_base_id = ?", kbID).
+		Order("created_at DESC").
+		Find(&ss).Error; err != nil {
+		return nil, err
+	}
+	return ss, nil
+}
+
+// --- Milestone C: Confidence, Quality & Freshness ---
+
+// IncrementViewCount atomically increments view count and updates last_accessed_at.
+func (r *wikiPageRepository) IncrementViewCount(ctx context.Context, pageID string) error {
+	result := r.db.WithContext(ctx).Model(&types.WikiPage{}).
+		Where("id = ?", pageID).
+		Updates(map[string]interface{}{
+			"view_count":       gorm.Expr("view_count + 1"),
+			"last_accessed_at": gorm.Expr("NOW()"),
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrWikiPageNotFound
+	}
+	return nil
+}
+
+// IncrementFeedback atomically increments positive or negative feedback count.
+func (r *wikiPageRepository) IncrementFeedback(ctx context.Context, pageID string, isPositive bool) error {
+	field := "negative_feedback"
+	if isPositive {
+		field = "positive_feedback"
+	}
+	result := r.db.WithContext(ctx).Model(&types.WikiPage{}).
+		Where("id = ?", pageID).
+		Update(field, gorm.Expr(field+" + 1"))
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrWikiPageNotFound
+	}
+	return nil
+}
+
+// SetExpertValidation atomically sets expert validation status and timestamp.
+func (r *wikiPageRepository) SetExpertValidation(ctx context.Context, pageID string, validated bool) error {
+	updates := map[string]interface{}{
+		"expert_validated": validated,
+	}
+	if validated {
+		updates["expert_validated_at"] = gorm.Expr("NOW()")
+		updates["expert_validation"] = 1.0
+	} else {
+		updates["expert_validated_at"] = nil
+		updates["expert_validation"] = 0.0
+	}
+	result := r.db.WithContext(ctx).Model(&types.WikiPage{}).
+		Where("id = ?", pageID).
+		Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrWikiPageNotFound
+	}
+	return nil
+}
+
+// SetCriticalityLevel sets the criticality level for a page.
+func (r *wikiPageRepository) SetCriticalityLevel(ctx context.Context, pageID string, level string) error {
+	result := r.db.WithContext(ctx).Model(&types.WikiPage{}).
+		Where("id = ?", pageID).
+		Update("criticality_level", level)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrWikiPageNotFound
+	}
+	return nil
+}
+
+// UpdateScores updates all scoring fields for a page (confidence, quality, freshness, boost).
+func (r *wikiPageRepository) UpdateScores(ctx context.Context, page *types.WikiPage) error {
+	result := r.db.WithContext(ctx).Model(&types.WikiPage{}).
+		Where("id = ?", page.ID).
+		Updates(map[string]interface{}{
+			"confidence_score":      page.ConfidenceScore,
+			"source_authority":      page.SourceAuthority,
+			"evidence_support":      page.EvidenceSupport,
+			"recency_score":         page.RecencyScore,
+			"consistency_score":     page.ConsistencyScore,
+			"expert_validation":     page.ExpertValidation,
+			"usage_feedback":        page.UsageFeedback,
+			"contradiction_penalty": page.ContradictionPenalty,
+			"staleness_penalty":     page.StalenessPenalty,
+			"final_score":           page.FinalScore,
+			"quality_score":         page.QualityScore,
+			"content_completeness":  page.ContentCompleteness,
+			"source_reliability":    page.SourceReliability,
+			"timeliness_score":      page.TimelinessScore,
+			"readability_score":     page.ReadabilityScore,
+			"citation_sufficiency":  page.CitationSufficiency,
+			"freshness_state":       page.FreshnessState,
+			"retrieval_boost":       page.RetrievalBoost,
+			"score_last_calculated_at": page.ScoreLastCalculatedAt,
+			"updated_at":            page.UpdatedAt,
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrWikiPageNotFound
+	}
+	return nil
+}
+
+// ListAllNonDeleted returns all non-deleted pages for batch score refresh.
+func (r *wikiPageRepository) ListAllNonDeleted(ctx context.Context, kbID string) ([]*types.WikiPage, error) {
+	var pages []*types.WikiPage
+	if err := r.db.WithContext(ctx).
+		Where("knowledge_base_id = ? AND deleted_at IS NULL", kbID).
+		Find(&pages).Error; err != nil {
+		return nil, err
+	}
+	return pages, nil
 }

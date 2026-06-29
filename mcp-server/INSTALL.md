@@ -1,4 +1,4 @@
-# WeKnora MCP Server 安装和使用指南
+# XinWiki MCP Server 安装和使用指南
 
 ## 快速开始
 
@@ -94,7 +94,7 @@ python main.py --check-only
 ```
 
 这将显示：
-- WeKnora API 基础 URL 配置
+- XinWiki API 基础 URL 配置
 - API 密钥设置状态
 - 依赖包安装状态
 
@@ -107,9 +107,9 @@ python main.py --check-only
 - 没有文件名冲突
 
 ### 2. 连接错误
-如果无法连接到 WeKnora API：
+如果无法连接到 XinWiki API：
 - 检查 `WEKNORA_BASE_URL` 是否正确
-- 确认 WeKnora 服务正在运行
+- 确认 XinWiki 服务正在运行
 - 验证网络连接
 
 ### 3. 认证错误
@@ -122,7 +122,7 @@ python main.py --check-only
 
 ### 项目结构
 ```
-WeKnoraMCP/
+XinWikiMCP/
 ├── __init__.py              # 包初始化文件
 ├── main.py                  # 主入口点
 ├── run_server.py           # 原始启动脚本
@@ -136,7 +136,7 @@ WeKnoraMCP/
 ```
 
 ### 添加新功能
-1. 在 `WeKnoraClient` 类中添加新的 API 方法
+1. 在 `XinWikiClient` 类中添加新的 API 方法
 2. 在 `handle_list_tools()` 中注册新工具
 3. 在 `handle_call_tool()` 中实现工具逻辑
 4. 更新文档和测试
@@ -177,7 +177,7 @@ CMD ["weknora-mcp-server"]
 创建 systemd 服务文件 `/etc/systemd/system/weknora-mcp.service`：
 ```ini
 [Unit]
-Description=WeKnora MCP Server
+Description=XinWiki MCP Server
 After=network.target
 
 [Service]
@@ -205,4 +205,4 @@ sudo systemctl start weknora-mcp
 1. 查看日志输出
 2. 检查环境配置
 3. 参考故障排除部分
-4. 提交 Issue 到项目仓库: https://github.com/NannaOlympicBroadcast/WeKnoraMCP/issues
+4. 提交 Issue 到项目仓库: https://github.com/NannaOlympicBroadcast/XinWikiMCP/issues

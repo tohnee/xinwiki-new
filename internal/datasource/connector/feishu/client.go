@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/logger"
+	"github.com/Tencent/XinWiki/internal/logger"
 )
 
 // Client wraps the Feishu Open Platform API for document/wiki operations.

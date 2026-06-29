@@ -8,12 +8,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/format"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/output"
-	"github.com/Tencent/WeKnora/cli/internal/sse"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/format"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/output"
+	"github.com/Tencent/XinWiki/cli/internal/sse"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // sessionAskFields enumerates the NDJSON init-event fields surfaced for
@@ -45,7 +45,7 @@ type AskService interface {
 	AgentQAStreamWithRequest(ctx context.Context, sessionID string, req *sdk.AgentQARequest, cb sdk.AgentEventCallback) error
 }
 
-// NewCmdAsk builds `weknora session ask --agent <agent-id> "<text>"`.
+// NewCmdAsk builds `xinwiki session ask --agent <agent-id> "<text>"`.
 func NewCmdAsk(f *cmdutil.Factory) *cobra.Command {
 	opts := &AskOptions{}
 	cmd := &cobra.Command{
@@ -56,7 +56,7 @@ a new session is auto-created and its id is reported in the output for
 the caller to thread follow-ups.
 
 AI agents: this is the primary entrypoint for invoking custom agents.
-The 'weknora agent' subtree handles CRUD only (list / view / create /
+The 'xinwiki agent' subtree handles CRUD only (list / view / create /
 edit / delete / status / check).
 
 Modes:
@@ -66,9 +66,9 @@ Modes:
                                  then raw SDK agent events verbatim. Both
                                  json and ndjson flags produce the same
                                  NDJSON stream.`,
-		Example: `  weknora session ask --agent ag_x "Summarize Q3 sales"
-  weknora session ask --session sess_x --agent ag_x "Follow-up question"
-  weknora session ask --agent ag_x "Multi-step task" --format ndjson`,
+		Example: `  xinwiki session ask --agent ag_x "Summarize Q3 sales"
+  xinwiki session ask --session sess_x --agent ag_x "Follow-up question"
+  xinwiki session ask --agent ag_x "Multi-step task" --format ndjson`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			fopts, err := cmdutil.CheckFormatFlag(c)
@@ -92,8 +92,8 @@ Modes:
 		UsedFor:       "Invoke a custom agent in a session context. Produces an NDJSON event stream: init line (session_id, agent_id) then raw SDK agent events. Use --format json or --format ndjson.",
 		RequiredFlags: []string{"--agent"},
 		Examples: []string{
-			`weknora session ask --agent ag_x "Summarize Q3 sales" --format json`,
-			`weknora session ask --session sess_x --agent ag_x "Follow-up question" --format json`,
+			`xinwiki session ask --agent ag_x "Summarize Q3 sales" --format json`,
+			`xinwiki session ask --session sess_x --agent ag_x "Follow-up question" --format json`,
 		},
 		Output: "NDJSON stream: {type:init, session_id, agent_id} then SDK agent events (response_type, content, done, knowledge_references, ...)",
 	})
@@ -119,7 +119,7 @@ func runAsk(ctx context.Context, opts *AskOptions, fopts *cmdutil.FormatOptions,
 	sessionID := opts.SessionID
 	autoCreated := false
 	if sessionID == "" {
-		sess, err := svc.CreateSession(ctx, &sdk.CreateSessionRequest{Title: "weknora session ask"})
+		sess, err := svc.CreateSession(ctx, &sdk.CreateSessionRequest{Title: "xinwiki session ask"})
 		if err != nil {
 			if cmdutil.IsCancelled(ctx, err) {
 				return cmdutil.Wrapf(cmdutil.CodeOperationCancelled, err, "session ask cancelled")

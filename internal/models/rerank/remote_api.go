@@ -8,8 +8,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/Tencent/WeKnora/internal/logger"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/logger"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 )
 
 // OpenAIReranker implements a reranking system based on OpenAI models

@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -268,7 +268,7 @@ func (c *mcpGoClient) Initialize(ctx context.Context) (*InitializeResult, error)
 			ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
 			Capabilities:    mcp.ClientCapabilities{},
 			ClientInfo: mcp.Implementation{
-				Name:    "WeKnora",
+				Name:    "XinWiki",
 				Version: "1.0.0",
 			},
 		},

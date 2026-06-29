@@ -23,7 +23,7 @@
       <div class="builtin-models-hint" role="note">
         <p class="builtin-hint-label">{{ $t('modelSettings.builtinModels.title') }}</p>
         <p class="builtin-hint-text">{{ $t('modelSettings.builtinModels.description') }}</p>
-        <a class="doc-link" href="https://github.com/Tencent/WeKnora/blob/main/docs/BUILTIN_MODELS.md" target="_blank"
+        <a class="doc-link" href="https://github.com/Tencent/XinWiki/blob/main/docs/BUILTIN_MODELS.md" target="_blank"
           rel="noopener noreferrer">
           {{ $t('modelSettings.builtinModels.viewGuide') }}
           <t-icon name="link" class="link-icon" />
@@ -241,7 +241,7 @@ const sourceLabel = (type: ModelType) => {
   return t('modelSettings.source.remote')
 }
 
-// Maps a backend `provider` id (e.g. "openai", "aliyun", "weknoracloud")
+// Maps a backend `provider` id (e.g. "openai", "aliyun", "xinwikicloud")
 // to its localized short label. Reuses the same i18n keys the editor's
 // provider dropdown uses, so the model card and the editor stay in sync
 // when a provider is renamed. Falls back to '' when the backend didn't

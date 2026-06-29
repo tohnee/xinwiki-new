@@ -1,7 +1,7 @@
-# WeKnora 云镜像打包脚本（Cloud-Agnostic）
+# XinWiki 云镜像打包脚本（Cloud-Agnostic）
 
-> **本文档面向「想把 WeKnora 打包成云镜像（AMI / 自定义镜像 / Snapshot）分发给其他人」的用户。**
-> **如果你只是想自己用 WeKnora，请直接看主仓 [README](../../README.md)，`docker compose up -d` 即可。**
+> **本文档面向「想把 XinWiki 打包成云镜像（AMI / 自定义镜像 / Snapshot）分发给其他人」的用户。**
+> **如果你只是想自己用 XinWiki，请直接看主仓 [README](../../README.md)，`docker compose up -d` 即可。**
 
 ## 这套脚本能做什么
 
@@ -9,7 +9,7 @@
 
 - 别人基于这份镜像创建新实例后，**首次开机会自动**：
   - 生成全新的随机密钥（DB / Redis / JWT / AES）
-  - 启动 WeKnora 全部默认容器
+  - 启动 XinWiki 全部默认容器
   - 把生成的凭证写到 `/root/weknora-credentials.txt`
   - 自删除一次性初始化脚本
 - 实现「**开机即用、零私密泄漏、每实例独立密钥**」
@@ -39,9 +39,9 @@ scripts/cloud-image/
     └── weknora-firstboot.service # 首次启动 init(执行后自删)
 ```
 
-## 不需要 clone 整个 WeKnora 仓库
+## 不需要 clone 整个 XinWiki 仓库
 
-WeKnora 所有容器都从 Docker Hub 拉镜像（`wechatopenai/weknora-*`），Go / Python / 前端源码都不需要带到宿主机。
+XinWiki 所有容器都从 Docker Hub 拉镜像（`wechatopenai/weknora-*`），Go / Python / 前端源码都不需要带到宿主机。
 
 `docker-compose.yml` 实际从宿主机挂载到容器的只有：
 
@@ -63,14 +63,14 @@ WeKnora 所有容器都从 Docker Hub 拉镜像（`wechatopenai/weknora-*`），
 
 ## 镜像里启动哪些容器
 
-WeKnora `docker-compose.yml` 大量服务是 **profile 限定**，本镜像只默认启动核心 5 个。
+XinWiki `docker-compose.yml` 大量服务是 **profile 限定**，本镜像只默认启动核心 5 个。
 
 **默认启动（5 个常驻容器，开机自启）：**
 
 | 容器 | 角色 |
 |---|---|
 | `frontend` | Vue UI / NGINX 反代 |
-| `app` | WeKnora Go 后端 |
+| `app` | XinWiki Go 后端 |
 | `docreader` | Python 文档解析 (gRPC) |
 | `postgres` (ParadeDB) | 主库 + pgvector 向量检索 + BM25 |
 | `redis` | 流式输出 / 缓存 / 异步队列 |
@@ -95,7 +95,7 @@ WeKnora `docker-compose.yml` 大量服务是 **profile 限定**，本镜像只�
 启用方式：
 
 ```bash
-cd /opt/WeKnora
+cd /opt/XinWiki
 docker compose --profile neo4j up -d                 # 启用 GraphRAG
 docker compose --profile langfuse up -d              # 启用自建 Langfuse
 docker compose --profile qdrant up -d                # 切换到 Qdrant
@@ -120,7 +120,7 @@ docker compose --profile odl-hybrid up -d --build odl-hybrid  # Docling hybrid�
 
 要求：systemd + 联网 + sudo 权限。推荐 Ubuntu 22.04 / Debian 12 / CentOS Stream 9。
 
-**1. 拷入脚本（任选一种，都不用 clone 整个 WeKnora 仓库）。**
+**1. 拷入脚本（任选一种，都不用 clone 整个 XinWiki 仓库）。**
 
 > 命令需要写入 `/opt/`，最省心的做法是先 `sudo -i` 切到 root 再粘贴。
 > 如果坚持每行加 `sudo`，注意 `>>` 重定向是在你当前 shell 执行的，必须改用 `sudo tee -a`。
@@ -134,7 +134,7 @@ sudo -i      # 切到 root, 后续命令直接执行
 # 不通时设 GH_PROXY=https://gh-proxy.com/ 或 https://ghfast.top/, 注意末尾斜杠。
 GH_PROXY="${GH_PROXY:-}"
 mkdir -p /opt/weknora-tools && cd /opt/weknora-tools
-git init -q && git remote add origin "${GH_PROXY}https://github.com/Tencent/WeKnora.git"
+git init -q && git remote add origin "${GH_PROXY}https://github.com/Tencent/XinWiki.git"
 git config core.sparseCheckout true
 echo "scripts/cloud-image/" >> .git/info/sparse-checkout
 git pull -q --depth=1 origin main
@@ -143,7 +143,7 @@ git pull -q --depth=1 origin main
 # 不通时设 GH_PROXY=https://gh-proxy.com/ 或 https://ghfast.top/, 注意末尾斜杠。
 GH_PROXY="${GH_PROXY:-}"
 mkdir -p /opt/weknora-tools/scripts/cloud-image/systemd && cd /opt/weknora-tools
-base="${GH_PROXY}https://raw.githubusercontent.com/Tencent/WeKnora/main/scripts/cloud-image"
+base="${GH_PROXY}https://raw.githubusercontent.com/Tencent/XinWiki/main/scripts/cloud-image"
 for f in prepare.sh cleanup.sh firstboot.sh README.md; do
   curl -fsSL "$base/$f" -o "scripts/cloud-image/$f"
 done
@@ -197,7 +197,7 @@ sudo \
 `prepare.sh` 会：
 
 1. 安装 Docker / Docker Compose plugin（已装则跳过）
-2. 用 `curl + tar` 下载 4 个运行时文件到 `/opt/WeKnora`
+2. 用 `curl + tar` 下载 4 个运行时文件到 `/opt/XinWiki`
 3. 拉取并启动默认 5 个容器 + 预拉 sandbox 镜像
 4. 安装 `weknora.service`（开机自启）+ `weknora-firstboot.service`（首启 init）
 
@@ -213,7 +213,7 @@ sudo \
 - 能进行一次问答
 
 ```bash
-sudo docker compose -f /opt/WeKnora/docker-compose.yml ps
+sudo docker compose -f /opt/XinWiki/docker-compose.yml ps
 curl -f http://localhost:8080/health
 ```
 
@@ -232,7 +232,7 @@ sudo bash /opt/weknora-tools/scripts/cloud-image/cleanup.sh
 用户用你的镜像创建实例后，第一次开机时 `weknora-firstboot.service` 会：
 
 1. 生成随机的 `DB_PASSWORD` / `REDIS_PASSWORD` / `JWT_SECRET` / `SYSTEM_AES_KEY` / `TENANT_AES_KEY`
-2. 写回 `/opt/WeKnora/.env`
+2. 写回 `/opt/XinWiki/.env`
 3. `docker compose up -d` 启动全部服务
 4. 把生成的凭证写到 `/root/weknora-credentials.txt`（仅 root 可读）
 5. 把自己 disable + 删除自己（确保只跑一次）

@@ -1,5 +1,5 @@
 {
-  "description": "WeKnora Mini Program plugin",
+  "description": "XinWiki Mini Program plugin",
   "setting": {
     "urlCheck": true,
     "es6": true,
@@ -9,6 +9,6 @@
   },
   "compileType": "miniprogram",
   "libVersion": "latest",
-  "projectname": "WeKnora Mini Program",
+  "projectname": "XinWiki Mini Program",
   "condition": {}
 }

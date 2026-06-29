@@ -8,10 +8,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Tencent/WeKnora/internal/agent"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/models/chat"
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/agent"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/models/chat"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // wikiTaxonomyItem is one entity/concept page to be filed into the directory.

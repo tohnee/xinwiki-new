@@ -3,7 +3,7 @@ package datasource
 import (
 	"context"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // Connector is the interface that all external data source connectors must implement.

@@ -1,4 +1,4 @@
-// Package api implements the `weknora api` raw HTTP passthrough command.
+// Package api implements the `xinwiki api` raw HTTP passthrough command.
 //
 // Shape: one positional (path) + `-X/--method` flag, default GET (auto-
 // promoted to POST when a body is supplied via --input). Default raw
@@ -19,9 +19,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // apiFields is intentionally a marker - api wraps arbitrary HTTP responses
@@ -45,12 +45,12 @@ type Service interface {
 	Raw(ctx context.Context, method, path string, body any) (*http.Response, error)
 }
 
-// NewCmd returns the `weknora api` command.
+// NewCmd returns the `xinwiki api` command.
 func NewCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &Options{}
 	cmd := &cobra.Command{
 		Use:   "api <path>",
-		Short: "Make a raw API request to the WeKnora server",
+		Short: "Make a raw API request to the XinWiki server",
 		Long: `Raw HTTP API access. Body via --input <file> or --input - (stdin).
 
 The default method is GET; passing --input auto-promotes it to POST. Use
@@ -62,9 +62,9 @@ active profile. The response body is written to stdout by default; use
 --format json to emit a {status, headers, body} envelope.
 
 Examples:
-  weknora api /api/v1/knowledge-bases                                # GET
-  echo '{"name":"foo"}' | weknora api /api/v1/knowledge-bases --input -  # POST (auto)
-  weknora api /api/v1/knowledge-bases/kb_xxx -X DELETE`,
+  xinwiki api /api/v1/knowledge-bases                                # GET
+  echo '{"name":"foo"}' | xinwiki api /api/v1/knowledge-bases --input -  # POST (auto)
+  xinwiki api /api/v1/knowledge-bases/kb_xxx -X DELETE`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			opts.Yes, _ = c.Flags().GetBool("yes")
@@ -111,10 +111,10 @@ Examples:
 				}
 			}
 			method := resolveMethod(opts)
-			// Escape-hatch DELETE through `weknora api` is just as destructive
-			// as `weknora kb delete` - exit-10 protocol must apply (cli/README.md).
+			// Escape-hatch DELETE through `xinwiki api` is just as destructive
+			// as `xinwiki kb delete` - exit-10 protocol must apply (cli/README.md).
 			if method == http.MethodDelete {
-				if err := cmdutil.ConfirmDestructive(f.Prompter(), opts.Yes, fopts.WantsJSON(), "delete", "endpoint", args[0], "api.delete", "weknora api -X DELETE "+args[0]+" -y"); err != nil {
+				if err := cmdutil.ConfirmDestructive(f.Prompter(), opts.Yes, fopts.WantsJSON(), "delete", "endpoint", args[0], "api.delete", "xinwiki api -X DELETE "+args[0]+" -y"); err != nil {
 					return err
 				}
 			}
@@ -132,12 +132,12 @@ Examples:
 	cmdutil.AddFormatFlag(cmd, apiFields...)
 	cmdutil.AddDryRunFlag(cmd, &opts.DryRun)
 	cmdutil.SetAgentHelp(cmd, cmdutil.AgentHelp{
-		UsedFor:       "raw HTTP passthrough to weknora-server API endpoints when typed subcommands are insufficient",
+		UsedFor:       "raw HTTP passthrough to xinwiki-server API endpoints when typed subcommands are insufficient",
 		RequiredFlags: []string{"path (positional)"},
 		Examples: []string{
-			"weknora api /api/v1/knowledge-bases",
-			"weknora api -X DELETE /api/v1/knowledge-bases/kb_x -y",
-			"echo '{\"name\":\"foo\"}' | weknora api -X POST /api/v1/knowledge-bases --input -",
+			"xinwiki api /api/v1/knowledge-bases",
+			"xinwiki api -X DELETE /api/v1/knowledge-bases/kb_x -y",
+			"echo '{\"name\":\"foo\"}' | xinwiki api -X POST /api/v1/knowledge-bases --input -",
 		},
 		Output: "raw server response body or envelope on error",
 		Warnings: []string{

@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Tencent/WeKnora/internal/logger"
+	"github.com/Tencent/XinWiki/internal/logger"
 )
 
 const envDorisCompatMode = "DORIS_COMPAT_MODE"

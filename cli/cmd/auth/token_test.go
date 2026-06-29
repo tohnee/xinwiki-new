@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/config"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/secrets"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/config"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/secrets"
 )
 
 // tokenTestFactory wires a config + in-memory secrets store the same way
@@ -24,8 +24,8 @@ func tokenTestFactory(t *testing.T, cfg *config.Config, store *secrets.MemStore)
 }
 
 // TestAuthToken_DefaultIsRawToken locks the scripting contract: with no
-// explicit --format, `weknora auth token` emits the raw token (so
-// WEKNORA_TOKEN=$(weknora auth token) works), NOT the JSON envelope — even
+// explicit --format, `xinwiki auth token` emits the raw token (so
+// WEKNORA_TOKEN=$(xinwiki auth token) works), NOT the JSON envelope — even
 // though the global --format default is json. Explicit --format json still
 // emits the {token,mode,profile} envelope (covered by the JSON test below).
 func TestAuthToken_DefaultIsRawToken(t *testing.T) {

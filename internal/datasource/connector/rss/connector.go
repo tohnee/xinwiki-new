@@ -9,9 +9,9 @@ import (
 	"time"
 
 	htmltomd "github.com/JohannesKaufmann/html-to-markdown/v2"
-	"github.com/Tencent/WeKnora/internal/datasource"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/datasource"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
 	"github.com/mmcdole/gofeed"
 )
 

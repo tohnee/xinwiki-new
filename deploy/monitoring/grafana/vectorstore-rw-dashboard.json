@@ -1,0 +1,307 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "VectorStore Read-Write Separation Monitoring Dashboard",
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Overview",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "title": "Read Requests QPS",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum by (store_id, node_type) (rate(vectorstore_read_requests_total{result=\"success\"}[5m]))",
+          "legendFormat": "{{store_id}} - {{node_type}} (success)",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (store_id) (rate(vectorstore_read_requests_total{result=\"error\"}[5m]))",
+          "legendFormat": "{{store_id}} - error",
+          "refId": "B"
+        }
+      ],
+      "yAxes": [
+        { "label": "QPS", "min": 0 },
+        { "show": false }
+      ]
+    },
+    {
+      "title": "Write Requests QPS",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum by (store_id, operation) (rate(vectorstore_write_requests_total{result=\"success\"}[5m]))",
+          "legendFormat": "{{store_id}} - {{operation}} (success)",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (store_id) (rate(vectorstore_write_requests_total{result=\"error\"}[5m]))",
+          "legendFormat": "{{store_id}} - error",
+          "refId": "B"
+        }
+      ],
+      "yAxes": [
+        { "label": "QPS", "min": 0 },
+        { "show": false }
+      ]
+    },
+    {
+      "title": "Read Latency (p50, p95, p99)",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le, store_id) (rate(vectorstore_request_latency_seconds{operation=\"get_reader\"}[5m])))",
+          "legendFormat": "{{store_id}} - p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, store_id) (rate(vectorstore_request_latency_seconds{operation=\"get_reader\"}[5m])))",
+          "legendFormat": "{{store_id}} - p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le, store_id) (rate(vectorstore_request_latency_seconds{operation=\"get_reader\"}[5m])))",
+          "legendFormat": "{{store_id}} - p99",
+          "refId": "C"
+        }
+      ],
+      "yAxes": [
+        { "label": "Latency (s)", "min": 0 },
+        { "show": false }
+      ]
+    },
+    {
+      "title": "Read Consistency Level Distribution",
+      "type": "piechart",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
+      "targets": [
+        {
+          "expr": "sum by (consistency_level) (rate(vectorstore_read_requests_total{result=\"success\"}[5m]))",
+          "legendFormat": "{{consistency_level}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Node Health",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 },
+      "collapsed": false
+    },
+    {
+      "title": "Healthy Nodes Count",
+      "type": "gauge",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 18 },
+      "targets": [
+        {
+          "expr": "sum by (store_id, node_role) (vectorstore_healthy_nodes)",
+          "legendFormat": "{{store_id}} - {{node_role}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "maxValue": 10,
+        "minValue": 0,
+        "thresholds": [
+          { "color": "red", "value": 0 },
+          { "color": "yellow", "value": 1 },
+          { "color": "green", "value": 2 }
+        ]
+      }
+    },
+    {
+      "title": "Circuit Breaker State",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 18 },
+      "targets": [
+        {
+          "expr": "vectorstore_circuit_breaker_state",
+          "legendFormat": "{{node_id}} @ {{store_id}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "thresholds": [
+          { "color": "green", "value": 0 },
+          { "color": "yellow", "value": 1 },
+          { "color": "red", "value": 2 }
+        ],
+        "mappings": [
+          { "type": "value", "options": { "0": { "text": "CLOSED" }, "1": { "text": "HALF-OPEN" }, "2": { "text": "OPEN" } } }
+        ]
+      }
+    },
+    {
+      "title": "Health Check Latency",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 18 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, node_id) (rate(vectorstore_health_check_latency_seconds[5m])))",
+          "legendFormat": "{{node_id}} - p95",
+          "refId": "A"
+        }
+      ],
+      "yAxes": [
+        { "label": "Latency (s)", "min": 0 },
+        { "show": false }
+      ]
+    },
+    {
+      "title": "Replication",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
+      "collapsed": false
+    },
+    {
+      "title": "Replica LSN Lag",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 27 },
+      "targets": [
+        {
+          "expr": "vectorstore_replica_lsn_lag",
+          "legendFormat": "{{node_id}} @ {{store_id}}",
+          "refId": "A"
+        }
+      ],
+      "yAxes": [
+        { "label": "Operations behind", "min": 0, "logBase": 10 },
+        { "show": false }
+      ],
+      "thresholds": [
+        { "colorMode": "line", "op": "gt", "value": 1000, "yaxis": "left", "fillColor": "rgba(237, 129, 40, 0.2)", "lineColor": "rgb(237, 129, 40)" },
+        { "colorMode": "line", "op": "gt", "value": 10000, "yaxis": "left", "fillColor": "rgba(245, 54, 54, 0.2)", "lineColor": "rgb(245, 54, 54)" }
+      ]
+    },
+    {
+      "title": "Master vs Replica Read Distribution",
+      "type": "bargauge",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 27 },
+      "targets": [
+        {
+          "expr": "sum by (node_type) (rate(vectorstore_read_requests_total{result=\"success\"}[5m]))",
+          "legendFormat": "{{node_type}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Write Buffer",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 },
+      "collapsed": false
+    },
+    {
+      "title": "Write Buffer Size",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "targets": [
+        {
+          "expr": "vectorstore_write_buffer_size",
+          "legendFormat": "{{store_id}}",
+          "refId": "A"
+        }
+      ],
+      "yAxes": [
+        { "label": "Pending requests", "min": 0 },
+        { "show": false }
+      ]
+    },
+    {
+      "title": "Write Latency (p50, p95, p99)",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le, store_id) (rate(vectorstore_request_latency_seconds{operation=~\"index|batch_index|delete\"}[5m])))",
+          "legendFormat": "{{store_id}} - p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, store_id) (rate(vectorstore_request_latency_seconds{operation=~\"index|batch_index|delete\"}[5m])))",
+          "legendFormat": "{{store_id}} - p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le, store_id) (rate(vectorstore_request_latency_seconds{operation=~\"index|batch_index|delete\"}[5m])))",
+          "legendFormat": "{{store_id}} - p99",
+          "refId": "C"
+        }
+      ],
+      "yAxes": [
+        { "label": "Latency (s)", "min": 0 },
+        { "show": false }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 27,
+  "style": "dark",
+  "tags": ["vectorstore", "read-write-split", "database"],
+  "templating": {
+    "list": [
+      {
+        "allValue": null,
+        "current": {},
+        "datasource": "Prometheus",
+        "definition": "label_values(vectorstore_read_requests_total, store_id)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Store ID",
+        "multi": true,
+        "name": "store_id",
+        "options": [],
+        "query": "label_values(vectorstore_read_requests_total, store_id)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "VectorStore Read-Write Separation",
+  "uid": "vectorstore-rw",
+  "version": 1
+}

@@ -1,4 +1,4 @@
-// Package feishu implements the Feishu (飞书/Lark) IM adapter for WeKnora.
+// Package feishu implements the Feishu (飞书/Lark) IM adapter for XinWiki.
 //
 // Feishu bot flow:
 // 1. User sends a message to the bot (direct or @mention in group)
@@ -24,8 +24,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/im"
-	"github.com/Tencent/WeKnora/internal/logger"
+	"github.com/Tencent/XinWiki/internal/im"
+	"github.com/Tencent/XinWiki/internal/logger"
 	"github.com/gin-gonic/gin"
 )
 
@@ -616,7 +616,7 @@ func buildStreamingCardJSON() string {
 		},
 		"header": map[string]interface{}{
 			"template": "blue",
-			"title":    map[string]string{"tag": "plain_text", "content": "WeKnora"},
+			"title":    map[string]string{"tag": "plain_text", "content": "XinWiki"},
 		},
 		"body": map[string]interface{}{
 			"elements": []map[string]interface{}{

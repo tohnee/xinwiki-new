@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 )
 
 // wikiLogEntryService is a thin wrapper over WikiLogEntryRepository. The

@@ -3,7 +3,7 @@ package langfuse
 import (
 	"context"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // traceCtxKey is the exported context key defined in types/const.go. It lives

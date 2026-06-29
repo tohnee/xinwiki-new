@@ -2,12 +2,13 @@ package interfaces
 
 import (
 	"context"
+	"time"
 
-	"github.com/Tencent/WeKnora/internal/models/embedding"
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/models/embedding"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
-// RetrieveEngine defines the retrieve engine interface
+// RetrieveEngine defines the retrieve engine interface (read-only operations)
 type RetrieveEngine interface {
 	// EngineType gets the retrieve engine type
 	EngineType() types.RetrieverEngineType
@@ -17,6 +18,23 @@ type RetrieveEngine interface {
 
 	// Support gets the supported retrieve types
 	Support() []types.RetrieverType
+}
+
+// ReadableNode 可读节点扩展接口，读副本需要实现
+type ReadableNode interface {
+	RetrieveEngine
+	// HealthCheck returns node health status including latency and current LSN
+	HealthCheck(ctx context.Context) (*types.NodeHealth, error)
+	// WaitForLSN blocks until the node has applied all writes up to the specified LSN
+	WaitForLSN(ctx context.Context, lsn int64, timeout time.Duration) error
+}
+
+// WritableNode 可写节点扩展接口，主节点需要实现
+type WritableNode interface {
+	// Flush waits for all pending writes to be persisted to storage
+	Flush(ctx context.Context) error
+	// GetCurrentLSN returns the current log sequence number for consistency tracking
+	GetCurrentLSN(ctx context.Context) (int64, error)
 }
 
 // RetrieveEngineRepository defines the retrieve engine repository interface
@@ -83,8 +101,11 @@ type RetrieveEngineRegistry interface {
 	GetByStoreID(storeID string) (RetrieveEngineService, error)
 }
 
-// RetrieveEngineService defines the retrieve engine service interface
+// RetrieveEngineService defines the full retrieve engine service interface
+// KEEP BACKWARD COMPATIBLE: 原有接口签名100%不变，所有写方法仍然返回error
 type RetrieveEngineService interface {
+	RetrieveEngine
+
 	// Index indexes the index info
 	Index(ctx context.Context,
 		embedder embedding.Embedder,
@@ -99,12 +120,6 @@ type RetrieveEngineService interface {
 		retrieverTypes []types.RetrieverType,
 	) error
 
-	// EstimateStorageSize estimates the storage size
-	EstimateStorageSize(ctx context.Context,
-		embedder embedding.Embedder,
-		indexInfoList []*types.IndexInfo,
-		retrieverTypes []types.RetrieverType,
-	) int64
 	// CopyIndices 从源知识库复制索引到目标知识库，免去重新计算嵌入向量的开销
 	// sourceKnowledgeBaseID: 源知识库ID
 	// sourceToTargetChunkIDMap: 源分块ID到目标分块ID的映射关系，key为源分块ID，value为目标分块ID
@@ -136,6 +151,19 @@ type RetrieveEngineService interface {
 	// chunkTagMap: map of chunk ID to tag ID (empty string means no tag)
 	BatchUpdateChunkTagID(ctx context.Context, chunkTagMap map[string]string) error
 
-	// RetrieveEngine retrieves the engine
-	RetrieveEngine
+	// EstimateStorageSize estimates the storage size
+	EstimateStorageSize(ctx context.Context,
+		embedder embedding.Embedder,
+		indexInfoList []*types.IndexInfo,
+		retrieverTypes []types.RetrieverType,
+	) int64
+}
+
+// RWCapableEngine 支持读写分离的引擎接口，在原有接口基础上扩展读写分离能力
+type RWCapableEngine interface {
+	RetrieveEngineService
+	ReadableNode
+	WritableNode
+	// 获取最近一次写入的token
+	LastWriteToken() *types.WriteToken
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 	"gorm.io/gorm"
 )
 
@@ -96,4 +96,16 @@ func (r *modelRepository) ClearDefaultByType(
 
 	// Batch update: set is_default to false for all matching records
 	return query.Update("is_default", false).Error
+}
+
+// GetByIDAnyTenant gets a model by ID regardless of tenant (for cost calculation)
+func (r *modelRepository) GetByIDAnyTenant(ctx context.Context, id string) (*types.Model, error) {
+	var m types.Model
+	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&m).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &m, nil
 }

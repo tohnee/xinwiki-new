@@ -16,7 +16,7 @@ import (
 )
 
 // AgentHelp is the structured help blob emitted when an agent invokes
-// `weknora <command> --help` with WEKNORA_AGENT_HELP=1. Distinct from
+// `xinwiki <command> --help` with WEKNORA_AGENT_HELP=1. Distinct from
 // cobra's human help text — agent-readable JSON keyed by stable fields
 // so an LLM doesn't need to scrape the human help table.
 //

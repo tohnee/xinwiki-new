@@ -66,7 +66,7 @@ func TestPrintError_JSONMode_WritesEnvelope(t *testing.T) {
 
 	err := NewError(CodeInputConfirmationRequired, "kb delete kb_x requires confirmation").
 		WithHint("re-run with -y/--yes").
-		WithRetryCommand("weknora kb delete kb_x -y")
+		WithRetryCommand("xinwiki kb delete kb_x -y")
 
 	var buf bytes.Buffer
 	PrintError(&buf, err)
@@ -78,7 +78,7 @@ func TestPrintError_JSONMode_WritesEnvelope(t *testing.T) {
 	if !strings.Contains(got, `"type":"input.confirmation_required"`) {
 		t.Errorf("expected typed code; got %q", got)
 	}
-	if !strings.Contains(got, `"retry_command":"weknora kb delete kb_x -y"`) {
+	if !strings.Contains(got, `"retry_command":"xinwiki kb delete kb_x -y"`) {
 		t.Errorf("expected retry_command; got %q", got)
 	}
 }
@@ -105,7 +105,7 @@ func TestPrintError_TextMode_WritesProse(t *testing.T) {
 
 	err := NewError(CodeInputConfirmationRequired, "kb delete kb_x requires confirmation").
 		WithHint("re-run with -y/--yes").
-		WithRetryCommand("weknora kb delete kb_x -y")
+		WithRetryCommand("xinwiki kb delete kb_x -y")
 
 	var buf bytes.Buffer
 	PrintError(&buf, err)
@@ -117,7 +117,7 @@ func TestPrintError_TextMode_WritesProse(t *testing.T) {
 	if !strings.Contains(got, "hint: re-run with -y/--yes") {
 		t.Errorf("expected hint line; got %q", got)
 	}
-	if !strings.Contains(got, "retry: weknora kb delete kb_x -y") {
+	if !strings.Contains(got, "retry: xinwiki kb delete kb_x -y") {
 		t.Errorf("expected retry line; got %q", got)
 	}
 }

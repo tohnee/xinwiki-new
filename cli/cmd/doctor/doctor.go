@@ -1,4 +1,4 @@
-// Package doctor implements `weknora doctor` - 4-item self-check.
+// Package doctor implements `xinwiki doctor` - 4-item self-check.
 //
 // Status semantics (4-tier):
 //
@@ -28,12 +28,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/build"
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/compat"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/secrets"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/build"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/compat"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/secrets"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // doctorFields enumerates the fields surfaced for `--format json` discovery on
@@ -92,7 +92,7 @@ type Services interface {
 	GetSystemInfo(ctx context.Context) (*sdk.SystemInfo, error)
 }
 
-// NewCmd builds `weknora doctor`.
+// NewCmd builds `xinwiki doctor`.
 func NewCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &Options{}
 	cmd := &cobra.Command{
@@ -122,15 +122,15 @@ func NewCmd(f *cmdutil.Factory) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&opts.NoCache, "no-cache", false, "Bypass server-info cache (located at $XDG_CACHE_HOME/weknora/server-info.yaml); force re-probe")
+	cmd.Flags().BoolVar(&opts.NoCache, "no-cache", false, "Bypass server-info cache (located at $XDG_CACHE_HOME/xinwiki/server-info.yaml); force re-probe")
 	cmd.Flags().BoolVar(&opts.Offline, "offline", false, "Skip network checks; only verify local keyring/file storage (credential_storage check still runs)")
 	cmdutil.AddFormatFlag(cmd, doctorFields...)
 	cmdutil.SetAgentHelp(cmd, cmdutil.AgentHelp{
 		UsedFor: "run self-checks: base-url reachability, auth credential, server version, credential storage",
 		Examples: []string{
-			"weknora doctor",
-			"weknora doctor --offline",
-			"weknora doctor --no-cache --format json",
+			"xinwiki doctor",
+			"xinwiki doctor --offline",
+			"xinwiki doctor --no-cache --format json",
 		},
 		Output: "envelope.data is {summary:{all_passed,passed,failed,skipped}, checks:[{name,status,detail}]}",
 	})
@@ -173,7 +173,7 @@ func runChecks(ctx context.Context, opts *Options, svc Services, cliVer string) 
 		t0 := time.Now()
 		if err := svc.PingBaseURL(ctx); err != nil {
 			checks[0].Status = StatusFail
-			checks[0].Hint = "verify the host configured for the active profile (run `weknora profile list` / `weknora profile add <n> --host=...`) and network reachability"
+			checks[0].Hint = "verify the host configured for the active profile (run `xinwiki profile list` / `xinwiki profile add <n> --host=...`) and network reachability"
 			checks[0].Details = err.Error()
 		} else {
 			checks[0].Status = StatusOK
@@ -185,7 +185,7 @@ func runChecks(ctx context.Context, opts *Options, svc Services, cliVer string) 
 	if !cascade(&checks[1], opts.Offline, &checks[0]) {
 		if _, err := svc.GetCurrentUser(ctx); err != nil {
 			checks[1].Status = StatusFail
-			checks[1].Hint = "run `weknora auth login`"
+			checks[1].Hint = "run `xinwiki auth login`"
 			checks[1].Details = err.Error()
 		} else {
 			checks[1].Status = StatusOK
@@ -295,7 +295,7 @@ func fillCredentialStorageCheck(c *Check) {
 	if _, isFile := store.(*secrets.FileStore); isFile {
 		c.Status = StatusWarn
 		c.Details = "falling back to file store: keychain unavailable"
-		c.Hint = "secrets persist at 0600 under $XDG_CONFIG_HOME/weknora/secrets/; install / unlock keyring for OS-backed storage"
+		c.Hint = "secrets persist at 0600 under $XDG_CONFIG_HOME/xinwiki/secrets/; install / unlock keyring for OS-backed storage"
 		return
 	}
 	c.Status = StatusOK
@@ -387,7 +387,7 @@ func marker(s Status) string {
 //
 // Critically: this does NOT pre-resolve f.Client(). doctor's package promise
 // (top comment) is that credential_storage runs even when no auth is set up -
-// e.g. first-time `weknora doctor` to diagnose setup. Pre-resolving Client
+// e.g. first-time `xinwiki doctor` to diagnose setup. Pre-resolving Client
 // here would early-exit with auth.unauthenticated before any check runs,
 // contradicting the docs. Instead, GetCurrentUser / GetSystemInfo lazily
 // resolve and surface their own failure as a per-check StatusFail.

@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"sort"
 
-	"github.com/Tencent/WeKnora/internal/searchutil"
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/searchutil"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // mergeOverlappingChunks merges chunks with overlapping or adjacent StartAt/EndAt

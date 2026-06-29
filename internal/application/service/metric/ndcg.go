@@ -3,7 +3,7 @@ package metric
 import (
 	"math"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // NDCGMetric calculates Normalized Discounted Cumulative Gain

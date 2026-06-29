@@ -17,18 +17,18 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/Tencent/WeKnora/internal/config"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
-	"github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/config"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/utils"
 )
 
 // pubsubChannelBase is the Redis channel base for system_settings change
 // notifications. Mirrors the convention from approval/gate.go: optional
 // suffix WEKNORA_REDIS_NAMESPACE so two deployments sharing one Redis
 // instance don't cross-talk.
-const pubsubChannelBase = "weknora:system_settings:changed"
+const pubsubChannelBase = "xinwiki:system_settings:changed"
 
 // pubsubChannel resolves the effective channel name (with optional
 // namespace suffix). Called both at publish time and inside the

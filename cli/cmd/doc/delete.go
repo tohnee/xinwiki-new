@@ -7,11 +7,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	sdk "github.com/Tencent/WeKnora/client"
+	sdk "github.com/Tencent/XinWiki/client"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/prompt"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/prompt"
 )
 
 // docDeleteFields enumerates the fields surfaced for `--format json` discovery
@@ -43,7 +43,7 @@ type deleteResult struct {
 	Deleted bool   `json:"deleted"`
 }
 
-// NewCmdDelete builds `weknora doc delete`. Single-id keeps the simpler
+// NewCmdDelete builds `xinwiki doc delete`. Single-id keeps the simpler
 // code path (one confirm prompt, exit 0/1); multi-id uses keep-going
 // semantics (one -y confirms all, failures collected, exit 1 if any fail);
 // --all --kb=<id> atomically clears every document in a knowledge base.
@@ -72,13 +72,13 @@ All-in-KB (--all --kb=<kb-id>):
 AI agents: This is a high-risk write. Without -y/--yes the CLI exits 10
 and writes input.confirmation_required to stderr. NEVER auto-pass -y
 without the user's explicit go-ahead.`,
-		Example: `  weknora doc delete doc_abc                        # interactive confirm
-  weknora doc delete doc_abc -y                     # no prompt
-  weknora doc delete doc_abc -y --format json       # bare {id, deleted:true} JSON
-  weknora doc delete doc_a doc_b doc_c -y           # delete 3, keep-going
-  weknora doc delete doc_a doc_b --format json      # multi-id JSON output
-  weknora doc delete --all --kb=kb_x -y             # clear all docs in kb_x
-  weknora doc delete --all --kb=kb_x -y --format json # agent-friendly`,
+		Example: `  xinwiki doc delete doc_abc                        # interactive confirm
+  xinwiki doc delete doc_abc -y                     # no prompt
+  xinwiki doc delete doc_abc -y --format json       # bare {id, deleted:true} JSON
+  xinwiki doc delete doc_a doc_b doc_c -y           # delete 3, keep-going
+  xinwiki doc delete doc_a doc_b --format json      # multi-id JSON output
+  xinwiki doc delete --all --kb=kb_x -y             # clear all docs in kb_x
+  xinwiki doc delete --all --kb=kb_x -y --format json # agent-friendly`,
 		Args: cobra.ArbitraryArgs,
 		RunE: func(c *cobra.Command, args []string) error {
 			fopts, err := cmdutil.CheckFormatFlag(c)
@@ -95,7 +95,7 @@ without the user's explicit go-ahead.`,
 				if opts.KB == "" {
 					return cmdutil.NewError(cmdutil.CodeInputInvalidArgument, "--all requires --kb=<id>").
 						WithHint("specify --kb=<uuid-or-name> to scope the delete-all operation").
-						WithRetryCommand("weknora doc delete --all --kb=<kb-id> -y")
+						WithRetryCommand("xinwiki doc delete --all --kb=<kb-id> -y")
 				}
 				if len(args) > 0 {
 					return cmdutil.NewFlagError(fmt.Errorf("--all is exclusive with positional doc ids"))
@@ -138,7 +138,7 @@ without the user's explicit go-ahead.`,
 			if len(args) == 1 {
 				return runDelete(c.Context(), opts, fopts, cli, f.Prompter(), args[0])
 			}
-			if err := cmdutil.ConfirmDestructiveBatch(f.Prompter(), opts.Yes, fopts.WantsJSON(), "delete", "document", len(args), "doc.delete", "weknora doc delete "+strings.Join(args, " ")+" -y"); err != nil {
+			if err := cmdutil.ConfirmDestructiveBatch(f.Prompter(), opts.Yes, fopts.WantsJSON(), "delete", "document", len(args), "doc.delete", "xinwiki doc delete "+strings.Join(args, " ")+" -y"); err != nil {
 				return err
 			}
 			outcomes, runErr := cmdutil.RunBatch(c.Context(), args, func(ctx context.Context, id string) error {
@@ -167,9 +167,9 @@ without the user's explicit go-ahead.`,
 		UsedFor:       "permanently delete one or more documents from a knowledge base",
 		RequiredFlags: []string{"<doc-id>... (positional) | --all --kb=<uuid-or-name>"},
 		Examples: []string{
-			"weknora doc delete doc_abc -y",
-			"weknora doc delete doc_a doc_b doc_c -y",
-			"weknora doc delete --all --kb=kb_x -y --format json",
+			"xinwiki doc delete doc_abc -y",
+			"xinwiki doc delete doc_a doc_b doc_c -y",
+			"xinwiki doc delete --all --kb=kb_x -y --format json",
 		},
 		Warnings: []string{
 			"Requires explicit user approval (exit 10 / input.confirmation_required); never auto-add -y.",
@@ -181,7 +181,7 @@ without the user's explicit go-ahead.`,
 }
 
 func runDelete(ctx context.Context, opts *DeleteOptions, fopts *cmdutil.FormatOptions, svc DeleteService, p prompt.Prompter, id string) error {
-	if err := cmdutil.ConfirmDestructive(p, opts.Yes, fopts.WantsJSON(), "delete", "document", id, "doc.delete", "weknora doc delete "+id+" -y"); err != nil {
+	if err := cmdutil.ConfirmDestructive(p, opts.Yes, fopts.WantsJSON(), "delete", "document", id, "doc.delete", "xinwiki doc delete "+id+" -y"); err != nil {
 		return err
 	}
 
@@ -201,7 +201,7 @@ func runDelete(ctx context.Context, opts *DeleteOptions, fopts *cmdutil.FormatOp
 // CodeInputConfirmationRequired (exit 10) with risk metadata so agents can
 // surface the risk to the user before re-invoking with -y.
 func runDeleteAll(ctx context.Context, opts *DeleteOptions, fopts *cmdutil.FormatOptions, svc AllService, p prompt.Prompter) error {
-	if err := cmdutil.ConfirmDestructive(p, opts.Yes, fopts.WantsJSON(), "delete", "all docs in KB", opts.KB, "doc.delete_all", fmt.Sprintf("weknora doc delete --all --kb=%s -y", opts.KB)); err != nil {
+	if err := cmdutil.ConfirmDestructive(p, opts.Yes, fopts.WantsJSON(), "delete", "all docs in KB", opts.KB, "doc.delete_all", fmt.Sprintf("xinwiki doc delete --all --kb=%s -y", opts.KB)); err != nil {
 		return err
 	}
 

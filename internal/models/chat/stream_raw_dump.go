@@ -12,7 +12,7 @@ import (
 
 // streamRawDumpDir returns the directory for per-stream raw packet dumps.
 // Enabled when WEKNORA_LLM_STREAM_RAW_DUMP_DIR is set, or when
-// WEKNORA_LLM_STREAM_RAW_DUMP=1 (defaults to ~/.weknora/investigate/llm-stream).
+// WEKNORA_LLM_STREAM_RAW_DUMP=1 (defaults to ~/.xinwiki/investigate/llm-stream).
 func streamRawDumpDir() string {
 	if dir := strings.TrimSpace(os.Getenv("WEKNORA_LLM_STREAM_RAW_DUMP_DIR")); dir != "" {
 		return dir
@@ -23,7 +23,7 @@ func streamRawDumpDir() string {
 		if err != nil {
 			return ""
 		}
-		return filepath.Join(home, ".weknora", "investigate", "llm-stream")
+		return filepath.Join(home, ".xinwiki", "investigate", "llm-stream")
 	}
 	return ""
 }

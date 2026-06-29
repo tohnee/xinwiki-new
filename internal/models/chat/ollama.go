@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/models/utils/ollama"
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/models/utils/ollama"
+	"github.com/Tencent/XinWiki/internal/types"
 	ollamaapi "github.com/ollama/ollama/api"
 )
 

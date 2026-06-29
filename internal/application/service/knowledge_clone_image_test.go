@@ -9,7 +9,7 @@ import (
 	"mime/multipart"
 	"testing"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // countingFileService is a minimal FileService stub for cloneChunkImageInfo tests.

@@ -1,11 +1,11 @@
 name: CLI E2E
 
-# Runs the cli/acceptance/e2e/ suite against a real WeKnora server.
+# Runs the cli/acceptance/e2e/ suite against a real XinWiki server.
 # Cost-gated so it doesn't fire on every PR:
 #   - workflow_dispatch: maintainer can trigger manually
 #   - pull_request labeled "acceptance-e2e": adding the label kicks a run
 #
-# Required repo secrets (only set on Tencent/WeKnora; cross-fork PRs have no
+# Required repo secrets (only set on Tencent/XinWiki; cross-fork PRs have no
 # access and the job exits early via the secrets-present guard):
 #   WEKNORA_E2E_HOST   - https URL of the test server
 #   WEKNORA_E2E_TOKEN  - bearer token / API key for that host

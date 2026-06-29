@@ -25,11 +25,11 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 
-	"github.com/Tencent/WeKnora/internal/config"
-	"github.com/Tencent/WeKnora/internal/container"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/runtime"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/config"
+	"github.com/Tencent/XinWiki/internal/container"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/runtime"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 	"github.com/joho/godotenv"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -140,9 +140,9 @@ window.open=function(url){
 })();`
 
 // wailsThemeSyncJS：与 index.html 首屏一致，在 DomReady 再跑一遍，覆盖 Ctrl+R 后 runtime 就绪时机
-const wailsThemeSyncJS = `(function(){try{var t=localStorage.getItem('WeKnora_theme')||'light';if(t==='system')t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var bg=t==='dark'?'#181818':'#eee';document.documentElement.setAttribute('theme-mode',t);document.documentElement.style.background=bg;document.documentElement.style.minHeight='100%';document.documentElement.style.colorScheme=t==='dark'?'dark':'light';if(document.body){document.body.style.background=bg;document.body.style.minHeight='100%';}var w=window.runtime;if(!w)return;if(t==='dark'){if(w.WindowSetDarkTheme)w.WindowSetDarkTheme();if(w.WindowSetBackgroundColour)w.WindowSetBackgroundColour(24,24,24,255);}else{if(w.WindowSetLightTheme)w.WindowSetLightTheme();if(w.WindowSetBackgroundColour)w.WindowSetBackgroundColour(238,238,238,255);}}catch(e){}})()`
+const wailsThemeSyncJS = `(function(){try{var t=localStorage.getItem('XinWiki_theme')||'light';if(t==='system')t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var bg=t==='dark'?'#181818':'#eee';document.documentElement.setAttribute('theme-mode',t);document.documentElement.style.background=bg;document.documentElement.style.minHeight='100%';document.documentElement.style.colorScheme=t==='dark'?'dark':'light';if(document.body){document.body.style.background=bg;document.body.style.minHeight='100%';}var w=window.runtime;if(!w)return;if(t==='dark'){if(w.WindowSetDarkTheme)w.WindowSetDarkTheme();if(w.WindowSetBackgroundColour)w.WindowSetBackgroundColour(24,24,24,255);}else{if(w.WindowSetLightTheme)w.WindowSetLightTheme();if(w.WindowSetBackgroundColour)w.WindowSetBackgroundColour(238,238,238,255);}}catch(e){}})()`
 
-const weknoraGitHubRepoURL = "https://github.com/Tencent/WeKnora"
+const xinwikiGitHubRepoURL = "https://github.com/Tencent/XinWiki"
 
 func main() {
 	// For macOS .app bundle, the working directory is usually "/" or the MacOS folder.
@@ -179,7 +179,7 @@ func main() {
 	// Build dependency injection container
 	c := container.BuildContainer(runtime.GetContainer())
 
-	// Initialize the WeKnora App struct
+	// Initialize the XinWiki App struct
 	app := NewApp()
 
 	// Error channel to capture server startup errors
@@ -262,15 +262,15 @@ func main() {
 	// Create application with options
 	// macOS app menu
 	AppMenu := menu.NewMenu()
-	FileMenu := AppMenu.AddSubmenu("WeKnora Lite")
-	FileMenu.AddText("About WeKnora", keys.CmdOrCtrl("i"), func(_ *menu.CallbackData) {
+	FileMenu := AppMenu.AddSubmenu("XinWiki Lite")
+	FileMenu.AddText("About XinWiki", keys.CmdOrCtrl("i"), func(_ *menu.CallbackData) {
 		if app.ctx == nil {
 			return
 		}
 		choice, err := wailsruntime.MessageDialog(app.ctx, wailsruntime.MessageDialogOptions{
 			Type:          wailsruntime.InfoDialog,
-			Title:         "WeKnora Lite",
-			Message:       fmt.Sprintf("WeKnora Lite — Desktop Edition\n\nA RAG framework for document understanding and semantic Q&A over complex, heterogeneous content.\n\nVersion %s\n© 2026 Tencent\n\nGitHub:\n%s", desktopAboutVersion(), weknoraGitHubRepoURL),
+			Title:         "XinWiki Lite",
+			Message:       fmt.Sprintf("XinWiki Lite — Desktop Edition\n\nA RAG framework for document understanding and semantic Q&A over complex, heterogeneous content.\n\nVersion %s\n© 2026 Tencent\n\nGitHub:\n%s", desktopAboutVersion(), xinwikiGitHubRepoURL),
 			Buttons:       []string{"Open GitHub", "OK"},
 			DefaultButton: "OK",
 		})
@@ -279,7 +279,7 @@ func main() {
 			return
 		}
 		if choice == "Open GitHub" {
-			wailsruntime.BrowserOpenURL(app.ctx, weknoraGitHubRepoURL)
+			wailsruntime.BrowserOpenURL(app.ctx, xinwikiGitHubRepoURL)
 		}
 	})
 	FileMenu.AddText("Check for Updates...", nil, func(_ *menu.CallbackData) {
@@ -310,7 +310,7 @@ func main() {
 	// Start Wails application
 	// We use a Reverse Proxy to seamlessly proxy Wails' frontend to our Go backend
 	err := wails.Run(&options.App{
-		Title:         "WeKnora Lite",
+		Title:         "XinWiki Lite",
 		Width:         1280,
 		Height:        800,
 		DisableResize: false,
@@ -366,7 +366,7 @@ func configureDesktopStorage(execPath string) {
 	targetDataDir := filepath.Join(appSupportDir, "data")
 	migrateLegacyDesktopData(legacyResourcesDir, targetDataDir)
 
-	dbPath := resolveDesktopDataPath(os.Getenv("DB_PATH"), filepath.Join("data", "weknora.db"), appSupportDir)
+	dbPath := resolveDesktopDataPath(os.Getenv("DB_PATH"), filepath.Join("data", "xinwiki.db"), appSupportDir)
 	filesPath := resolveDesktopDataPath(os.Getenv("LOCAL_STORAGE_BASE_DIR"), filepath.Join("data", "files"), appSupportDir)
 
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
@@ -386,7 +386,7 @@ func defaultMacAppSupportDir(execPath string) (string, error) {
 		return "", err
 	}
 
-	appName := "WeKnora Lite"
+	appName := "XinWiki Lite"
 	if idx := strings.Index(execPath, ".app/Contents/MacOS"); idx >= 0 {
 		bundleName := filepath.Base(execPath[:idx+4])
 		if trimmed := strings.TrimSuffix(bundleName, ".app"); trimmed != "" {

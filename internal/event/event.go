@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/Tencent/WeKnora/internal/logger"
+	"github.com/Tencent/XinWiki/internal/logger"
 )
 
 // EventType represents the type of event in the system
@@ -68,6 +68,11 @@ const (
 
 	// Control events
 	EventStop EventType = "stop" // 停止对话生成
+
+	// ACL 变更事件（A5: 事件驱动ACL重算）
+	EventPermissionChanged EventType = "permission.changed"   // 权限变更（密级/ACL修改）
+	EventDocumentACLUpdated EventType = "document.acl.updated" // 文档ACL更新
+	EventKBMemberChanged   EventType = "kb.member.changed"    // 知识库成员变更
 )
 
 // Event represents an event in the system

@@ -139,7 +139,7 @@ const suggestedQuestions = ref<SuggestedQuestion[]>([])
 const suggestedLoading = ref(false)
 const hostContextRef = ref<Record<string, unknown>>(props.hostContext || {})
 
-const embedWebSearchStorageKey = () => `weknora-embed-web-search:${props.channelId}`
+const embedWebSearchStorageKey = () => `xinwiki-embed-web-search:${props.channelId}`
 
 const readStoredWebSearchEnabled = () => {
   if (typeof localStorage === 'undefined') return false

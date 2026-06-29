@@ -10,10 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/application/repository"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/application/repository"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/wikiquality"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
@@ -75,6 +76,10 @@ func (s *wikiPageService) CreatePage(ctx context.Context, page *types.WikiPage) 
 	now := time.Now()
 	page.CreatedAt = now
 	page.UpdatedAt = now
+	page.LastAccessedAt = now
+
+	// Calculate quality and confidence scores
+	wikiquality.UpdateAllScores(page, now)
 
 	if err := s.repo.Create(ctx, page); err != nil {
 		return nil, fmt.Errorf("create wiki page: %w", err)
@@ -124,6 +129,11 @@ func (s *wikiPageService) UpdatePage(ctx context.Context, page *types.WikiPage) 
 	existing.SortOrder = page.SortOrder
 	existing.Status = page.Status
 	existing.UpdatedAt = time.Now()
+
+	// Recalculate scores when content changes
+	if contentChanged {
+		wikiquality.UpdateAllScores(existing, existing.UpdatedAt)
+	}
 
 	// CategoryPath is a derived cache of FolderID — recompute it from the
 	// folder chain rather than trusting whatever the caller sent.
@@ -1506,4 +1516,357 @@ func (s *wikiPageService) RebuildIndexPage(ctx context.Context, kbID string) err
 	_ = ctx
 	_ = kbID
 	return nil
+}
+
+// --- Review Workflow ---
+
+// reviewActionRequiredRole returns the minimum tenant role required to perform a review action.
+func reviewActionRequiredRole(action string) types.TenantRole {
+	switch action {
+	case types.WikiReviewActionSubmit:
+		return types.TenantRoleContributor
+	default:
+		return types.TenantRoleAdmin
+	}
+}
+
+// reviewActionTargetStatus returns the target status for a given action and current status.
+// Returns an error if the transition is not valid.
+func reviewActionTargetStatus(action string, fromStatus string) (string, error) {
+	toStatus, ok := reviewActionStatusMap[action][fromStatus]
+	if !ok {
+		return "", fmt.Errorf("invalid review action %q from status %q", action, fromStatus)
+	}
+	return toStatus, nil
+}
+
+// reviewActionStatusMap defines the valid status transitions for each review action.
+var reviewActionStatusMap = map[string]map[string]string{
+	types.WikiReviewActionSubmit: {
+		types.WikiPageStatusDraft: types.WikiPageStatusReviewing,
+	},
+	types.WikiReviewActionApprove: {
+		types.WikiPageStatusReviewing: types.WikiPageStatusPublished,
+	},
+	types.WikiReviewActionReject: {
+		types.WikiPageStatusReviewing: types.WikiPageStatusDraft,
+	},
+	types.WikiReviewActionDeprecate: {
+		types.WikiPageStatusPublished: types.WikiPageStatusDeprecated,
+	},
+	types.WikiReviewActionArchive: {
+		types.WikiPageStatusDeprecated:  types.WikiPageStatusArchived,
+		types.WikiPageStatusSuperseded:  types.WikiPageStatusArchived,
+	},
+	types.WikiReviewActionSupersede: {
+		types.WikiPageStatusPublished:   types.WikiPageStatusSuperseded,
+	},
+}
+
+// checkReviewPermission checks if the given role has permission to perform the review action.
+func checkReviewPermission(action string, role types.TenantRole) error {
+	required := reviewActionRequiredRole(action)
+	if !role.HasPermission(required) {
+		return fmt.Errorf("insufficient permission: role %v cannot perform action %q (requires %v)", role, action, required)
+	}
+	return nil
+}
+
+// newWikiSupersession creates a new WikiSupersession record with populated fields.
+func newWikiSupersession(oldPage, newPage *types.WikiPage, reason string, createdBy string, tenantID uint64) *types.WikiSupersession {
+	now := time.Now()
+	return &types.WikiSupersession{
+		ID:              uuid.New().String(),
+		TenantID:        tenantID,
+		KnowledgeBaseID: oldPage.KnowledgeBaseID,
+		OldPageID:       oldPage.ID,
+		OldPageSlug:     oldPage.Slug,
+		NewPageID:       newPage.ID,
+		NewPageSlug:     newPage.Slug,
+		Reason:          reason,
+		CreatedBy:       createdBy,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+}
+
+// performReviewAction is the shared implementation for all review actions.
+// It validates permissions, checks state transitions, updates the page status,
+// and returns a WikiReviewResult.
+func (s *wikiPageService) performReviewAction(
+	ctx context.Context,
+	kbID string,
+	slug string,
+	action string,
+	reason string,
+) (*types.WikiReviewResult, error) {
+	role := types.TenantRoleFromContext(ctx)
+	if err := checkReviewPermission(action, role); err != nil {
+		return nil, err
+	}
+
+	page, err := s.repo.GetBySlug(ctx, kbID, slug)
+	if err != nil {
+		return nil, fmt.Errorf("get wiki page: %w", err)
+	}
+
+	fromStatus := page.Status
+	toStatus, err := reviewActionTargetStatus(action, fromStatus)
+	if err != nil {
+		return nil, err
+	}
+
+	reviewerID, _ := types.UserIDFromContext(ctx)
+
+	page.Status = toStatus
+	page.UpdatedAt = time.Now()
+
+	if err := s.repo.UpdateStatus(ctx, page.ID, toStatus); err != nil {
+		return nil, fmt.Errorf("update page status: %w", err)
+	}
+
+	result := &types.WikiReviewResult{
+		Page:     page,
+		Action:   action,
+		From:     fromStatus,
+		To:       toStatus,
+		Reason:   reason,
+		Approved: action == types.WikiReviewActionApprove,
+	}
+	_ = reviewerID
+
+	return result, nil
+}
+
+// SubmitReview submits a draft page for review (draft -> reviewing).
+func (s *wikiPageService) SubmitReview(ctx context.Context, kbID string, slug string, reason string) (*types.WikiReviewResult, error) {
+	return s.performReviewAction(ctx, kbID, slug, types.WikiReviewActionSubmit, reason)
+}
+
+// Approve approves a page under review (reviewing -> published).
+func (s *wikiPageService) Approve(ctx context.Context, kbID string, slug string, reason string) (*types.WikiReviewResult, error) {
+	return s.performReviewAction(ctx, kbID, slug, types.WikiReviewActionApprove, reason)
+}
+
+// Reject rejects a page under review, sending it back to draft (reviewing -> draft).
+func (s *wikiPageService) Reject(ctx context.Context, kbID string, slug string, reason string) (*types.WikiReviewResult, error) {
+	return s.performReviewAction(ctx, kbID, slug, types.WikiReviewActionReject, reason)
+}
+
+// Deprecate marks a published page as deprecated (published -> deprecated).
+func (s *wikiPageService) Deprecate(ctx context.Context, kbID string, slug string, reason string) (*types.WikiReviewResult, error) {
+	return s.performReviewAction(ctx, kbID, slug, types.WikiReviewActionDeprecate, reason)
+}
+
+// Archive archives a page (deprecated/superseded -> archived).
+func (s *wikiPageService) Archive(ctx context.Context, kbID string, slug string, reason string) (*types.WikiReviewResult, error) {
+	return s.performReviewAction(ctx, kbID, slug, types.WikiReviewActionArchive, reason)
+}
+
+// --- Supersession Relationships ---
+
+// Supersede marks a page as superseded by another page (published -> superseded)
+// and creates a WikiSupersession record.
+func (s *wikiPageService) Supersede(ctx context.Context, kbID string, req *types.WikiSupersedeRequest) (*types.WikiSupersession, error) {
+	role := types.TenantRoleFromContext(ctx)
+	if err := checkReviewPermission(types.WikiReviewActionSupersede, role); err != nil {
+		return nil, err
+	}
+
+	if req.OldPageSlug == req.NewPageSlug {
+		return nil, errors.New("old page and new page cannot be the same")
+	}
+
+	oldPage, err := s.repo.GetBySlug(ctx, kbID, req.OldPageSlug)
+	if err != nil {
+		return nil, fmt.Errorf("get old page: %w", err)
+	}
+
+	newPage, err := s.repo.GetBySlug(ctx, kbID, req.NewPageSlug)
+	if err != nil {
+		return nil, fmt.Errorf("get new page: %w", err)
+	}
+
+	if oldPage.Status != types.WikiPageStatusPublished && oldPage.Status != types.WikiPageStatusDeprecated {
+		return nil, fmt.Errorf("cannot supersede page in status %q", oldPage.Status)
+	}
+
+	if newPage.Status != types.WikiPageStatusPublished {
+		return nil, fmt.Errorf("replacement page must be published, got status %q", newPage.Status)
+	}
+
+	createdBy, _ := types.UserIDFromContext(ctx)
+	tenantID, _ := types.TenantIDFromContext(ctx)
+
+	supersession := newWikiSupersession(oldPage, newPage, req.Reason, createdBy, tenantID)
+
+	if err := s.repo.CreateSupersession(ctx, supersession); err != nil {
+		return nil, fmt.Errorf("create supersession: %w", err)
+	}
+
+	if err := s.repo.UpdateStatus(ctx, oldPage.ID, types.WikiPageStatusSuperseded); err != nil {
+		return nil, fmt.Errorf("update old page status: %w", err)
+	}
+
+	oldPage.Status = types.WikiPageStatusSuperseded
+
+	return supersession, nil
+}
+
+// GetSupersessionByOldPage returns the supersession record for a given old page, if any.
+func (s *wikiPageService) GetSupersessionByOldPage(ctx context.Context, kbID string, oldPageSlug string) (*types.WikiSupersession, error) {
+	page, err := s.repo.GetBySlug(ctx, kbID, oldPageSlug)
+	if err != nil {
+		return nil, fmt.Errorf("get page: %w", err)
+	}
+	return s.repo.GetSupersessionByOldPageID(ctx, kbID, page.ID)
+}
+
+// ListSupersessionsByNewPage returns all supersession records where the given page is the new/replacement page.
+func (s *wikiPageService) ListSupersessionsByNewPage(ctx context.Context, kbID string, newPageSlug string) ([]*types.WikiSupersession, error) {
+	page, err := s.repo.GetBySlug(ctx, kbID, newPageSlug)
+	if err != nil {
+		return nil, fmt.Errorf("get page: %w", err)
+	}
+	return s.repo.ListSupersessionsByNewPageID(ctx, kbID, page.ID)
+}
+
+// ListSupersessions returns all supersession records for a knowledge base.
+func (s *wikiPageService) ListSupersessions(ctx context.Context, kbID string) ([]*types.WikiSupersession, error) {
+	return s.repo.ListSupersessions(ctx, kbID)
+}
+
+// --- Milestone C: Confidence, Quality & Freshness ---
+
+// RecordPageAccess records a page view, incrementing view count and updating last accessed time.
+func (s *wikiPageService) RecordPageAccess(ctx context.Context, kbID string, slug string) error {
+	page, err := s.repo.GetBySlug(ctx, kbID, slug)
+	if err != nil {
+		return fmt.Errorf("get page: %w", err)
+	}
+	return s.repo.IncrementViewCount(ctx, page.ID)
+}
+
+// RecordFeedback records user feedback (positive/negative) for a page and recalculates scores.
+func (s *wikiPageService) RecordFeedback(ctx context.Context, kbID string, slug string, isPositive bool) error {
+	page, err := s.repo.GetBySlug(ctx, kbID, slug)
+	if err != nil {
+		return fmt.Errorf("get page: %w", err)
+	}
+
+	// Atomically increment feedback count
+	if err := s.repo.IncrementFeedback(ctx, page.ID, isPositive); err != nil {
+		return fmt.Errorf("increment feedback: %w", err)
+	}
+
+	// Re-fetch to get updated counts
+	page, err = s.repo.GetByID(ctx, page.ID)
+	if err != nil {
+		return fmt.Errorf("re-fetch page: %w", err)
+	}
+
+	// Recalculate scores
+	now := time.Now()
+	wikiquality.UpdateAllScores(page, now)
+	return s.repo.UpdateScores(ctx, page)
+}
+
+// SetExpertValidation marks a page as expert validated (or removes validation) and recalculates scores.
+func (s *wikiPageService) SetExpertValidation(ctx context.Context, kbID string, slug string, validated bool) error {
+	page, err := s.repo.GetBySlug(ctx, kbID, slug)
+	if err != nil {
+		return fmt.Errorf("get page: %w", err)
+	}
+
+	// Atomically set expert validation
+	if err := s.repo.SetExpertValidation(ctx, page.ID, validated); err != nil {
+		return fmt.Errorf("set expert validation: %w", err)
+	}
+
+	// Re-fetch to get updated state
+	page, err = s.repo.GetByID(ctx, page.ID)
+	if err != nil {
+		return fmt.Errorf("re-fetch page: %w", err)
+	}
+
+	// Recalculate scores
+	now := time.Now()
+	wikiquality.UpdateAllScores(page, now)
+	return s.repo.UpdateScores(ctx, page)
+}
+
+// SetCriticalityLevel sets the criticality level (P0-P3) for a page.
+func (s *wikiPageService) SetCriticalityLevel(ctx context.Context, kbID string, slug string, level string) error {
+	normalized := types.NormalizeCriticalityLevel(level)
+	if !types.IsValidCriticalityLevel(normalized) {
+		return fmt.Errorf("invalid criticality level: %s", level)
+	}
+
+	page, err := s.repo.GetBySlug(ctx, kbID, slug)
+	if err != nil {
+		return fmt.Errorf("get page: %w", err)
+	}
+
+	if err := s.repo.SetCriticalityLevel(ctx, page.ID, normalized); err != nil {
+		return fmt.Errorf("set criticality level: %w", err)
+	}
+
+	// Re-fetch and recalculate freshness state since criticality affects auto-archiving
+	page, err = s.repo.GetByID(ctx, page.ID)
+	if err != nil {
+		return fmt.Errorf("re-fetch page: %w", err)
+	}
+
+	now := time.Now()
+	wikiquality.UpdateAllScores(page, now)
+	return s.repo.UpdateScores(ctx, page)
+}
+
+// RefreshScores recalculates confidence/quality/freshness scores for a single page.
+func (s *wikiPageService) RefreshScores(ctx context.Context, kbID string, slug string) (*types.WikiPage, error) {
+	page, err := s.repo.GetBySlug(ctx, kbID, slug)
+	if err != nil {
+		return nil, fmt.Errorf("get page: %w", err)
+	}
+
+	now := time.Now()
+	wikiquality.UpdateAllScores(page, now)
+	if err := s.repo.UpdateScores(ctx, page); err != nil {
+		return nil, fmt.Errorf("update scores: %w", err)
+	}
+
+	return page, nil
+}
+
+// RefreshAllScores recalculates scores for all pages in a knowledge base.
+// Returns the number of pages refreshed.
+func (s *wikiPageService) RefreshAllScores(ctx context.Context, kbID string) (int, error) {
+	pages, err := s.repo.ListAllNonDeleted(ctx, kbID)
+	if err != nil {
+		return 0, fmt.Errorf("list all pages: %w", err)
+	}
+
+	now := time.Now()
+	refreshed := 0
+
+	for _, page := range pages {
+		wikiquality.UpdateAllScores(page, now)
+		if err := s.repo.UpdateScores(ctx, page); err != nil {
+			// Log error but continue with other pages
+			logger.Warnf(ctx, "Failed to update scores for page %s: %v", page.Slug, err)
+			continue
+		}
+		refreshed++
+	}
+
+	return refreshed, nil
+}
+
+// GetQualityScores returns the confidence/quality/freshness scores for a page.
+func (s *wikiPageService) GetQualityScores(ctx context.Context, kbID string, slug string) (*types.WikiQualityScores, error) {
+	page, err := s.repo.GetBySlug(ctx, kbID, slug)
+	if err != nil {
+		return nil, fmt.Errorf("get page: %w", err)
+	}
+	return page.GetQualityScores(), nil
 }

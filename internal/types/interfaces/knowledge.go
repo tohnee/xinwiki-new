@@ -5,7 +5,7 @@ import (
 	"io"
 	"mime/multipart"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 	"github.com/hibiken/asynq"
 )
 

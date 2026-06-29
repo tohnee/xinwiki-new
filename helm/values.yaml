@@ -1,7 +1,7 @@
 # Copyright 2025 Tencent
 # SPDX-License-Identifier: MIT
 #
-# WeKnora Helm Chart Values
+# XinWiki Helm Chart Values
 #
 # Best Practices References:
 # - https://helm.sh/docs/chart_best_practices/values/
@@ -59,7 +59,7 @@ app:
 
   image:
     # -- Image repository
-    repository: wechatopenai/weknora-app
+    repository: wechatopenai/xinwiki-app
     # -- Image tag (defaults to Chart.appVersion if empty)
     tag: ""
     # -- Image pull policy
@@ -85,7 +85,7 @@ app:
     allowPrivilegeEscalation: false
 
   # -- Environment variables for the app container
-  # Ref: https://github.com/Tencent/WeKnora/blob/main/docker-compose.yml
+  # Ref: https://github.com/Tencent/XinWiki/blob/main/docker-compose.yml
   env:
     GIN_MODE: release
     # -- Retrieval driver: postgres, elasticsearch_v7, elasticsearch_v8, qdrant
@@ -150,7 +150,7 @@ frontend:
 
   image:
     # -- Image repository
-    repository: wechatopenai/weknora-ui
+    repository: wechatopenai/xinwiki-ui
     # -- Image tag
     tag: latest
     # -- Image pull policy
@@ -197,7 +197,7 @@ docreader:
 
   image:
     # -- Image repository
-    repository: wechatopenai/weknora-docreader
+    repository: wechatopenai/xinwiki-docreader
     # -- Image tag
     tag: latest
     # -- Image pull policy
@@ -350,7 +350,7 @@ ingress:
   className: nginx
 
   # -- Ingress hostname
-  host: weknora.example.com
+  host: xinwiki.example.com
 
   # -- TLS configuration
   tls:
@@ -374,7 +374,7 @@ ingress:
 # Use --set or external secret management (External Secrets Operator, Vault, etc.)
 #
 # Example installation:
-#   helm install weknora ./helm \
+#   helm install xinwiki ./helm \
 #     --set secrets.dbPassword=<secure-password> \
 #     --set secrets.redisPassword=<secure-password> \
 #     --set secrets.jwtSecret=<secure-random-string>
@@ -385,7 +385,7 @@ secrets:
   # -- Database password (REQUIRED: change in production)
   dbPassword: ""
   # -- Database name
-  dbName: weknora
+  dbName: xinwiki
   # -- Redis username (OPTIONAL: for Redis 6.0+ ACL)
   redisUsername: ""
   # -- Redis password (REQUIRED: change in production)
@@ -402,7 +402,7 @@ secrets:
   tenantAesKey: ""
   # -- System AES-256 key for database field encryption (must be exactly 32 bytes).
   # Encrypts: tenants.api_key, model API keys, vector store credentials,
-  # web search provider keys, WeKnoraCloud.AppSecret.
+  # web search provider keys, XinWikiCloud.AppSecret.
   # STRONGLY RECOMMENDED to set this explicitly in production. Same caveat as
   # tenantAesKey: losing this key makes all encrypted fields unreadable
   # (the UI will display ciphertext like "enc:v1:..." instead of plaintext).

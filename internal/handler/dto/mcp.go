@@ -12,7 +12,7 @@ package dto
 import (
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // MCPServiceResponse mirrors types.MCPService for response bodies, omitting

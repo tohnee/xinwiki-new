@@ -3,7 +3,7 @@ package vlm
 import (
 	"context"
 
-	"github.com/Tencent/WeKnora/internal/tracing/langfuse"
+	"github.com/Tencent/XinWiki/internal/tracing/langfuse"
 )
 
 // langfuseVLM wraps a VLM and reports each Predict call as a Langfuse

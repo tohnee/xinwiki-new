@@ -6,10 +6,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/text"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/text"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // docViewFields enumerates the fields surfaced for `--format json` discovery on
@@ -29,14 +29,14 @@ type ViewService interface {
 	GetKnowledge(ctx context.Context, id string) (*sdk.Knowledge, error)
 }
 
-// NewCmdView builds `weknora doc view <id>`.
+// NewCmdView builds `xinwiki doc view <id>`.
 func NewCmdView(f *cmdutil.Factory) *cobra.Command {
 	opts := &ViewOptions{}
 	cmd := &cobra.Command{
 		Use:   "view <doc-id>",
 		Short: "Show a document by ID",
-		Example: `  weknora doc view doc_abc
-  weknora doc view doc_abc --format json`,
+		Example: `  xinwiki doc view doc_abc
+  xinwiki doc view doc_abc --format json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			fopts, err := cmdutil.CheckFormatFlag(c)
@@ -55,7 +55,7 @@ func NewCmdView(f *cmdutil.Factory) *cobra.Command {
 	cmdutil.SetAgentHelp(cmd, cmdutil.AgentHelp{
 		UsedFor:       "fetch one document's metadata by id",
 		RequiredFlags: []string{"<doc-id> (positional)"},
-		Examples:      []string{"weknora doc view doc_abc", "weknora doc view doc_abc --jq .data.parse_status"},
+		Examples:      []string{"xinwiki doc view doc_abc", "xinwiki doc view doc_abc --jq .data.parse_status"},
 		Output:        "envelope.data is the document object (id, file_name, parse_status, ...)",
 	})
 	return cmd

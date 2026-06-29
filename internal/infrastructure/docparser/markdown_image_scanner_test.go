@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 func TestScanMarkdownImageTargets(t *testing.T) {

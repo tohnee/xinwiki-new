@@ -637,13 +637,13 @@ const agentImageUploadEnabledEffective = computed(() =>
   drawerAgent.value?.config?.image_upload_enabled === true,
 )
 
-const EMBED_TOKEN_STORAGE = 'weknora_embed_publish_tokens'
-const WEKNORA_BRAND_COLOR = '#07C05F'
+const EMBED_TOKEN_STORAGE = 'xinwiki_embed_publish_tokens'
+const XINWIKI_BRAND_COLOR = '#07C05F'
 
 function getDefaultEmbedPrimaryColor(): string {
-  if (typeof window === 'undefined') return WEKNORA_BRAND_COLOR
+  if (typeof window === 'undefined') return XINWIKI_BRAND_COLOR
   const css = getComputedStyle(document.documentElement).getPropertyValue('--td-brand-color').trim()
-  return css || WEKNORA_BRAND_COLOR
+  return css || XINWIKI_BRAND_COLOR
 }
 
 const defaultPrimaryColor = getDefaultEmbedPrimaryColor()

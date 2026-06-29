@@ -16,10 +16,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/prompt"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/prompt"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // fakeAPISvc is a test double for Service that delegates each call to a
@@ -238,12 +238,12 @@ func TestAPI_PathWithoutSlash(t *testing.T) {
 	}
 }
 
-// withRootHarness wraps `weknora api ...` under a synthetic root cmd that
+// withRootHarness wraps `xinwiki api ...` under a synthetic root cmd that
 // registers the global persistent flags (mirrors addGlobalFlags in
 // cmd/root.go). Required because api's NewCmd doesn't register --yes /
 // --format / --jq itself — it inherits them from root in production.
 func withRootHarness(api *cobra.Command, args ...string) *cobra.Command {
-	root := &cobra.Command{Use: "weknora"}
+	root := &cobra.Command{Use: "xinwiki"}
 	pf := root.PersistentFlags()
 	pf.BoolP("yes", "y", false, "")
 	pf.String("format", "", "")
@@ -257,7 +257,7 @@ func withRootHarness(api *cobra.Command, args ...string) *cobra.Command {
 }
 
 // TestAPI_DELETE_RequiresConfirmation pins the exit-10 protocol on the
-// escape-hatch DELETE path: agent invokes `weknora api DELETE /...` without
+// escape-hatch DELETE path: agent invokes `xinwiki api DELETE /...` without
 // -y/--yes, must get input.confirmation_required + exit 10. Confirmation is
 // enforced in NewCmd.RunE (not runAPI), so the test drives the cobra cmd.
 func TestAPI_DELETE_RequiresConfirmation(t *testing.T) {

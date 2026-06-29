@@ -311,7 +311,7 @@ class OpenDataLoaderParser(BaseParser):
 
         max_workers = CONFIG.odl_max_workers
         with parser_worker_limit("opendataloader", max_workers):
-            with tempfile.TemporaryDirectory(prefix="weknora-odl-") as tmp_dir:
+            with tempfile.TemporaryDirectory(prefix="xinwiki-odl-") as tmp_dir:
                 pdf_path = os.path.join(tmp_dir, safe_name)
                 with open(pdf_path, "wb") as f:
                     f.write(content)

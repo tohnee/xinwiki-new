@@ -1,0 +1,107 @@
+groups:
+  - name: vectorstore_readwrite_separation
+    rules:
+      - alert: VectorStoreMasterUnhealthy
+        expr: vectorstore_healthy_nodes{node_role="master"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: vectorstore
+        annotations:
+          summary: "VectorStore master node unhealthy for store {{ $labels.store_id }}"
+          description: "Master node has been marked unhealthy for more than 30 seconds. Write operations will fail."
+
+      - alert: VectorStoreNoHealthyReplicas
+        expr: |
+          vectorstore_healthy_nodes{node_role="replica"} == 0
+          and
+          max by (store_id) (vectorstore_read_requests_total) > 0
+        for: 1m
+        labels:
+          severity: warning
+          service: vectorstore
+        annotations:
+          summary: "No healthy read replicas for store {{ $labels.store_id }}"
+          description: "All read replicas are unhealthy. Read traffic is being routed to master, causing increased load."
+
+      - alert: VectorStoreCircuitBreakerOpen
+        expr: vectorstore_circuit_breaker_state == 2
+        for: 1m
+        labels:
+          severity: warning
+          service: vectorstore
+        annotations:
+          summary: "Circuit breaker open for node {{ $labels.node_id }} in store {{ $labels.store_id }}"
+          description: "Circuit breaker has been open for more than 1 minute. The node is isolated due to consecutive failures."
+
+      - alert: VectorStoreReplicaLSNLagHigh
+        expr: vectorstore_replica_lsn_lag > 1000
+        for: 2m
+        labels:
+          severity: warning
+          service: vectorstore
+        annotations:
+          summary: "High LSN lag on replica {{ $labels.node_id }} (store {{ $labels.store_id }})"
+          description: "Replica is behind master by {{ $value }} operations. Session consistency reads may be routed to master."
+
+      - alert: VectorStoreReplicaLSNLagCritical
+        expr: vectorstore_replica_lsn_lag > 10000
+        for: 5m
+        labels:
+          severity: critical
+          service: vectorstore
+        annotations:
+          summary: "Critical LSN lag on replica {{ $labels.node_id }} (store {{ $labels.store_id }})"
+          description: "Replica is severely behind master by {{ $value }} operations. Replication may be broken."
+
+      - alert: VectorStoreReadErrorRateHigh
+        expr: |
+          sum by (store_id) (rate(vectorstore_read_requests_total{result="error"}[5m]))
+          /
+          sum by (store_id) (rate(vectorstore_read_requests_total[5m]))
+          > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: vectorstore
+        annotations:
+          summary: "High read error rate for store {{ $labels.store_id }}"
+          description: "Read error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+      - alert: VectorStoreWriteErrorRateHigh
+        expr: |
+          sum by (store_id) (rate(vectorstore_write_requests_total{result="error"}[5m]))
+          /
+          sum by (store_id) (rate(vectorstore_write_requests_total[5m]))
+          > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: vectorstore
+        annotations:
+          summary: "High write error rate for store {{ $labels.store_id }}"
+          description: "Write error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+      - alert: VectorStoreReadLatencyHigh
+        expr: |
+          histogram_quantile(0.95, sum by (le, store_id) (rate(vectorstore_request_latency_seconds{operation="get_reader"}[5m])))
+          > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: vectorstore
+        annotations:
+          summary: "High p95 read routing latency for store {{ $labels.store_id }}"
+          description: "p95 routing latency is {{ $value }}s over the last 5 minutes."
+
+      - alert: VectorStoreHealthCheckLatencyHigh
+        expr: |
+          histogram_quantile(0.95, sum by (le, store_id, node_id) (rate(vectorstore_health_check_latency_seconds[5m])))
+          > 1
+        for: 2m
+        labels:
+          severity: warning
+          service: vectorstore
+        annotations:
+          summary: "High health check latency for node {{ $labels.node_id }}"
+          description: "p95 health check latency is {{ $value }}s over the last 5 minutes."

@@ -8,7 +8,7 @@ func TestValidateEmbedWebhookURL(t *testing.T) {
 	if err := ValidateEmbedWebhookURL(""); err != nil {
 		t.Fatalf("empty URL should be allowed: %v", err)
 	}
-	if err := ValidateEmbedWebhookURL("https://hooks.example.com/weknora/events"); err != nil {
+	if err := ValidateEmbedWebhookURL("https://hooks.example.com/xinwiki/events"); err != nil {
 		t.Fatalf("whitelisted public https URL should pass: %v", err)
 	}
 	if err := ValidateEmbedWebhookURL("ftp://hooks.example.com/x"); err == nil {

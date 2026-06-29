@@ -11,20 +11,20 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/config"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/projectlink"
-	"github.com/Tencent/WeKnora/cli/internal/prompt"
-	"github.com/Tencent/WeKnora/cli/internal/secrets"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/config"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/projectlink"
+	"github.com/Tencent/XinWiki/cli/internal/prompt"
+	"github.com/Tencent/XinWiki/cli/internal/secrets"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // Factory is the dependency container injected at command construction. Each
-// closure is lazy: --help / completion / `weknora version` must NOT trigger
+// closure is lazy: --help / completion / `xinwiki version` must NOT trigger
 // HTTP, keyring access, or filesystem I/O beyond the bare minimum.
 //
 // Four closures:
-//   - Config:   parses ~/.config/weknora/config.yaml (no network)
+//   - Config:   parses ~/.config/xinwiki/config.yaml (no network)
 //   - Client:   constructs the SDK client; only Secrets is sync.Once-cached,
 //     so callers should hold the returned *sdk.Client across
 //     multiple SDK calls within one invocation
@@ -38,7 +38,7 @@ import (
 // iostreams.IO. The bar to add a new closure is at least 2 commands sharing the
 // same dependency; resist factory bloat.
 //
-// Client returns a *sdk.Client (the WeKnora SDK). Commands that want narrow
+// Client returns a *sdk.Client (the XinWiki SDK). Commands that want narrow
 // service interfaces declare them in their own files and let the real SDK
 // satisfy them implicitly via duck typing.
 type Factory struct {
@@ -111,7 +111,7 @@ func New() *Factory {
 // buildClient resolves the active profile, loads the credentials from secrets,
 // and constructs a *sdk.Client. Returns CodeAuthUnauthenticated when no
 // credentials are available so the user gets the right hint to run
-// `weknora auth login`.
+// `xinwiki auth login`.
 func buildClient(f *Factory) (*sdk.Client, error) {
 	cfg, err := f.Config()
 	if err != nil {
@@ -119,7 +119,7 @@ func buildClient(f *Factory) (*sdk.Client, error) {
 	}
 	profileName := cfg.CurrentProfile
 	if profileName == "" {
-		return nil, NewError(CodeAuthUnauthenticated, "no current profile configured; run `weknora auth login` to set one up")
+		return nil, NewError(CodeAuthUnauthenticated, "no current profile configured; run `xinwiki auth login` to set one up")
 	}
 	prof, ok := cfg.Profiles[profileName]
 	if !ok {
@@ -129,8 +129,8 @@ func buildClient(f *Factory) (*sdk.Client, error) {
 		if f.ProfileOverride != "" {
 			return nil, NewError(CodeInputInvalidArgument,
 				fmt.Sprintf("profile %q not configured", profileName)).
-				WithHint("list available profiles with `weknora profile list`").
-				WithRetryCommand("weknora profile list")
+				WithHint("list available profiles with `xinwiki profile list`").
+				WithRetryCommand("xinwiki profile list")
 		}
 		// ProfileOverride is empty: config.CurrentProfile points at a missing entry.
 		// That's a genuinely corrupt config file.
@@ -199,7 +199,7 @@ func AddKBFlag(cmd *cobra.Command) {
 //  1. --kb flag (kb_<...> id passed through; anything else resolved via
 //     ListKnowledgeBases as a name → id lookup)
 //  2. WEKNORA_KB_ID env (always an explicit id)
-//  3. .weknora/project.yaml (walk-up from cwd)
+//  3. .xinwiki/project.yaml (walk-up from cwd)
 //  4. error: kb required
 func (f *Factory) ResolveKB(cmd *cobra.Command) (string, error) {
 	if v, _ := cmd.Flags().GetString("kb"); v != "" {

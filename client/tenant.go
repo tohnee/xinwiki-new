@@ -1,4 +1,4 @@
-// Package client provides the implementation for interacting with the WeKnora API
+// Package client provides the implementation for interacting with the XinWiki API
 // The Tenant related interfaces are used to manage tenants in the system
 // Tenants can be created, retrieved, updated, deleted, and queried
 // They can also be used to manage retriever engines for different tasks

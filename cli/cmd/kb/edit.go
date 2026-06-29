@@ -8,9 +8,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // kbEditFields enumerates the fields surfaced for `--format json` discovery on
@@ -47,7 +47,7 @@ type EditService interface {
 	UpdateKnowledgeBase(ctx context.Context, id string, req *sdk.UpdateKnowledgeBaseRequest) (*sdk.KnowledgeBase, error)
 }
 
-// NewCmdEdit builds `weknora kb edit <id>`. At least one of --name /
+// NewCmdEdit builds `xinwiki kb edit <id>`. At least one of --name /
 // --description must be provided.
 func NewCmdEdit(f *cmdutil.Factory) *cobra.Command {
 	opts := &EditOptions{}
@@ -124,8 +124,8 @@ to the user first.`,
 		UsedFor:       "update a knowledge base's name or description",
 		RequiredFlags: []string{"<kb-id> (positional)", "--name or --description (at least one)"},
 		Examples: []string{
-			"weknora kb edit kb_abc --name \"New Name\" -y",
-			"weknora kb edit kb_abc --description \"Updated desc\" --format json -y",
+			"xinwiki kb edit kb_abc --name \"New Name\" -y",
+			"xinwiki kb edit kb_abc --description \"Updated desc\" --format json -y",
 		},
 		Warnings: []string{
 			"Requires explicit user approval (exit 10 / input.confirmation_required); never auto-add -y.",
@@ -139,7 +139,7 @@ to the user first.`,
 // flags the user actually set so agents can surface a precise re-run command.
 func buildKBEditRetryCmd(c *cobra.Command, id string) string {
 	var parts []string
-	parts = append(parts, "weknora", "kb", "edit", id)
+	parts = append(parts, "xinwiki", "kb", "edit", id)
 	c.Flags().Visit(func(f *pflag.Flag) {
 		switch f.Name {
 		case "name":

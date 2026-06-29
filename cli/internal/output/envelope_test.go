@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tencent/WeKnora/cli/internal/output"
+	"github.com/Tencent/XinWiki/cli/internal/output"
 )
 
 func TestWriteEnvelope_SuccessWithData(t *testing.T) {
@@ -57,7 +57,7 @@ func TestWriteErrorEnvelope_FullShape(t *testing.T) {
 		Type:         "input.confirmation_required",
 		Message:      "kb delete kb_x requires confirmation",
 		Hint:         "re-run with -y/--yes",
-		RetryCommand: "weknora kb delete kb_x -y",
+		RetryCommand: "xinwiki kb delete kb_x -y",
 		Risk: &output.RiskDetail{
 			Level:  "destructive",
 			Action: "kb.delete",
@@ -73,7 +73,7 @@ func TestWriteErrorEnvelope_FullShape(t *testing.T) {
 	if !strings.Contains(got, `"type":"input.confirmation_required"`) {
 		t.Errorf("missing typed code; got %q", got)
 	}
-	if !strings.Contains(got, `"retry_command":"weknora kb delete kb_x -y"`) {
+	if !strings.Contains(got, `"retry_command":"xinwiki kb delete kb_x -y"`) {
 		t.Errorf("missing retry_command; got %q", got)
 	}
 	if !strings.Contains(got, `"risk":{"level":"destructive","action":"kb.delete"}`) {

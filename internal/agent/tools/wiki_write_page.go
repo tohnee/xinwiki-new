@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tencent/WeKnora/internal/application/repository"
-	appsvc "github.com/Tencent/WeKnora/internal/application/service"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/acl"
+	"github.com/Tencent/XinWiki/internal/application/repository"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 	"github.com/sirupsen/logrus"
 )
 
@@ -123,7 +123,7 @@ func (t *wikiWritePageTool) Execute(ctx context.Context, args json.RawMessage) (
 		}
 
 		if derivedACL != nil {
-			appsvc.ApplyDerivedACLToWikiPage(existingPage, *derivedACL)
+			acl.ApplyDerivedACLToWikiPage(existingPage, *derivedACL)
 		}
 
 		_, err = t.wikiPageService.UpdatePage(ctx, existingPage)
@@ -145,7 +145,7 @@ func (t *wikiWritePageTool) Execute(ctx context.Context, args json.RawMessage) (
 		}
 
 		if derivedACL != nil {
-			appsvc.ApplyDerivedACLToWikiPage(newPage, *derivedACL)
+			acl.ApplyDerivedACLToWikiPage(newPage, *derivedACL)
 		}
 
 		_, err = t.wikiPageService.CreatePage(ctx, newPage)
@@ -195,7 +195,7 @@ func (t *wikiWritePageTool) Execute(ctx context.Context, args json.RawMessage) (
 }
 
 func (t *wikiWritePageTool) computeDerivedACL(ctx context.Context, sourceRefs []string) *types.DerivedACLResult {
-	knowledgeIDs := appsvc.ExtractKnowledgeIDsFromSourceRefs(sourceRefs)
+	knowledgeIDs := acl.ExtractKnowledgeIDsFromSourceRefs(sourceRefs)
 	if len(knowledgeIDs) == 0 {
 		return nil
 	}
@@ -219,7 +219,7 @@ func (t *wikiWritePageTool) computeDerivedACL(ctx context.Context, sourceRefs []
 		}
 	}
 
-	result, err := appsvc.CalculateDerivedACLFromChunks(allChunks)
+	result, err := acl.CalculateDerivedACLFromChunks(allChunks)
 	if err != nil {
 		logrus.WithError(err).Warn("failed to calculate derived ACL, using default L1")
 		return &types.DerivedACLResult{

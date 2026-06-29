@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/compat"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/secrets"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/compat"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/secrets"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // withCredStoreFactory swaps the package-level credStoreFactory hook for the
@@ -172,7 +172,7 @@ func TestDoctor_CacheHit_SkipsProbe(t *testing.T) {
 // TestDoctor_NoConfig_StillRunsCredentialStorage guards the package-doc
 // promise that credential_storage runs even with zero configuration. Round-4
 // reviewer surfaced that buildServices used to abort on f.Client() failure,
-// silently violating the doc for any first-time user running `weknora doctor`
+// silently violating the doc for any first-time user running `xinwiki doctor`
 // to diagnose setup. The lazy-resolve fix means missing auth surfaces as
 // auth_credential=fail, not a top-level command exit.
 func TestDoctor_NoConfig_StillRunsCredentialStorage(t *testing.T) {

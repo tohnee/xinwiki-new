@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 func TestAggregateByKnowledge_mergesChunksFromSameDocument(t *testing.T) {

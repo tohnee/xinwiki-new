@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This is the WeKnora CLI (`weknora`), a command-line client for the WeKnora RAG server. The module path is `github.com/Tencent/WeKnora/cli`.
+This is the XinWiki CLI (`weknora`), a command-line client for the XinWiki RAG server. The module path is `github.com/Tencent/XinWiki/cli`.
 
 The wire contract for AI agents *consuming* `weknora` output (JSON shape, exit codes, error format) is documented below and in [README.md](README.md). Read this file if you're integrating with the CLI binary — build / test / architecture details follow the wire contract sections.
 
@@ -141,7 +141,7 @@ Make errors structured, actionable, and specific.
 
 ## Design decisions worth flagging
 
-Five design decisions readers may want context on: where WeKnora picks an
+Five design decisions readers may want context on: where XinWiki picks an
 opinionated default, what the trade-off is, and what mainstream practice it
 is or isn't aligned with.
 
@@ -149,28 +149,28 @@ is or isn't aligned with.
 
 | | |
 |---|---|
-| **WeKnora** | success envelope → stdout; error envelope → stderr |
+| **XinWiki** | success envelope → stdout; error envelope → stderr |
 | **Rationale** | `weknora ... --format json \| jq '.data[]'` must not mix error objects into the data stream. Channel split lets pipeline consumers suppress errors with `2>/dev/null` and still get clean JSON on stdout. |
 
 ### 2. `weknora api DELETE` triggers exit-10 confirmation
 
 | | |
 |---|---|
-| **WeKnora** | DELETE triggers exit-10 (`input.confirmation_required`); user bypasses with `-y/--yes` |
+| **XinWiki** | DELETE triggers exit-10 (`input.confirmation_required`); user bypasses with `-y/--yes` |
 | **Rationale** | DELETE is irreversible. Most raw-API CLI commands rely on restricted credentials for safety, but self-hosted deployments may not have restricted-credential infrastructure available. Defensive default because agents are common consumers. |
 
 ### 3. `retry_command` distinct from `hint`
 
 | | |
 |---|---|
-| **WeKnora** | two separate fields: `retry_command` (suggested next argv, directly-executable for non-destructive errors; informational only on exit-10) + `hint` (prose) |
+| **XinWiki** | two separate fields: `retry_command` (suggested next argv, directly-executable for non-destructive errors; informational only on exit-10) + `hint` (prose) |
 | **Rationale** | Agents don't regex-extract argv from prose — known fragility. Trade-off: one extra envelope field. On exit-10, the user must approve the destructive write; agents surface `retry_command` for human review, not auto-execution. |
 
 ### 4. NDJSON event stream has no envelope wrapping
 
 | | |
 |---|---|
-| **WeKnora** | streaming commands (`chat`, `session ask`) emit bare `{type:...}` per line; no envelope |
+| **XinWiki** | streaming commands (`chat`, `session ask`) emit bare `{type:...}` per line; no envelope |
 | **Rationale** | This matches established practice across NDJSON-emitting CLIs and webhook protocols. A streaming envelope requires unwrap before dispatch — net burden with no benefit. |
 
 ### 5. No `schema_version` field in payload
@@ -178,7 +178,7 @@ is or isn't aligned with.
 | | |
 |---|---|
 | **Mainstream** | some APIs (Anthropic / OpenAI) embed a `version` field in payload |
-| **WeKnora** | version identity via CLI binary semver + CHANGELOG `### BREAKING` + skill `tested_against` + CI parity tests |
+| **XinWiki** | version identity via CLI binary semver + CHANGELOG `### BREAKING` + skill `tested_against` + CI parity tests |
 | **Rationale** | Mainstream CLIs don't embed version in payload. Agents have complete version awareness via `weknora --version` and skill version binding. |
 
 ## Pre-1.0 breaking policy
@@ -535,7 +535,7 @@ The three surfaces do not auto-sync: each is wired separately so agents that onl
 
 ## MCP Tool Surface
 
-WeKnora's MCP server exposes a curated 10-tool surface where most tools are read-only but `chat` and `session_ask` create conversation/message records. Many MCP servers in the wild ship write / mutation operations on by default and rely on credential-scope or sandbox restrictions for safety. WeKnora opts for curation instead: the server side doesn't yet enforce per-token scope, so an agent holding a user's token has full write access. Until server-side scope ships, the CLI keeps mutation tools out of the MCP surface as a belt-and-braces second line of defense. When server scope arrives this stance can loosen.
+XinWiki's MCP server exposes a curated 10-tool surface where most tools are read-only but `chat` and `session_ask` create conversation/message records. Many MCP servers in the wild ship write / mutation operations on by default and rely on credential-scope or sandbox restrictions for safety. XinWiki opts for curation instead: the server side doesn't yet enforce per-token scope, so an agent holding a user's token has full write access. Until server-side scope ships, the CLI keeps mutation tools out of the MCP surface as a belt-and-braces second line of defense. When server scope arrives this stance can loosen.
 
 The curated 10 tools (`cli/internal/mcp/tools.go`):
 
@@ -582,7 +582,7 @@ Reasons hard-required-flags is the v0.5+ default:
 
 - Admin / debug commands have no natural human-interactive prompt to lean on.
 - Agent-friendly: MCP callers do not stall waiting for stdin prompts.
-- Consistent with every existing non-auth WeKnora command.
+- Consistent with every existing non-auth XinWiki command.
 
 - **Agent help blob**: Commands MAY call
   `cmdutil.SetAgentHelp(cmd, cmdutil.AgentHelp{...})` to expose a stable

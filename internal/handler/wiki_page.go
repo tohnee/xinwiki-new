@@ -7,13 +7,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Tencent/WeKnora/internal/application/repository"
-	"github.com/Tencent/WeKnora/internal/application/service"
-	"github.com/Tencent/WeKnora/internal/errors"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/application/repository"
+	"github.com/Tencent/XinWiki/internal/application/service"
+	"github.com/Tencent/XinWiki/internal/errors"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -895,4 +895,674 @@ func (h *WikiPageHandler) AutoFix(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"fixed": fixed, "message": fmt.Sprintf("Auto-fixed %d issues", fixed)})
+}
+
+// SubmitReview godoc
+// @Summary      Submit page for review
+// @Description  Submit a draft page for review
+// @Tags         Wiki
+// @Accept       json
+// @Produce      json
+// @Param        kb_id  path  string  true  "Knowledge base ID"
+// @Param        slug   path  string  true  "Page slug"
+// @Param        review body  object  false "Review request with optional reason"
+// @Success      200  {object}  types.WikiReviewResult
+// @Failure      400  {object}  errors.AppError
+// @Failure      404  {object}  errors.AppError
+// @Security     Bearer
+// @Router       /knowledgebase/{kb_id}/wiki/pages/{slug}/submit-review [post]
+func (h *WikiPageHandler) SubmitReview(c *gin.Context) {
+	kbID, _, err := h.validateWikiKB(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slug := getSlugParam(c)
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Page slug is required"})
+		return
+	}
+
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	result, err := h.wikiService.SubmitReview(c.Request.Context(), kbID, slug, req.Reason)
+	if err != nil {
+		writeWikiPageReviewError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// Approve godoc
+// @Summary      Approve a page under review
+// @Description  Approve a page and publish it
+// @Tags         Wiki
+// @Accept       json
+// @Produce      json
+// @Param        kb_id  path  string  true  "Knowledge base ID"
+// @Param        slug   path  string  true  "Page slug"
+// @Param        review body  object  false "Approval with optional reason"
+// @Success      200  {object}  types.WikiReviewResult
+// @Failure      400  {object}  errors.AppError
+// @Failure      404  {object}  errors.AppError
+// @Security     Bearer
+// @Router       /knowledgebase/{kb_id}/wiki/pages/{slug}/approve [post]
+func (h *WikiPageHandler) Approve(c *gin.Context) {
+	kbID, _, err := h.validateWikiKB(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slug := getSlugParam(c)
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Page slug is required"})
+		return
+	}
+
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	result, err := h.wikiService.Approve(c.Request.Context(), kbID, slug, req.Reason)
+	if err != nil {
+		writeWikiPageReviewError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// Reject godoc
+// @Summary      Reject a page under review
+// @Description  Reject a page and return it to draft
+// @Tags         Wiki
+// @Accept       json
+// @Produce      json
+// @Param        kb_id  path  string  true  "Knowledge base ID"
+// @Param        slug   path  string  true  "Page slug"
+// @Param        review body  object  false "Rejection with reason"
+// @Success      200  {object}  types.WikiReviewResult
+// @Failure      400  {object}  errors.AppError
+// @Failure      404  {object}  errors.AppError
+// @Security     Bearer
+// @Router       /knowledgebase/{kb_id}/wiki/pages/{slug}/reject [post]
+func (h *WikiPageHandler) Reject(c *gin.Context) {
+	kbID, _, err := h.validateWikiKB(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slug := getSlugParam(c)
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Page slug is required"})
+		return
+	}
+
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	result, err := h.wikiService.Reject(c.Request.Context(), kbID, slug, req.Reason)
+	if err != nil {
+		writeWikiPageReviewError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// Deprecate godoc
+// @Summary      Deprecate a published page
+// @Description  Mark a published page as deprecated
+// @Tags         Wiki
+// @Accept       json
+// @Produce      json
+// @Param        kb_id  path  string  true  "Knowledge base ID"
+// @Param        slug   path  string  true  "Page slug"
+// @Param        review body  object  false "Deprecation with reason"
+// @Success      200  {object}  types.WikiReviewResult
+// @Failure      400  {object}  errors.AppError
+// @Failure      404  {object}  errors.AppError
+// @Security     Bearer
+// @Router       /knowledgebase/{kb_id}/wiki/pages/{slug}/deprecate [post]
+func (h *WikiPageHandler) Deprecate(c *gin.Context) {
+	kbID, _, err := h.validateWikiKB(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slug := getSlugParam(c)
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Page slug is required"})
+		return
+	}
+
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	result, err := h.wikiService.Deprecate(c.Request.Context(), kbID, slug, req.Reason)
+	if err != nil {
+		writeWikiPageReviewError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// Archive godoc
+// @Summary      Archive a page
+// @Description  Archive a deprecated or superseded page
+// @Tags         Wiki
+// @Accept       json
+// @Produce      json
+// @Param        kb_id  path  string  true  "Knowledge base ID"
+// @Param        slug   path  string  true  "Page slug"
+// @Param        review body  object  false "Archive with reason"
+// @Success      200  {object}  types.WikiReviewResult
+// @Failure      400  {object}  errors.AppError
+// @Failure      404  {object}  errors.AppError
+// @Security     Bearer
+// @Router       /knowledgebase/{kb_id}/wiki/pages/{slug}/archive [post]
+func (h *WikiPageHandler) Archive(c *gin.Context) {
+	kbID, _, err := h.validateWikiKB(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slug := getSlugParam(c)
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Page slug is required"})
+		return
+	}
+
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	result, err := h.wikiService.Archive(c.Request.Context(), kbID, slug, req.Reason)
+	if err != nil {
+		writeWikiPageReviewError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// Supersede godoc
+// @Summary      Create supersession relationship
+// @Description  Mark an old page as superseded by a new page
+// @Tags         Wiki
+// @Accept       json
+// @Produce      json
+// @Param        kb_id  path  string  true  "Knowledge base ID"
+// @Param        req    body  types.WikiSupersedeRequest  true  "Supersession request"
+// @Success      201  {object}  types.WikiSupersession
+// @Failure      400  {object}  errors.AppError
+// @Failure      404  {object}  errors.AppError
+// @Failure      409  {object}  errors.AppError
+// @Security     Bearer
+// @Router       /knowledgebase/{kb_id}/wiki/supersessions [post]
+func (h *WikiPageHandler) Supersede(c *gin.Context) {
+	kbID, _, err := h.validateWikiKB(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var req types.WikiSupersedeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		return
+	}
+	req.KnowledgeBaseID = kbID
+
+	supersession, err := h.wikiService.Supersede(c.Request.Context(), kbID, &req)
+	if err != nil {
+		writeWikiSupersessionError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, supersession)
+}
+
+// GetSupersession godoc
+// @Summary      Get supersession for a page
+// @Description  Get the supersession relationship where the given page is the old page
+// @Tags         Wiki
+// @Produce      json
+// @Param        kb_id  path  string  true  "Knowledge base ID"
+// @Param        slug   path  string  true  "Page slug (old page)"
+// @Success      200  {object}  types.WikiSupersession
+// @Failure      400  {object}  errors.AppError
+// @Failure      404  {object}  errors.AppError
+// @Security     Bearer
+// @Router       /knowledgebase/{kb_id}/wiki/pages/{slug}/supersession [get]
+func (h *WikiPageHandler) GetSupersession(c *gin.Context) {
+	kbID, _, err := h.validateWikiKB(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slug := getSlugParam(c)
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Page slug is required"})
+		return
+	}
+
+	supersession, err := h.wikiService.GetSupersessionByOldPage(c.Request.Context(), kbID, slug)
+	if err != nil {
+		writeWikiSupersessionError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, supersession)
+}
+
+// ListSupersessions godoc
+// @Summary      List all supersessions
+// @Description  List all supersession relationships in the knowledge base
+// @Tags         Wiki
+// @Produce      json
+// @Param        kb_id  path  string  true  "Knowledge base ID"
+// @Success      200  {array}   types.WikiSupersession
+// @Failure      400  {object}  errors.AppError
+// @Security     Bearer
+// @Router       /knowledgebase/{kb_id}/wiki/supersessions [get]
+func (h *WikiPageHandler) ListSupersessions(c *gin.Context) {
+	kbID, _, err := h.validateWikiKB(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	supersessions, err := h.wikiService.ListSupersessions(c.Request.Context(), kbID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if supersessions == nil {
+		supersessions = []*types.WikiSupersession{}
+	}
+	c.JSON(http.StatusOK, supersessions)
+}
+
+// ListSuperseding godoc
+// @Summary      List pages that this page supersedes
+// @Description  List all supersession relationships where the given page is the new page
+// @Tags         Wiki
+// @Produce      json
+// @Param        kb_id  path  string  true  "Knowledge base ID"
+// @Param        slug   path  string  true  "Page slug (new page)"
+// @Success      200  {array}   types.WikiSupersession
+// @Failure      400  {object}  errors.AppError
+// @Security     Bearer
+// @Router       /knowledgebase/{kb_id}/wiki/pages/{slug}/superseding [get]
+func (h *WikiPageHandler) ListSuperseding(c *gin.Context) {
+	kbID, _, err := h.validateWikiKB(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slug := getSlugParam(c)
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Page slug is required"})
+		return
+	}
+
+	supersessions, err := h.wikiService.ListSupersessionsByNewPage(c.Request.Context(), kbID, slug)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if supersessions == nil {
+		supersessions = []*types.WikiSupersession{}
+	}
+	c.JSON(http.StatusOK, supersessions)
+}
+
+func writeWikiPageReviewError(c *gin.Context, err error) {
+	var invalidTransition *types.InvalidWikiStatusTransitionError
+	if stderrors.As(err, &invalidTransition) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if stderrors.Is(err, repository.ErrWikiPageNotFound) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Wiki page not found"})
+		return
+	}
+	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+}
+
+func writeWikiSupersessionError(c *gin.Context, err error) {
+	if stderrors.Is(err, repository.ErrWikiPageNotFound) {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	if stderrors.Is(err, repository.ErrWikiSupersessionConflict) {
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	}
+	if stderrors.Is(err, repository.ErrWikiSamePageSupersession) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+}
+
+// RecordPageAccess godoc
+// @Summary      Record page access
+// @Description  Record a page view, incrementing view count and updating last accessed time
+// @Tags         Wiki
+// @Param        kb_id  path  string  true  "Knowledge base ID"
+// @Param        slug   path  string  true  "Page slug"
+// @Success      200  {object}  map[string]string
+// @Failure      400  {object}  errors.AppError
+// @Failure      404  {object}  errors.AppError
+// @Security     Bearer
+// @Router       /knowledgebase/{kb_id}/wiki/pages/{slug}/access [post]
+func (h *WikiPageHandler) RecordPageAccess(c *gin.Context) {
+	kbID, _, err := h.validateWikiKB(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slug := getSlugParam(c)
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Page slug is required"})
+		return
+	}
+
+	if err := h.wikiService.RecordPageAccess(c.Request.Context(), kbID, slug); err != nil {
+		if stderrors.Is(err, repository.ErrWikiPageNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Wiki page not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Page access recorded"})
+}
+
+// RecordFeedback godoc
+// @Summary      Record page feedback
+// @Description  Record user feedback (positive/negative) for a page and recalculate scores
+// @Tags         Wiki
+// @Accept       json
+// @Produce      json
+// @Param        kb_id  path  string  true  "Knowledge base ID"
+// @Param        slug   path  string  true  "Page slug"
+// @Param        feedback body  object  true  "Feedback data {is_positive: bool}"
+// @Success      200  {object}  map[string]string
+// @Failure      400  {object}  errors.AppError
+// @Failure      404  {object}  errors.AppError
+// @Security     Bearer
+// @Router       /knowledgebase/{kb_id}/wiki/pages/{slug}/feedback [post]
+func (h *WikiPageHandler) RecordFeedback(c *gin.Context) {
+	kbID, _, err := h.validateWikiKB(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slug := getSlugParam(c)
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Page slug is required"})
+		return
+	}
+
+	var req struct {
+		IsPositive bool `json:"is_positive" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		return
+	}
+
+	if err := h.wikiService.RecordFeedback(c.Request.Context(), kbID, slug, req.IsPositive); err != nil {
+		if stderrors.Is(err, repository.ErrWikiPageNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Wiki page not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Feedback recorded"})
+}
+
+// SetExpertValidation godoc
+// @Summary      Set expert validation
+// @Description  Mark a page as expert validated (or remove validation) and recalculate scores
+// @Tags         Wiki
+// @Accept       json
+// @Produce      json
+// @Param        kb_id  path  string  true  "Knowledge base ID"
+// @Param        slug   path  string  true  "Page slug"
+// @Param        validation body  object  true  "Validation data {validated: bool}"
+// @Success      200  {object}  types.WikiPage
+// @Failure      400  {object}  errors.AppError
+// @Failure      404  {object}  errors.AppError
+// @Security     Bearer
+// @Router       /knowledgebase/{kb_id}/wiki/pages/{slug}/expert-validation [put]
+func (h *WikiPageHandler) SetExpertValidation(c *gin.Context) {
+	kbID, _, err := h.validateWikiKB(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slug := getSlugParam(c)
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Page slug is required"})
+		return
+	}
+
+	var req struct {
+		Validated bool `json:"validated" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		return
+	}
+
+	if err := h.wikiService.SetExpertValidation(c.Request.Context(), kbID, slug, req.Validated); err != nil {
+		if stderrors.Is(err, repository.ErrWikiPageNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Wiki page not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	page, err := h.wikiService.GetPageBySlug(c.Request.Context(), kbID, slug)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, page)
+}
+
+// SetCriticalityLevel godoc
+// @Summary      Set criticality level
+// @Description  Set the criticality level (P0-P3) for a page
+// @Tags         Wiki
+// @Accept       json
+// @Produce      json
+// @Param        kb_id  path  string  true  "Knowledge base ID"
+// @Param        slug   path  string  true  "Page slug"
+// @Param        criticality body  object  true  "Criticality data {level: string}"
+// @Success      200  {object}  types.WikiPage
+// @Failure      400  {object}  errors.AppError
+// @Failure      404  {object}  errors.AppError
+// @Security     Bearer
+// @Router       /knowledgebase/{kb_id}/wiki/pages/{slug}/criticality [put]
+func (h *WikiPageHandler) SetCriticalityLevel(c *gin.Context) {
+	kbID, _, err := h.validateWikiKB(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slug := getSlugParam(c)
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Page slug is required"})
+		return
+	}
+
+	var req struct {
+		Level string `json:"level" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		return
+	}
+
+	validLevels := map[string]bool{"P0": true, "P1": true, "P2": true, "P3": true}
+	if !validLevels[req.Level] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid criticality level. Must be P0, P1, P2, or P3"})
+		return
+	}
+
+	if err := h.wikiService.SetCriticalityLevel(c.Request.Context(), kbID, slug, req.Level); err != nil {
+		if stderrors.Is(err, repository.ErrWikiPageNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Wiki page not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	page, err := h.wikiService.GetPageBySlug(c.Request.Context(), kbID, slug)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, page)
+}
+
+// GetQualityScores godoc
+// @Summary      Get quality scores
+// @Description  Get the confidence/quality/freshness scores for a page
+// @Tags         Wiki
+// @Produce      json
+// @Param        kb_id  path  string  true  "Knowledge base ID"
+// @Param        slug   path  string  true  "Page slug"
+// @Success      200  {object}  types.WikiQualityScores
+// @Failure      400  {object}  errors.AppError
+// @Failure      404  {object}  errors.AppError
+// @Security     Bearer
+// @Router       /knowledgebase/{kb_id}/wiki/pages/{slug}/quality-scores [get]
+func (h *WikiPageHandler) GetQualityScores(c *gin.Context) {
+	kbID, _, err := h.validateWikiKB(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slug := getSlugParam(c)
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Page slug is required"})
+		return
+	}
+
+	scores, err := h.wikiService.GetQualityScores(c.Request.Context(), kbID, slug)
+	if err != nil {
+		if stderrors.Is(err, repository.ErrWikiPageNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Wiki page not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, scores)
+}
+
+// RefreshScores godoc
+// @Summary      Refresh page scores
+// @Description  Recalculate confidence/quality/freshness scores for a single page
+// @Tags         Wiki
+// @Produce      json
+// @Param        kb_id  path  string  true  "Knowledge base ID"
+// @Param        slug   path  string  true  "Page slug"
+// @Success      200  {object}  types.WikiPage
+// @Failure      400  {object}  errors.AppError
+// @Failure      404  {object}  errors.AppError
+// @Security     Bearer
+// @Router       /knowledgebase/{kb_id}/wiki/pages/{slug}/refresh-scores [post]
+func (h *WikiPageHandler) RefreshScores(c *gin.Context) {
+	kbID, _, err := h.validateWikiKB(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slug := getSlugParam(c)
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Page slug is required"})
+		return
+	}
+
+	page, err := h.wikiService.RefreshScores(c.Request.Context(), kbID, slug)
+	if err != nil {
+		if stderrors.Is(err, repository.ErrWikiPageNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Wiki page not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, page)
+}
+
+// RefreshAllScores godoc
+// @Summary      Refresh all scores
+// @Description  Recalculate scores for all pages in a knowledge base
+// @Tags         Wiki
+// @Produce      json
+// @Param        kb_id  path  string  true  "Knowledge base ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  errors.AppError
+// @Security     Bearer
+// @Router       /knowledgebase/{kb_id}/wiki/refresh-all-scores [post]
+func (h *WikiPageHandler) RefreshAllScores(c *gin.Context) {
+	kbID, _, err := h.validateWikiKB(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	count, err := h.wikiService.RefreshAllScores(c.Request.Context(), kbID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "Scores refreshed successfully",
+		"pages_updated": count,
+	})
 }

@@ -105,7 +105,7 @@ const (
 	ChatTypeGroup  ChatType = "group"
 )
 
-// ReplyMessage is what WeKnora sends back to the IM platform.
+// ReplyMessage is what XinWiki sends back to the IM platform.
 type ReplyMessage struct {
 	// Content is the text content (Markdown).
 	Content string

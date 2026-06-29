@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/logger"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/logger"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 )
 
 // JinaEmbedder implements text vectorization functionality using Jina AI API

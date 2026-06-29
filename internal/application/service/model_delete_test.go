@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	apperrors "github.com/Tencent/WeKnora/internal/errors"
-	"github.com/Tencent/WeKnora/internal/types"
+	apperrors "github.com/Tencent/XinWiki/internal/errors"
+	"github.com/Tencent/XinWiki/internal/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -79,6 +79,12 @@ type stubModelRepoForDelete struct {
 
 func (s *stubModelRepoForDelete) Create(context.Context, *types.Model) error { return nil }
 func (s *stubModelRepoForDelete) GetByID(_ context.Context, _ uint64, id string) (*types.Model, error) {
+	if s.model != nil && s.model.ID == id {
+		return s.model, nil
+	}
+	return nil, nil
+}
+func (s *stubModelRepoForDelete) GetByIDAnyTenant(_ context.Context, id string) (*types.Model, error) {
 	if s.model != nil && s.model.ID == id {
 		return s.model, nil
 	}

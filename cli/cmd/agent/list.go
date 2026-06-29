@@ -9,11 +9,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/output"
-	"github.com/Tencent/WeKnora/cli/internal/text"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/output"
+	"github.com/Tencent/XinWiki/cli/internal/text"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // agentListFields enumerates the fields surfaced for `--format json` discovery
@@ -38,7 +38,7 @@ type ListOptions struct {
 	Limit int
 }
 
-// NewCmdList builds `weknora agent list`.
+// NewCmdList builds `xinwiki agent list`.
 func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	opts := &ListOptions{}
 	cmd := &cobra.Command{
@@ -62,7 +62,7 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	cmdutil.AddFormatFlag(cmd, agentListFields...)
 	cmdutil.SetAgentHelp(cmd, cmdutil.AgentHelp{
 		UsedFor:  "List custom agents visible to the active tenant. The SDK returns all agents in one call (no server-side pagination); meta.count reflects the full tenant set, --limit caps client-side.",
-		Examples: []string{"weknora agent list --format json", "weknora agent list --limit 10 --format json"},
+		Examples: []string{"xinwiki agent list --format json", "xinwiki agent list --limit 10 --format json"},
 		Output:   "envelope.data is an array of Agent objects with id, name, is_builtin; meta.count is the total returned",
 	})
 	return cmd

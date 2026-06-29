@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 	"github.com/stretchr/testify/assert"
 )
 

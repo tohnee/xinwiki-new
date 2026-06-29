@@ -1,16 +1,16 @@
 apiVersion: v2
-name: weknora
+name: xinwiki
 description: |
-  WeKnora - AI-powered Knowledge RAG Platform for building intelligent knowledge bases
+  XinWiki - AI-powered Knowledge RAG Platform for building intelligent knowledge bases
   with document parsing, vector search, and LLM integration.
 type: application
 version: 0.1.0
 appVersion: "v0.6.2"
 kubeVersion: ">=1.25.0-0"
-home: https://github.com/Tencent/WeKnora
-icon: https://raw.githubusercontent.com/Tencent/WeKnora/main/docs/images/logo.png
+home: https://github.com/Tencent/XinWiki
+icon: https://raw.githubusercontent.com/Tencent/XinWiki/main/docs/images/logo.png
 sources:
-  - https://github.com/Tencent/WeKnora
+  - https://github.com/Tencent/XinWiki
 keywords:
   - ai
   - rag
@@ -20,7 +20,7 @@ keywords:
   - vector-search
   - chatbot
 maintainers:
-  - name: WeKnora Community
-    url: https://github.com/Tencent/WeKnora
+  - name: XinWiki Community
+    url: https://github.com/Tencent/XinWiki
 annotations:
   artifacthub.io/license: MIT

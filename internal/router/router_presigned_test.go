@@ -14,9 +14,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 )
 
 // stubTenantService is a minimal stub of interfaces.TenantService that only
@@ -70,7 +70,7 @@ func (s *stubTenantService) GetTenantByIDForUser(context.Context, uint64, string
 	panic("unexpected")
 }
 
-func (s *stubTenantService) GetWeKnoraCloudCredentials(context.Context) *types.WeKnoraCloudCredentials {
+func (s *stubTenantService) GetXinWikiCloudCredentials(context.Context) *types.XinWikiCloudCredentials {
 	panic("unexpected")
 }
 
@@ -80,7 +80,7 @@ func (s *stubTenantService) GetWeKnoraCloudCredentials(context.Context) *types.W
 func setupPresignedTestServer(t *testing.T) (engine *gin.Engine, baseDir string, signURL func(filePath string, tenantID uint64, ttl time.Duration) string) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
-	t.Setenv("SYSTEM_AES_KEY", "weknora-test-aes-key-32bytes!!!")
+	t.Setenv("SYSTEM_AES_KEY", "xinwiki-test-aes-key-32bytes!!!")
 
 	baseDir = t.TempDir()
 
@@ -106,7 +106,7 @@ func setupPresignedTestServer(t *testing.T) (engine *gin.Engine, baseDir string,
 	engine.HEAD("/api/v1/files/presigned", handler)
 
 	signURL = func(filePath string, tenantID uint64, ttl time.Duration) string {
-		signed, err := secutils.SignFileURL("https://weknora.example.com", filePath, tenantID, ttl)
+		signed, err := secutils.SignFileURL("https://xinwiki.example.com", filePath, tenantID, ttl)
 		if err != nil {
 			t.Fatalf("SignFileURL: %v", err)
 		}

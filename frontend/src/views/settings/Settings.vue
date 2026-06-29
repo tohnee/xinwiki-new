@@ -36,8 +36,8 @@
                         <line x1="2.94" y1="12.5" x2="15.06" y2="12.5" stroke="currentColor" stroke-width="1.2"
                           stroke-linecap="round" />
                       </svg>
-                      <!-- WeKnora Cloud 使用自定义 W 图标 -->
-                      <svg v-else-if="item.key === 'weknoracloud'" width="17" height="17" viewBox="0 0 18 18"
+                      <!-- XinWiki Cloud 使用自定义 W 图标 -->
+                      <svg v-else-if="item.key === 'xinwikicloud'" width="17" height="17" viewBox="0 0 18 18"
                         fill="none" xmlns="http://www.w3.org/2000/svg" class="nav-icon">
                         <rect x="1.5" y="1.5" width="15" height="15" rx="3.5" stroke="currentColor" stroke-width="1.2"
                           fill="none" />
@@ -93,9 +93,9 @@
                     <OllamaSettings />
                   </div>
 
-                  <!-- WeKnora Cloud -->
-                  <div v-if="currentSection === 'weknoracloud'" class="section">
-                    <WeKnoraCloudSettings />
+                  <!-- XinWiki Cloud -->
+                  <div v-if="currentSection === 'xinwikicloud'" class="section">
+                    <XinWikiCloudSettings />
                   </div>
 
                   <!-- 模型配置 -->
@@ -193,7 +193,7 @@ import ChatHistorySettings from './ChatHistorySettings.vue'
 import VectorStoreSettings from './VectorStoreSettings.vue'
 import ParserEngineSettings from './ParserEngineSettings.vue'
 import StorageEngineSettings from './StorageEngineSettings.vue'
-import WeKnoraCloudSettings from './WeKnoraCloudSettings.vue'
+import XinWikiCloudSettings from './XinWikiCloudSettings.vue'
 import TenantMembers from './TenantMembers.vue'
 import SystemSettings from '@/views/system/SystemSettings.vue'
 
@@ -238,7 +238,7 @@ type RoleKey = 'viewer' | 'contributor' | 'admin' | 'owner'
 const SECTION_MIN_ROLE: Record<string, RoleKey> = {
   general: 'viewer',
   ollama: 'admin',
-  weknoracloud: 'admin',
+  xinwikicloud: 'admin',
   models: 'viewer',
   websearch: 'admin',
   chathistory: 'admin',
@@ -273,7 +273,7 @@ const navItems = computed(() => {
   const all: NavItem[] = [
     { key: 'general', icon: 'setting', label: t('general.title') },
     { key: 'ollama', icon: 'server', label: 'Ollama' },
-    { key: 'weknoracloud', icon: '', label: 'WeKnora Cloud' },
+    { key: 'xinwikicloud', icon: '', label: 'XinWiki Cloud' },
     { key: 'models', icon: 'control-platform', label: t('settings.modelManagement') },
     { key: 'websearch', icon: 'search', label: t('settings.webSearchConfig') },
     { key: 'chathistory', icon: 'chat', label: t('chatHistorySettings.title') },
@@ -318,7 +318,7 @@ const navGroups = computed<NavGroup[]>(() => {
     {
       key: 'models_runtime',
       label: t('settings.navGroups.modelsRuntime'),
-      items: pickItems(['models', 'ollama', 'weknoracloud']),
+      items: pickItems(['models', 'ollama', 'xinwikicloud']),
     },
     {
       key: 'data_extensions',

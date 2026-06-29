@@ -62,6 +62,14 @@ type RetrieveParams struct {
 	AdditionalParams map[string]interface{}
 	// Retriever type
 	RetrieverType RetrieverType // Retriever type
+	// VectorStore ID for routing in read-write separation mode
+	StoreID string `json:"-"`
+	// 一致性级别（读写分离使用），默认最终一致
+	ConsistencyLevel ConsistencyLevel `json:"-"`
+	// 写入令牌，用于会话一致读保证可读自己的写入
+	WriteToken *WriteToken `json:"-"`
+	// 序列化用的WriteToken字符串（API层传递）
+	WriteTokenStr string `json:"write_token,omitempty"`
 }
 
 // RetrieverEngineParams represents the parameters for retriever engine

@@ -8,9 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // kbCreateFields enumerates the fields surfaced for `--format json` discovery
@@ -44,7 +44,7 @@ type CreateService interface {
 	CreateKnowledgeBase(ctx context.Context, kb *sdk.KnowledgeBase) (*sdk.KnowledgeBase, error)
 }
 
-// NewCmdCreate builds `weknora kb create <name>`. Positional <name> only,
+// NewCmdCreate builds `xinwiki kb create <name>`. Positional <name> only,
 // consistent with `agent create <name>`.
 func NewCmdCreate(f *cmdutil.Factory) *cobra.Command {
 	opts := &CreateOptions{}

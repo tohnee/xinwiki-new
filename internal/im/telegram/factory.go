@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tencent/WeKnora/internal/im"
-	"github.com/Tencent/WeKnora/internal/logger"
+	"github.com/Tencent/XinWiki/internal/im"
+	"github.com/Tencent/XinWiki/internal/logger"
 )
 
 // NewFactory returns an im.AdapterFactory for Telegram bot channels.

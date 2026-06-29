@@ -12,9 +12,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/config"
-	"github.com/Tencent/WeKnora/internal/event"
-	"github.com/Tencent/WeKnora/internal/logger"
+	"github.com/Tencent/XinWiki/internal/config"
+	"github.com/Tencent/XinWiki/internal/event"
+	"github.com/Tencent/XinWiki/internal/logger"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
@@ -23,7 +23,7 @@ import (
 // across backend replicas (issue #1173 cross-instance support). The actual
 // channel is suffixed with WEKNORA_REDIS_NAMESPACE (when set) so multiple
 // deployments sharing the same Redis don't cross-talk.
-const pubsubChannelBase = "weknora:mcp_approval:resolve"
+const pubsubChannelBase = "xinwiki:mcp_approval:resolve"
 
 // instanceID is a process-unique id used to ignore self-published pubsub
 // messages (avoids "pending not found" log noise on the publisher side).

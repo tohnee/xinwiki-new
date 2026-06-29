@@ -13,10 +13,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/config"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/config"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // fakeListSvc captures the request args and returns canned responses.
@@ -38,7 +38,7 @@ func (f *fakeListSvc) ListKnowledgeWithFilter(_ context.Context, kbID string, pa
 }
 
 // chdirIsolated parks cwd in a fresh tempdir so Factory.ResolveKB doesn't pick
-// up a stray .weknora/project.yaml from the repo. Also clears WEKNORA_KB_ID
+// up a stray .xinwiki/project.yaml from the repo. Also clears WEKNORA_KB_ID
 // for the duration of the test.
 func chdirIsolated(t *testing.T) {
 	t.Helper()

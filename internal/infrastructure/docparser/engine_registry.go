@@ -3,7 +3,7 @@ package docparser
 import (
 	"strings"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // EngineRegistration is the interface every locally registered parser engine
@@ -57,8 +57,8 @@ func (e *builtinEngine) CheckAvailable(docreaderConnected bool, _ map[string]str
 // SimpleEngineName is the engine name for Go-native simple format handling.
 const SimpleEngineName = "simple"
 
-// WeKnoraCloudEngineName is the engine name for WeKnoraCloud-backed document parsing.
-const WeKnoraCloudEngineName = "weknoracloud"
+// XinWikiCloudEngineName is the engine name for XinWikiCloud-backed document parsing.
+const XinWikiCloudEngineName = "xinwikicloud"
 
 // ---------------------------------------------------------------------------
 // simple — Go handles md/txt/csv natively, no external service needed.
@@ -80,21 +80,21 @@ func (e *simpleEngine) CheckAvailable(_ bool, _ map[string]string) (bool, string
 }
 
 // ---------------------------------------------------------------------------
-// weknoracloud — Tenant-scoped WeKnoraCloud docreader with signed requests.
+// xinwikicloud — Tenant-scoped XinWikiCloud docreader with signed requests.
 // ---------------------------------------------------------------------------
 
 type weKnoraCloudEngine struct{}
 
-func (e *weKnoraCloudEngine) Name() string        { return WeKnoraCloudEngineName }
-func (e *weKnoraCloudEngine) Description() string { return "WeKnoraCloud document reader" }
+func (e *weKnoraCloudEngine) Name() string        { return XinWikiCloudEngineName }
+func (e *weKnoraCloudEngine) Description() string { return "XinWikiCloud document reader" }
 func (e *weKnoraCloudEngine) FileTypes(_ bool) []string {
 	return []string{"docx", "doc", "pdf", "md", "markdown", "xlsx", "xls", "pptx", "ppt"}
 }
 func (e *weKnoraCloudEngine) CheckAvailable(docreaderConnected bool, overrides map[string]string) (bool, string) {
-	if overrides["weknoracloud_app_id"] != "" {
+	if overrides["xinwikicloud_app_id"] != "" {
 		return true, ""
 	}
-	return false, "WeKnora Cloud credentials not configured. Go to Settings → WeKnora Cloud to set up."
+	return false, "XinWiki Cloud credentials not configured. Go to Settings → XinWiki Cloud to set up."
 }
 
 // ---------------------------------------------------------------------------

@@ -8,12 +8,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/projectlink"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/projectlink"
 )
 
-// mkLinkFile seeds .weknora/project.yaml in dir so the unlink path has
+// mkLinkFile seeds .xinwiki/project.yaml in dir so the unlink path has
 // something to remove. Returns the absolute file path.
 func mkLinkFile(t *testing.T, dir string) string {
 	t.Helper()

@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	filesvc "github.com/Tencent/WeKnora/internal/application/service/file"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	filesvc "github.com/Tencent/XinWiki/internal/application/service/file"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 )
 
 // isValidFileType checks if a file type is supported
@@ -370,7 +370,7 @@ func downloadFileFromURL(ctx context.Context, fileURL string, payloadFileName, p
 	}
 
 	// Stream response body into a temp file, capped at maxFileURLSize
-	tmpFile, err := os.CreateTemp("", "weknora-fileurl-*")
+	tmpFile, err := os.CreateTemp("", "xinwiki-fileurl-*")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp file: %w", err)
 	}

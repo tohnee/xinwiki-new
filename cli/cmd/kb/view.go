@@ -6,10 +6,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/text"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/text"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // kbViewFields enumerates the fields surfaced for `--format json` discovery on
@@ -31,7 +31,7 @@ type ViewService interface {
 	GetKnowledgeBase(ctx context.Context, id string) (*sdk.KnowledgeBase, error)
 }
 
-// NewCmdView builds `weknora kb view <id>`.
+// NewCmdView builds `xinwiki kb view <id>`.
 func NewCmdView(f *cmdutil.Factory) *cobra.Command {
 	opts := &ViewOptions{}
 	cmd := &cobra.Command{
@@ -57,8 +57,8 @@ func NewCmdView(f *cmdutil.Factory) *cobra.Command {
 		UsedFor:       "fetch one knowledge base's full configuration by id",
 		RequiredFlags: []string{"<kb-id> (positional)"},
 		Examples: []string{
-			"weknora kb view kb_abc",
-			"weknora kb view kb_abc --jq .data.embedding_model_id",
+			"xinwiki kb view kb_abc",
+			"xinwiki kb view kb_abc --jq .data.embedding_model_id",
 		},
 		Output: "envelope.data is the KnowledgeBase object (id, name, type, embedding/summary model ids, chunk_count, ...)",
 	})

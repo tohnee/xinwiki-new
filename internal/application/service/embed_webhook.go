@@ -15,9 +15,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/types"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 )
 
 const embedWebhookTimeout = 5 * time.Second
@@ -84,11 +84,11 @@ func DispatchEmbedWebhook(ch *types.EmbedChannel, eventType, sessionID string, p
 			return
 		}
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("User-Agent", "WeKnora-Embed-Webhook/1.0")
+		req.Header.Set("User-Agent", "XinWiki-Embed-Webhook/1.0")
 		if secret != "" {
 			mac := hmac.New(sha256.New, []byte(secret))
 			_, _ = mac.Write(raw)
-			req.Header.Set("X-WeKnora-Signature", "sha256="+hex.EncodeToString(mac.Sum(nil)))
+			req.Header.Set("X-XinWiki-Signature", "sha256="+hex.EncodeToString(mac.Sum(nil)))
 		}
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {

@@ -19,20 +19,21 @@ import (
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
 
-	dorisRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/doris"
-	elasticsearchRepoV7 "github.com/Tencent/WeKnora/internal/application/repository/retriever/elasticsearch/v7"
-	elasticsearchRepoV8 "github.com/Tencent/WeKnora/internal/application/repository/retriever/elasticsearch/v8"
-	milvusRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/milvus"
-	openSearchRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/opensearch"
-	postgresRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/postgres"
-	qdrantRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/qdrant"
-	sqliteRetrieverRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/sqlite"
-	tencentVectorDBRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/tencentvectordb"
-	weaviateRepo "github.com/Tencent/WeKnora/internal/application/repository/retriever/weaviate"
-	"github.com/Tencent/WeKnora/internal/application/service/retriever"
-	"github.com/Tencent/WeKnora/internal/config"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	dorisRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/doris"
+	elasticsearchRepoV7 "github.com/Tencent/XinWiki/internal/application/repository/retriever/elasticsearch/v7"
+	elasticsearchRepoV8 "github.com/Tencent/XinWiki/internal/application/repository/retriever/elasticsearch/v8"
+	milvusRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/milvus"
+	openSearchRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/opensearch"
+	postgresRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/postgres"
+	qdrantRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/qdrant"
+	sqliteRetrieverRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/sqlite"
+	tencentVectorDBRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/tencentvectordb"
+	weaviateRepo "github.com/Tencent/XinWiki/internal/application/repository/retriever/weaviate"
+	"github.com/Tencent/XinWiki/internal/application/service"
+	"github.com/Tencent/XinWiki/internal/application/service/retriever"
+	"github.com/Tencent/XinWiki/internal/config"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 	"github.com/tencent/vectordatabase-sdk-go/tcvectordb"
 )
 
@@ -41,10 +42,10 @@ import (
 // injected into VectorStoreService for dynamic registry updates. The
 // EngineFactory type itself is unchanged — the audit sink is captured in the
 // closure rather than added to the signature.
-func NewEngineFactory(db *gorm.DB, cfg *config.Config, auditSvc interfaces.AuditLogService) interfaces.EngineFactory {
+func NewEngineFactory(db *gorm.DB, cfg *config.Config, auditSvc interfaces.AuditLogService, router *service.VectorStoreRouter) interfaces.EngineFactory {
 	sink := newAuditSinkAdapter(auditSvc)
 	return func(ctx context.Context, store types.VectorStore) (interfaces.RetrieveEngineService, error) {
-		return createEngineServiceFromStore(ctx, store, db, cfg, sink)
+		return createEngineServiceFromStore(ctx, store, db, cfg, sink, router)
 	}
 }
 
@@ -57,29 +58,54 @@ func createEngineServiceFromStore(
 	db *gorm.DB,
 	cfg *config.Config,
 	auditSink openSearchRepo.AuditSink,
+	router *service.VectorStoreRouter,
 ) (interfaces.RetrieveEngineService, error) {
+	var engine interfaces.RetrieveEngineService
+	var err error
+
 	switch store.EngineType {
 	case types.PostgresRetrieverEngineType:
-		return createPostgresEngine(store, db)
+		engine, err = createPostgresEngine(store, db)
 	case types.ElasticsearchRetrieverEngineType:
-		return createElasticsearchEngine(store, cfg)
+		engine, err = createElasticsearchEngine(store, cfg)
 	case types.QdrantRetrieverEngineType:
-		return createQdrantEngine(store)
+		engine, err = createQdrantEngine(store)
 	case types.MilvusRetrieverEngineType:
-		return createMilvusEngine(ctx, store)
+		engine, err = createMilvusEngine(ctx, store)
 	case types.WeaviateRetrieverEngineType:
-		return createWeaviateEngine(store)
+		engine, err = createWeaviateEngine(store)
 	case types.DorisRetrieverEngineType:
-		return createDorisEngine(store)
+		engine, err = createDorisEngine(store)
 	case types.SQLiteRetrieverEngineType:
-		return createSQLiteEngine(store, db)
+		engine, err = createSQLiteEngine(store, db)
 	case types.TencentVectorDBRetrieverEngineType:
-		return createTencentVectorDBEngine(store)
+		engine, err = createTencentVectorDBEngine(store)
 	case types.OpenSearchRetrieverEngineType:
-		return createOpenSearchEngine(ctx, store, auditSink)
+		engine, err = createOpenSearchEngine(ctx, store, auditSink)
 	default:
 		return nil, fmt.Errorf("unsupported engine type: %s", store.EngineType)
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// 使用存储的读写分离配置，默认关闭
+	rwConfig := store.ReadWriteSeparationConfig
+	// 第一版先禁用读写分离，确保核心路由功能稳定
+	rwConfig.Enabled = false
+	if rwConfig.LoadBalanceStrategy == "" {
+		rwConfig = types.DefaultReadWriteSeparationConfig()
+	}
+
+	// RegisterEngineWithConfig内部会自动包装master为RWCapableEngine
+	// 第一版不配置读副本，所有流量走主节点
+	if err := router.RegisterEngineWithConfig(store.ID, engine, rwConfig, nil); err != nil {
+		return nil, fmt.Errorf("register engine to router: %w", err)
+	}
+
+	// 返回路由器包装器，对上层透明
+	return service.NewRouterWrapper(router, store.ID), nil
 }
 
 // createOpenSearchEngine builds an OpenSearch k-NN retrieve engine. Mirrors

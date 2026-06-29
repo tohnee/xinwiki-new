@@ -5,8 +5,8 @@ import (
 
 	"slices"
 
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // classifyRetrievalResults separates retrieval results by retriever type (vector vs keyword).

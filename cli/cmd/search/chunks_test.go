@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 type fakeChunksSvc struct {
@@ -150,7 +150,7 @@ func TestRunSearch_NilService(t *testing.T) {
 func TestNewCmdChunks_NoKBUsesResolver(t *testing.T) {
 	iostreams.SetForTest(t)
 	t.Setenv("WEKNORA_KB_ID", "") // no ambient KB from env
-	t.Chdir(t.TempDir())          // no .weknora project link discoverable
+	t.Chdir(t.TempDir())          // no .xinwiki project link discoverable
 	cmd := NewCmdChunks(&cmdutil.Factory{
 		// Resolution reaches local.kb_id_required before any client is built,
 		// so this must never be invoked; make it loud if it is.

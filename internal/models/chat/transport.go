@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 )
 
 // LLM 调用超时配置。仅作为"上层未设置 deadline 时"的兜底，避免 hung 请求

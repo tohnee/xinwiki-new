@@ -9,8 +9,8 @@
 
 ### 新增
 - 初始版本发布
-- WeKnora MCP Server 核心功能
-- 完整的 WeKnora API 集成
+- XinWiki MCP Server 核心功能
+- 完整的 XinWiki API 集成
 - 租户管理工具
 - 知识库管理工具
 - 知识管理工具
@@ -50,7 +50,7 @@
 
 ### 文件结构
 ```
-WeKnoraMCP/
+XinWikiMCP/
 ├── __init__.py              # 包初始化文件
 ├── main.py                  # 主入口点 (推荐)
 ├── run.py                   # 便捷启动脚本

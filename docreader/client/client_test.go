@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tencent/WeKnora/docreader/proto"
+	"github.com/Tencent/XinWiki/docreader/proto"
 )
 
 func init() {

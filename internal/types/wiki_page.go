@@ -234,6 +234,123 @@ func (p *WikiPage) CanTransitionTo(to string) bool {
 	return ValidateWikiPageStatusTransition(p.Status, to) == nil
 }
 
+// --- Milestone C: Confidence, Quality & Freshness Constants ---
+
+// Criticality Level constants (P0 = most critical, P3 = least critical)
+const (
+	CriticalityP0 = "P0"
+	CriticalityP1 = "P1"
+	CriticalityP2 = "P2"
+	CriticalityP3 = "P3"
+)
+
+var validCriticalityLevels = map[string]bool{
+	CriticalityP0: true,
+	CriticalityP1: true,
+	CriticalityP2: true,
+	CriticalityP3: true,
+}
+
+// Freshness State constants
+const (
+	FreshnessActive   = "active"
+	FreshnessWarm     = "warm"
+	FreshnessCold     = "cold"
+	FreshnessArchived = "archived"
+)
+
+var validFreshnessStates = map[string]bool{
+	FreshnessActive:   true,
+	FreshnessWarm:     true,
+	FreshnessCold:     true,
+	FreshnessArchived: true,
+}
+
+// Score weight constants for confidence calculation
+const (
+	WeightSourceAuthority     = 0.30
+	WeightEvidenceSupport     = 0.20
+	WeightRecency             = 0.20
+	WeightConsistency         = 0.15
+	WeightExpertValidation    = 0.10
+	WeightUsageFeedback       = 0.05
+)
+
+// Quality dimension weights
+const (
+	WeightContentCompleteness = 0.20
+	WeightSourceReliability   = 0.20
+	WeightTimeliness          = 0.15
+	WeightReadability         = 0.15
+	WeightCitationSufficiency = 0.15
+	WeightQualityFeedback     = 0.15
+)
+
+// Freshness time thresholds (days)
+const (
+	FreshnessActiveThresholdDays = 30
+	FreshnessWarmThresholdDays   = 90
+	FreshnessColdThresholdDays   = 180
+)
+
+// Retrieval boost values by freshness state
+const (
+	RetrievalBoostActive   = 1.0
+	RetrievalBoostWarm     = 0.8
+	RetrievalBoostCold     = 0.5
+	RetrievalBoostArchived = 0.0
+	RetrievalBoostDeprecated = 0.3
+	RetrievalBoostSuperseded = 0.1
+)
+
+// Penalty constants
+const (
+	ContradictionPenaltyPerItem = 0.1
+	MaxContradictionPenalty     = 0.5
+	StalenessPenaltyFactor      = 0.003
+	MinScore                    = 0.0
+	MaxScore                    = 1.0
+)
+
+// IsValidCriticalityLevel reports whether s is a recognized criticality level
+func IsValidCriticalityLevel(s string) bool {
+	return validCriticalityLevels[s]
+}
+
+// NormalizeCriticalityLevel normalizes a criticality level string
+func NormalizeCriticalityLevel(s string) string {
+	s = strings.TrimSpace(strings.ToUpper(s))
+	if IsValidCriticalityLevel(s) {
+		return s
+	}
+	return CriticalityP3
+}
+
+// IsValidFreshnessState reports whether s is a recognized freshness state
+func IsValidFreshnessState(s string) bool {
+	return validFreshnessStates[s]
+}
+
+// NormalizeFreshnessState normalizes a freshness state string
+func NormalizeFreshnessState(s string) string {
+	s = strings.TrimSpace(strings.ToLower(s))
+	if IsValidFreshnessState(s) {
+		return s
+	}
+	return FreshnessActive
+}
+
+// ClampScore clamps a score value between 0.0 and 1.0
+func ClampScore(score float64) float64 {
+	if score < MinScore {
+		return MinScore
+	}
+	if score > MaxScore {
+		return MaxScore
+	}
+	return score
+}
+
 // WikiPage represents a single wiki page in a wiki knowledge base.
 // Wiki pages are LLM-generated, interlinked markdown documents that form
 // a persistent, compounding knowledge artifact.
@@ -315,6 +432,53 @@ type WikiPage struct {
 	// sync from background jobs) leave it untouched so it can be used as a
 	// real "the page was edited" signal.
 	Version int `json:"version" gorm:"default:1"`
+
+	// --- Milestone C: Confidence, Quality & Freshness ---
+	// CriticalityLevel indicates how critical this page is (P0/P1/P2/P3)
+	// P0/P1 pages are never automatically archived
+	CriticalityLevel string `json:"criticality_level" gorm:"type:varchar(8);default:'P3';index"`
+	// LastAccessedAt records when the page was last viewed/used
+	LastAccessedAt time.Time `json:"last_accessed_at"`
+	// ViewCount tracks total page views
+	ViewCount int64 `json:"view_count" gorm:"default:0"`
+	// PositiveFeedback counts positive user feedback (helpful votes)
+	PositiveFeedback int64 `json:"positive_feedback" gorm:"default:0"`
+	// NegativeFeedback counts negative user feedback (not helpful votes)
+	NegativeFeedback int64 `json:"negative_feedback" gorm:"default:0"`
+	// ExpertValidated indicates whether an expert has reviewed/validated this page
+	ExpertValidated bool `json:"expert_validated" gorm:"default:false"`
+	// ExpertValidatedAt records when expert validation occurred
+	ExpertValidatedAt *time.Time `json:"expert_validated_at,omitempty"`
+	// ContradictionCount tracks number of detected contradictions
+	ContradictionCount int `json:"contradiction_count" gorm:"default:0"`
+
+	// Confidence score fields (0.0 - 1.0)
+	ConfidenceScore     float64 `json:"confidence_score" gorm:"type:decimal(5,4);default:0.5"`
+	SourceAuthority     float64 `json:"source_authority" gorm:"type:decimal(5,4);default:0.5"`
+	EvidenceSupport     float64 `json:"evidence_support" gorm:"type:decimal(5,4);default:0.5"`
+	RecencyScore        float64 `json:"recency_score" gorm:"type:decimal(5,4);default:1.0"`
+	ConsistencyScore    float64 `json:"consistency_score" gorm:"type:decimal(5,4);default:1.0"`
+	ExpertValidation    float64 `json:"expert_validation" gorm:"type:decimal(5,4);default:0.0"`
+	UsageFeedback       float64 `json:"usage_feedback" gorm:"type:decimal(5,4);default:0.5"`
+	ContradictionPenalty float64 `json:"contradiction_penalty" gorm:"type:decimal(5,4);default:1.0"`
+	StalenessPenalty    float64 `json:"staleness_penalty" gorm:"type:decimal(5,4);default:1.0"`
+	FinalScore          float64 `json:"final_score" gorm:"type:decimal(5,4);default:0.5;index"`
+
+	// Quality score fields (0.0 - 1.0)
+	QualityScore        float64 `json:"quality_score" gorm:"type:decimal(5,4);default:0.5"`
+	ContentCompleteness float64 `json:"content_completeness" gorm:"type:decimal(5,4);default:0.5"`
+	SourceReliability   float64 `json:"source_reliability" gorm:"type:decimal(5,4);default:0.5"`
+	TimelinessScore     float64 `json:"timeliness_score" gorm:"type:decimal(5,4);default:1.0"`
+	ReadabilityScore    float64 `json:"readability_score" gorm:"type:decimal(5,4);default:0.5"`
+	CitationSufficiency float64 `json:"citation_sufficiency" gorm:"type:decimal(5,4);default:0.5"`
+
+	// Freshness state: active, warm, cold, archived
+	FreshnessState string `json:"freshness_state" gorm:"type:varchar(16);default:'active';index"`
+	// RetrievalBoost is the multiplier applied during search (0.0 - 1.0)
+	RetrievalBoost float64 `json:"retrieval_boost" gorm:"type:decimal(5,4);default:1.0;index"`
+	// ScoreLastCalculatedAt records when scores were last computed
+	ScoreLastCalculatedAt time.Time `json:"score_last_calculated_at"`
+
 	// Creation time
 	CreatedAt time.Time `json:"created_at"`
 	// Last update time
@@ -729,6 +893,8 @@ const (
 	WikiReviewActionDeprecate = "deprecate"
 	// WikiReviewActionArchive archives a page (deprecated/superseded -> archived)
 	WikiReviewActionArchive = "archive"
+	// WikiReviewActionSupersede marks a page as superseded by another page (published -> superseded)
+	WikiReviewActionSupersede = "supersede"
 )
 
 // WikiReviewRequest represents a request to perform a review action on a wiki page.
@@ -788,4 +954,99 @@ type WikiSupersedeRequest struct {
 	NewPageSlug string `json:"new_page_slug" binding:"required"`
 	// Reason explains why the old page is being superseded
 	Reason string `json:"reason,omitempty"`
+}
+
+// --- Milestone C: Confidence, Quality & Freshness Types ---
+
+// WikiFeedbackRequest represents a request to submit user feedback for a page
+type WikiFeedbackRequest struct {
+	IsPositive bool `json:"is_positive"`
+}
+
+// WikiCriticalityRequest represents a request to set a page's criticality level
+type WikiCriticalityRequest struct {
+	Level string `json:"level" binding:"required,oneof=P0 P1 P2 P3"`
+}
+
+// WikiExpertValidationRequest represents a request to set expert validation status
+type WikiExpertValidationRequest struct {
+	Validated bool `json:"validated"`
+}
+
+// WikiQualityScores contains all scoring information for a wiki page
+type WikiQualityScores struct {
+	// Confidence components
+	ConfidenceScore     float64 `json:"confidence_score"`
+	SourceAuthority     float64 `json:"source_authority"`
+	EvidenceSupport     float64 `json:"evidence_support"`
+	RecencyScore        float64 `json:"recency_score"`
+	ConsistencyScore    float64 `json:"consistency_score"`
+	ExpertValidation    float64 `json:"expert_validation"`
+	UsageFeedback       float64 `json:"usage_feedback"`
+	ContradictionPenalty float64 `json:"contradiction_penalty"`
+	StalenessPenalty    float64 `json:"staleness_penalty"`
+
+	// Quality components
+	QualityScore        float64 `json:"quality_score"`
+	ContentCompleteness float64 `json:"content_completeness"`
+	SourceReliability   float64 `json:"source_reliability"`
+	TimelinessScore     float64 `json:"timeliness_score"`
+	ReadabilityScore    float64 `json:"readability_score"`
+	CitationSufficiency float64 `json:"citation_sufficiency"`
+
+	// Final combined score
+	FinalScore float64 `json:"final_score"`
+
+	// Freshness state
+	FreshnessState  string  `json:"freshness_state"`
+	RetrievalBoost  float64 `json:"retrieval_boost"`
+	CriticalityLevel string `json:"criticality_level"`
+
+	// Usage metrics
+	ViewCount        int64 `json:"view_count"`
+	PositiveFeedback int64 `json:"positive_feedback"`
+	NegativeFeedback int64 `json:"negative_feedback"`
+	ExpertValidated  bool  `json:"expert_validated"`
+
+	// Metadata
+	ScoreLastCalculatedAt time.Time `json:"score_last_calculated_at"`
+}
+
+// WikiRefreshScoresResult contains the result of a batch score refresh operation
+type WikiRefreshScoresResult struct {
+	PagesRefreshed int  `json:"pages_refreshed"`
+	Success        bool `json:"success"`
+}
+
+// GetQualityScores extracts quality scoring information from a WikiPage
+func (p *WikiPage) GetQualityScores() *WikiQualityScores {
+	if p == nil {
+		return nil
+	}
+	return &WikiQualityScores{
+		ConfidenceScore:      p.ConfidenceScore,
+		SourceAuthority:      p.SourceAuthority,
+		EvidenceSupport:      p.EvidenceSupport,
+		RecencyScore:         p.RecencyScore,
+		ConsistencyScore:     p.ConsistencyScore,
+		ExpertValidation:     p.ExpertValidation,
+		UsageFeedback:        p.UsageFeedback,
+		ContradictionPenalty: p.ContradictionPenalty,
+		StalenessPenalty:     p.StalenessPenalty,
+		QualityScore:         p.QualityScore,
+		ContentCompleteness:  p.ContentCompleteness,
+		SourceReliability:    p.SourceReliability,
+		TimelinessScore:      p.TimelinessScore,
+		ReadabilityScore:     p.ReadabilityScore,
+		CitationSufficiency:  p.CitationSufficiency,
+		FinalScore:           p.FinalScore,
+		FreshnessState:       p.FreshnessState,
+		RetrievalBoost:       p.RetrievalBoost,
+		CriticalityLevel:     p.CriticalityLevel,
+		ViewCount:            p.ViewCount,
+		PositiveFeedback:     p.PositiveFeedback,
+		NegativeFeedback:     p.NegativeFeedback,
+		ExpertValidated:      p.ExpertValidated,
+		ScoreLastCalculatedAt: p.ScoreLastCalculatedAt,
+	}
 }

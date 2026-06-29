@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/prompt"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/prompt"
 )
 
 // sessionDeleteFields enumerates the fields surfaced for `--format json`
@@ -33,7 +33,7 @@ type deleteResult struct {
 	Deleted bool   `json:"deleted"`
 }
 
-// NewCmdDelete builds `weknora session delete`. Single-id keeps the simpler
+// NewCmdDelete builds `xinwiki session delete`. Single-id keeps the simpler
 // code path; multi-id uses keep-going semantics (one -y confirms all,
 // failures collected, exit 1 if any fail).
 func NewCmdDelete(f *cmdutil.Factory) *cobra.Command {
@@ -56,10 +56,10 @@ Multi-id:
 AI agents: This is a high-risk write. Without -y/--yes the CLI exits 10
 and writes input.confirmation_required to stderr. NEVER auto-pass -y
 without the user's explicit go-ahead.`,
-		Example: `  weknora session delete s_abc                  # interactive confirm
-  weknora session delete s_abc -y               # no prompt
-  weknora session delete s_abc -y --format json # bare {id, deleted:true} JSON
-  weknora session delete s_a s_b s_c -y         # delete 3, keep-going`,
+		Example: `  xinwiki session delete s_abc                  # interactive confirm
+  xinwiki session delete s_abc -y               # no prompt
+  xinwiki session delete s_abc -y --format json # bare {id, deleted:true} JSON
+  xinwiki session delete s_a s_b s_c -y         # delete 3, keep-going`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			opts.Yes, _ = c.Flags().GetBool("yes")
@@ -84,7 +84,7 @@ without the user's explicit go-ahead.`,
 			if len(args) == 1 {
 				return runDelete(c.Context(), opts, fopts, cli, f.Prompter(), args[0])
 			}
-			if err := cmdutil.ConfirmDestructiveBatch(f.Prompter(), opts.Yes, fopts.WantsJSON(), "delete", "session", len(args), "session.delete", "weknora session delete "+strings.Join(args, " ")+" -y"); err != nil {
+			if err := cmdutil.ConfirmDestructiveBatch(f.Prompter(), opts.Yes, fopts.WantsJSON(), "delete", "session", len(args), "session.delete", "xinwiki session delete "+strings.Join(args, " ")+" -y"); err != nil {
 				return err
 			}
 			outcomes, runErr := cmdutil.RunBatch(c.Context(), args, func(ctx context.Context, id string) error {
@@ -111,9 +111,9 @@ without the user's explicit go-ahead.`,
 		UsedFor:       "permanently delete one or more chat sessions and their messages",
 		RequiredFlags: []string{"<session-id>... (positional, at least one)"},
 		Examples: []string{
-			"weknora session delete s_abc -y",
-			"weknora session delete s_a s_b s_c -y",
-			"weknora session delete s_abc -y --format json",
+			"xinwiki session delete s_abc -y",
+			"xinwiki session delete s_a s_b s_c -y",
+			"xinwiki session delete s_abc -y --format json",
 		},
 		Warnings: []string{
 			"Requires explicit user approval (exit 10 / input.confirmation_required); never auto-add -y.",
@@ -124,7 +124,7 @@ without the user's explicit go-ahead.`,
 }
 
 func runDelete(ctx context.Context, opts *DeleteOptions, fopts *cmdutil.FormatOptions, svc DeleteService, p prompt.Prompter, id string) error {
-	if err := cmdutil.ConfirmDestructive(p, opts.Yes, fopts.WantsJSON(), "delete", "session", id, "session.delete", "weknora session delete "+id+" -y"); err != nil {
+	if err := cmdutil.ConfirmDestructive(p, opts.Yes, fopts.WantsJSON(), "delete", "session", id, "session.delete", "xinwiki session delete "+id+" -y"); err != nil {
 		return err
 	}
 

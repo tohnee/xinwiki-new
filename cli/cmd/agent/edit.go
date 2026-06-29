@@ -10,9 +10,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // EditService is the narrow SDK surface this command depends on. The fetch
@@ -89,13 +89,13 @@ with input.confirmation_required. Surface the prompt to the user and only
 retry with -y after explicit approval. Other failure codes: resource.not_found
 (agent id or KB id), auth.forbidden, input.invalid_argument (no flags, bad file).`
 
-const agentEditExample = `  weknora agent edit ag_abc --name "Renamed" -y
-  weknora agent edit ag_abc --description "" -y              # clear description
-  weknora agent edit ag_abc --add-kb kb_new --remove-kb kb_old -y
-  weknora agent edit ag_abc --system-prompt-file ./prompt.md -y
-  weknora agent edit ag_abc --config-file ./tuned.yaml --temperature 0.9 -y`
+const agentEditExample = `  xinwiki agent edit ag_abc --name "Renamed" -y
+  xinwiki agent edit ag_abc --description "" -y              # clear description
+  xinwiki agent edit ag_abc --add-kb kb_new --remove-kb kb_old -y
+  xinwiki agent edit ag_abc --system-prompt-file ./prompt.md -y
+  xinwiki agent edit ag_abc --config-file ./tuned.yaml --temperature 0.9 -y`
 
-// NewCmdEdit builds `weknora agent edit <agent-id>`.
+// NewCmdEdit builds `xinwiki agent edit <agent-id>`.
 func NewCmdEdit(f *cmdutil.Factory) *cobra.Command {
 	opts := &EditOptions{}
 	var systemPromptFile, configFile string
@@ -244,9 +244,9 @@ func NewCmdEdit(f *cmdutil.Factory) *cobra.Command {
 		UsedFor:       "surgically edit a custom agent's configuration",
 		RequiredFlags: []string{"<agent-id> (positional)", "at least one edit flag (--name, --add-kb, etc.)"},
 		Examples: []string{
-			"weknora agent edit ag_abc --name \"Renamed\"",
-			"weknora agent edit ag_abc --add-kb kb_new --remove-kb kb_old",
-			"weknora agent edit ag_abc --config-file ./tuned.yaml",
+			"xinwiki agent edit ag_abc --name \"Renamed\"",
+			"xinwiki agent edit ag_abc --add-kb kb_new --remove-kb kb_old",
+			"xinwiki agent edit ag_abc --config-file ./tuned.yaml",
 		},
 		Warnings: []string{
 			"Requires explicit user approval (exit 10 / input.confirmation_required); never auto-add -y.",
@@ -260,7 +260,7 @@ func NewCmdEdit(f *cmdutil.Factory) *cobra.Command {
 // flags the user actually set so agents can surface a precise re-run command.
 func buildAgentEditRetryCmd(cmd *cobra.Command, id string) string {
 	var parts []string
-	parts = append(parts, "weknora", "agent", "edit", id)
+	parts = append(parts, "xinwiki", "agent", "edit", id)
 	cmd.Flags().Visit(func(f *pflag.Flag) {
 		switch f.Name {
 		case "name":

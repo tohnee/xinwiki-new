@@ -1,0 +1,23 @@
+[Unit]
+Description=WeKnora Lite - Knowledge Base Management System
+After=network.target
+
+[Service]
+Type=simple
+User=xinwiki
+Group=xinwiki
+WorkingDirectory=/opt/xinwiki
+EnvironmentFile=/opt/xinwiki/.env.lite
+ExecStart=/opt/xinwiki/WeKnora-lite
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/xinwiki/data
+
+[Install]
+WantedBy=multi-user.target

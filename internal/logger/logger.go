@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -350,7 +350,7 @@ func defaultMacAppLogPath() string {
 		return ""
 	}
 
-	appName := "WeKnora Lite"
+	appName := "XinWiki Lite"
 	if idx := strings.Index(execPath, ".app/Contents/MacOS"); idx >= 0 {
 		bundleName := filepath.Base(execPath[:idx+4])
 		if trimmed := strings.TrimSuffix(bundleName, ".app"); trimmed != "" {

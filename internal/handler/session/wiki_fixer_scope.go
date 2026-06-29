@@ -3,9 +3,9 @@ package session
 import (
 	"context"
 
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/types"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 )
 
 type wikiFixerKBLookup interface {

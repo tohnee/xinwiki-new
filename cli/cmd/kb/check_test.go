@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 type fakeCheckSvc struct {

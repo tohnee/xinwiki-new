@@ -10,7 +10,7 @@
 |------|------|--------|
 | **A. 业务站点（宿主）** | `https://shop.example.com` | 你的商城 / 文档站；在这里粘贴 Widget 脚本或 iframe |
 | **B. Embed 页面源站** | `https://app.example.com` 或 `https://embed.example.com` | 提供 `embed.html`、`weknora-widget.js`；聊天 iframe 加载自这里 |
-| **C. WeKnora API** | 通常与 B 同域，如 `https://app.example.com/api` | 后端接口 |
+| **C. XinWiki API** | 通常与 B 同域，如 `https://app.example.com/api` | 后端接口 |
 
 **默认（推荐入门）**：B 和主站管理后台都在 `https://app.example.com`，A 可以是任意第三方域名。
 
@@ -68,7 +68,7 @@ window.__RUNTIME_CONFIG__ = {
 
 - `server_name embed.example.com`
 - 只暴露：`/embed/*` → `embed.html`，`/weknora-widget.js`，`/assets/*`
-- `/api/` 反代到 WeKnora 后端（与主站相同后端即可）
+- `/api/` 反代到 XinWiki 后端（与主站相同后端即可）
 - **不要**在这个 server 上挂完整 `index.html` 管理 SPA（减少攻击面）
 
 主站 `server` 块可继续 `X-Frame-Options: SAMEORIGIN`，不影响第三方嵌 embed 子域的 iframe。

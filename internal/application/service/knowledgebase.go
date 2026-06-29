@@ -9,14 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/application/service/retriever"
-	"github.com/Tencent/WeKnora/internal/datasource"
-	apperrors "github.com/Tencent/WeKnora/internal/errors"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/tracing/langfuse"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/application/service/retriever"
+	"github.com/Tencent/XinWiki/internal/datasource"
+	apperrors "github.com/Tencent/XinWiki/internal/errors"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/tracing/langfuse"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 )
@@ -26,21 +26,24 @@ var ErrInvalidTenantID = errors.New("invalid tenant ID")
 
 // knowledgeBaseService implements the knowledge base service interface
 type knowledgeBaseService struct {
-	repo           interfaces.KnowledgeBaseRepository
-	kgRepo         interfaces.KnowledgeRepository
-	chunkRepo      interfaces.ChunkRepository
-	shareRepo      interfaces.KBShareRepository
-	kbShareService interfaces.KBShareService
-	modelService   interfaces.ModelService
-	retrieveEngine interfaces.RetrieveEngineRegistry
-	ownership      retriever.TenantStoreOwnership
-	tenantRepo     interfaces.TenantRepository
-	fileSvc        interfaces.FileService
-	graphEngine    interfaces.RetrieveGraphRepository
-	asynqClient    interfaces.TaskEnqueuer
-	dsRepo         interfaces.DataSourceRepository
-	syncLogRepo    interfaces.SyncLogRepository
-	dsScheduler    *datasource.Scheduler
+	repo             interfaces.KnowledgeBaseRepository
+	kgRepo           interfaces.KnowledgeRepository
+	chunkRepo        interfaces.ChunkRepository
+	shareRepo        interfaces.KBShareRepository
+	kbShareService   interfaces.KBShareService
+	modelService     interfaces.ModelService
+	retrieveEngine   interfaces.RetrieveEngineRegistry
+	ownership        retriever.TenantStoreOwnership
+	tenantRepo       interfaces.TenantRepository
+	fileSvc          interfaces.FileService
+	graphEngine      interfaces.RetrieveGraphRepository
+	asynqClient      interfaces.TaskEnqueuer
+	dsRepo           interfaces.DataSourceRepository
+	syncLogRepo      interfaces.SyncLogRepository
+	dsScheduler      *datasource.Scheduler
+	semanticCache    interfaces.SemanticCacheService
+	embeddingBatcher *EmbeddingBatcherManager
+	queryNormalizer  *QueryNormalizer
 }
 
 // NewKnowledgeBaseService creates a new knowledge base service
@@ -59,23 +62,28 @@ func NewKnowledgeBaseService(repo interfaces.KnowledgeBaseRepository,
 	dsRepo interfaces.DataSourceRepository,
 	syncLogRepo interfaces.SyncLogRepository,
 	dsScheduler *datasource.Scheduler,
+	semanticCache interfaces.SemanticCacheService,
+	embeddingBatcher *EmbeddingBatcherManager,
 ) interfaces.KnowledgeBaseService {
 	return &knowledgeBaseService{
-		repo:           repo,
-		kgRepo:         kgRepo,
-		chunkRepo:      chunkRepo,
-		shareRepo:      shareRepo,
-		kbShareService: kbShareService,
-		modelService:   modelService,
-		retrieveEngine: retrieveEngine,
-		ownership:      ownership,
-		tenantRepo:     tenantRepo,
-		fileSvc:        fileSvc,
-		graphEngine:    graphEngine,
-		asynqClient:    asynqClient,
-		dsRepo:         dsRepo,
-		syncLogRepo:    syncLogRepo,
-		dsScheduler:    dsScheduler,
+		repo:             repo,
+		kgRepo:           kgRepo,
+		chunkRepo:        chunkRepo,
+		shareRepo:        shareRepo,
+		kbShareService:   kbShareService,
+		modelService:     modelService,
+		retrieveEngine:   retrieveEngine,
+		ownership:        ownership,
+		tenantRepo:       tenantRepo,
+		fileSvc:          fileSvc,
+		graphEngine:      graphEngine,
+		asynqClient:      asynqClient,
+		dsRepo:           dsRepo,
+		syncLogRepo:      syncLogRepo,
+		dsScheduler:      dsScheduler,
+		semanticCache:    semanticCache,
+		embeddingBatcher: embeddingBatcher,
+		queryNormalizer:  NewQueryNormalizer(DefaultQueryNormalizeConfig()),
 	}
 }
 
@@ -660,6 +668,13 @@ func (s *knowledgeBaseService) DeleteKnowledgeBase(ctx context.Context, id strin
 	// Step 1c: Stop and soft-delete all data sources bound to this KB so cron
 	// schedules and in-flight sync logs do not keep running against a deleted KB.
 	s.deleteDataSourcesForKnowledgeBase(ctx, id)
+
+	// Step 1d: Invalidate semantic cache for this KB
+	if s.semanticCache != nil {
+		if err := s.semanticCache.InvalidateByKB(ctx, tenantID, id); err != nil {
+			logger.Warnf(ctx, "Failed to invalidate semantic cache for KB %s: %v", id, err)
+		}
+	}
 
 	// Step 2: Enqueue async task for heavy cleanup operations
 	payload := types.KBDeletePayload{

@@ -14,11 +14,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Tencent/WeKnora/cli/internal/config"
-	"github.com/Tencent/WeKnora/cli/internal/projectlink"
-	"github.com/Tencent/WeKnora/cli/internal/prompt"
-	"github.com/Tencent/WeKnora/cli/internal/secrets"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/config"
+	"github.com/Tencent/XinWiki/cli/internal/projectlink"
+	"github.com/Tencent/XinWiki/cli/internal/prompt"
+	"github.com/Tencent/XinWiki/cli/internal/secrets"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // TestFactory_Lazy ensures none of the closures execute work at construction
@@ -55,7 +55,7 @@ func TestFactory_Lazy(t *testing.T) {
 
 // TestNew_FoundationDefaults verifies the production New() returns a usable
 // Factory and that Client surfaces auth.unauthenticated when no current
-// profile is configured (the precondition for `weknora auth login`).
+// profile is configured (the precondition for `xinwiki auth login`).
 func TestNew_FoundationDefaults(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir()) // empty config → no current profile
 	f := New()
@@ -80,8 +80,8 @@ func TestFactory_ProfileOverride(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", dir)
 
 	// Seed config with two profiles; CurrentProfile = "default"
-	cfgPath := dir + "/weknora/config.yaml"
-	require.NoError(t, os.MkdirAll(dir+"/weknora", 0o700))
+	cfgPath := dir + "/xinwiki/config.yaml"
+	require.NoError(t, os.MkdirAll(dir+"/xinwiki", 0o700))
 	require.NoError(t, os.WriteFile(cfgPath, []byte(`
 current_profile: default
 profiles:
@@ -331,7 +331,7 @@ func TestResolveKB_Chain(t *testing.T) {
 		dir := t.TempDir()
 		resolveKBChdir(t, dir)
 		// Drop a project link too - must be ignored.
-		require.NoError(t, projectlink.Save(filepath.Join(dir, ".weknora", "project.yaml"), &projectlink.Project{KBID: "kb_disk_should_lose"}))
+		require.NoError(t, projectlink.Save(filepath.Join(dir, ".xinwiki", "project.yaml"), &projectlink.Project{KBID: "kb_disk_should_lose"}))
 
 		clientCalls := 0
 		f := &Factory{
@@ -378,7 +378,7 @@ func TestResolveKB_Chain(t *testing.T) {
 		t.Setenv("WEKNORA_KB_ID", "kb_env")
 		dir := t.TempDir()
 		resolveKBChdir(t, dir)
-		require.NoError(t, projectlink.Save(filepath.Join(dir, ".weknora", "project.yaml"), &projectlink.Project{KBID: "kb_disk_should_lose"}))
+		require.NoError(t, projectlink.Save(filepath.Join(dir, ".xinwiki", "project.yaml"), &projectlink.Project{KBID: "kb_disk_should_lose"}))
 
 		f := &Factory{}
 		got, err := f.ResolveKB(makeResolveKBCmd(t, ""))
@@ -389,7 +389,7 @@ func TestResolveKB_Chain(t *testing.T) {
 	t.Run("project_link_walk_up", func(t *testing.T) {
 		t.Setenv("WEKNORA_KB_ID", "")
 		root := t.TempDir()
-		require.NoError(t, projectlink.Save(filepath.Join(root, ".weknora", "project.yaml"), &projectlink.Project{KBID: "kb_proj"}))
+		require.NoError(t, projectlink.Save(filepath.Join(root, ".xinwiki", "project.yaml"), &projectlink.Project{KBID: "kb_proj"}))
 		// Run from a deep child to exercise walk-up.
 		deep := filepath.Join(root, "a", "b", "c")
 		require.NoError(t, os.MkdirAll(deep, 0o755))

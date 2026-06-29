@@ -1,0 +1,317 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "📊 Embedding 请求概览",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "title": "请求QPS vs 实际API调用QPS",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum(rate(embedding_requests_total{result=~\"batched|single\"}[1m])) by (result)",
+          "legendFormat": "{{result}} 请求",
+          "interval": ""
+        },
+        {
+          "expr": "sum(rate(embedding_api_calls_total[1m]))",
+          "legendFormat": "实际API调用",
+          "interval": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "QPS",
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10
+          },
+          "unit": "reqps"
+        }
+      }
+    },
+    {
+      "title": "批量合并率 / 去重命中率",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "expr": "1 - sum(rate(embedding_api_calls_total[5m])) / sum(rate(embedding_requests_total{result=~\"batched|single\"}[5m]))",
+          "legendFormat": "批量合并率"
+        },
+        {
+          "expr": "sum(rate(embedding_requests_total{result=\"merged\"}[5m])) / sum(rate(embedding_requests_total{result=\"batched\"}[5m]))",
+          "legendFormat": "重复请求去重率"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 15 },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "green", "value": 0.7 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "⚡ 延迟监控",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 }
+    },
+    {
+      "title": "等待延迟 (排队等待批处理) P50/P95/P99",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 10 },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(embedding_wait_latency_seconds_bucket[5m])) by (le))", "legendFormat": "P50" },
+        { "expr": "histogram_quantile(0.95, sum(rate(embedding_wait_latency_seconds_bucket[5m])) by (le))", "legendFormat": "P95" },
+        { "expr": "histogram_quantile(0.99, sum(rate(embedding_wait_latency_seconds_bucket[5m])) by (le))", "legendFormat": "P99" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "title": "API批次调用延迟 P50/P95/P99",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 10 },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(embedding_batch_latency_seconds_bucket[5m])) by (le))", "legendFormat": "P50" },
+        { "expr": "histogram_quantile(0.95, sum(rate(embedding_batch_latency_seconds_bucket[5m])) by (le))", "legendFormat": "P95" },
+        { "expr": "histogram_quantile(0.99, sum(rate(embedding_batch_latency_seconds_bucket[5m])) by (le))", "legendFormat": "P99" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "title": "平均批次大小",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 10 },
+      "targets": [
+        {
+          "expr": "sum(rate(embedding_batch_size_sum[5m])) / sum(rate(embedding_batch_size_count[5m]))",
+          "legendFormat": "平均批次大小 (去重后)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 8 },
+              { "color": "green", "value": 16 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "📦 队列与容量监控",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 }
+    },
+    {
+      "title": "队列等待长度",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "targets": [
+        {
+          "expr": "embedding_queue_size",
+          "legendFormat": "{{model_key}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 15 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 128 },
+              { "color": "red", "value": 200 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "降级请求数 (队列满)",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "targets": [
+        {
+          "expr": "sum(rate(embedding_requests_total{result=\"single\"}[5m]))",
+          "legendFormat": "降级请求QPS"
+        },
+        {
+          "expr": "sum(rate(embedding_requests_total{result=\"error\"}[5m]))",
+          "legendFormat": "错误请求QPS"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "title": "📋 单模型详情",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 }
+    },
+    {
+      "title": "各模型合并率对比 (Gauge)",
+      "type": "gauge",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 9, "w": 8, "x": 0, "y": 28 },
+      "targets": [
+        {
+          "expr": "1 - sum(rate(embedding_api_calls_total[10m])) by (model_key) / sum(rate(embedding_requests_total{result=~\"batched|single\"}[10m])) by (model_key)",
+          "legendFormat": "{{model_key}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.4 },
+              { "color": "green", "value": 0.65 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "各模型平均批次大小",
+      "type": "bargauge",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 9, "w": 8, "x": 8, "y": 28 },
+      "targets": [
+        {
+          "expr": "sum(rate(embedding_batch_size_sum[10m])) by (model_key) / sum(rate(embedding_batch_size_count[10m])) by (model_key)",
+          "legendFormat": "{{model_key}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 8 },
+              { "color": "green", "value": 16 }
+            ]
+          }
+        }
+      },
+      "options": { "displayMode": "gradient", "orientation": "horizontal" }
+    },
+    {
+      "title": "各模型API延迟P99",
+      "type": "bargauge",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 28 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(embedding_batch_latency_seconds_bucket[10m])) by (le, model_key))",
+          "legendFormat": "{{model_key}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.3 },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": { "displayMode": "gradient", "orientation": "horizontal" }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["xinwiki", "embedding", "performance", "D3"],
+  "templating": {
+    "list": []
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "D3 Milestone - Embedding Batch Optimization Dashboard",
+  "uid": "embedding-batch-d3",
+  "version": 1
+}

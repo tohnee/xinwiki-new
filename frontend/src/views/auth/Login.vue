@@ -96,63 +96,19 @@
     </div>
 
     <!-- Logo - Top Left -->
-    <a href="https://github.com/Tencent/WeKnora" target="_blank" class="header-logo" :title="$t('common.github')">
-      <img src="@/assets/img/weknora.png" alt="WeKnora" class="logo-image" />
-    </a>
-
-    <!-- Header Links - Top Right -->
-    <div class="header-links">
-      <a href="https://weknora.weixin.qq.com" target="_blank" class="header-link" :title="$t('common.website')">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-          stroke-linecap="round">
-          <circle cx="12" cy="12" r="10" />
-          <line x1="2" y1="12" x2="22" y2="12" />
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-        </svg>
-        <span class="link-text">{{ $t('common.website') }}</span>
-      </a>
-
-      <a href="https://github.com/Tencent/WeKnora" target="_blank" class="header-link" :title="$t('common.info')">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
-          <path
-            d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
-        </svg>
-        <span class="link-text">GitHub</span>
-      </a>
-
-      <div class="language-switch">
-        <button @click="toggleLanguageMenu" class="header-link" :title="currentLangOption?.label">
-          <span class="lang-flag-icon">{{ currentLangOption?.flag }}</span>
-          <span class="link-text">{{ currentLangOption?.shortLabel }}</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round">
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
-
-        <!-- Language Dropdown -->
-        <div v-if="showLanguageMenu" class="language-dropdown">
-          <div v-for="lang in languageOptions" :key="lang.value" @click="selectLanguage(lang.value)"
-            class="language-option" :class="{ active: currentLanguage === lang.value }">
-            <span class="lang-flag">{{ lang.flag }}</span>
-            <span class="lang-label">{{ lang.label }}</span>
-            <span v-if="currentLanguage === lang.value" class="check-icon">✓</span>
-          </div>
-        </div>
-      </div>
+    <div class="header-logo">
+      <XinWikiLogo :size="48" />
+      <span class="logo-text">XinWiki</span>
     </div>
 
     <!-- Left Showcase Section -->
     <div class="showcase-section">
       <div class="showcase-content">
-        <p class="showcase-subtitle">{{ $t('platform.subtitle') }}</p>
-        <p class="showcase-description">{{ $t('platform.description') }}</p>
+        <p class="showcase-subtitle">智能体驱动的知识工作平台</p>
+        <p class="showcase-description">强大的智能体能力，让文档真正被理解和运用</p>
 
         <div class="feature-tags">
-          <span class="tag">{{ $t('platform.rag') }}</span>
-          <span class="tag">{{ $t('platform.agent') }}</span>
-          <span class="tag">{{ $t('platform.wiki') }}</span>
-          <span class="tag">{{ $t('platform.hybridSearch') }}</span>
+          <span class="tag">智能体</span>
         </div>
 
         <!-- Swiper Carousel -->
@@ -347,6 +303,7 @@ import {
 } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { useI18n } from 'vue-i18n'
+import XinWikiLogo from '@/components/XinWikiLogo.vue'
 
 // Import screenshot images
 import screenshot1 from '@/assets/img/screenshot-1.svg'
@@ -395,7 +352,6 @@ const registerFormRef = ref()
 const loading = ref(false)
 const oidcLoading = ref(false)
 const isRegisterMode = ref(false)
-const showLanguageMenu = ref(false)
 const oidcEnabled = ref(false)
 const oidcProviderName = ref('')
 // registrationEnabled defaults to true so that on first paint the Register
@@ -412,24 +368,12 @@ const registrationEnabled = ref(true)
 const inviteToken = ref('')
 const inviteLookup = ref<InviteLookup | null>(null)
 const inviteLookupError = ref('')
-const inviteLookupLoading = ref(false)
-
-// Language options
-const languageOptions = [
-  { value: 'zh-CN', label: '简体中文', shortLabel: '中文', flag: '🇨🇳' },
-  { value: 'en-US', label: 'English', shortLabel: 'EN', flag: '🇺🇸' },
-  { value: 'ru-RU', label: 'Русский', shortLabel: 'RU', flag: '🇷🇺' },
-  { value: 'ko-KR', label: '한국어', shortLabel: '한국어', flag: '🇰🇷' }
-]
-
-const currentLanguage = computed(() => locale.value)
 const oidcLoginText = computed(() => {
   if (oidcProviderName.value) {
     return t('auth.oidcLoginWithProvider', { provider: oidcProviderName.value })
   }
   return t('auth.oidcLogin')
 })
-const currentLangOption = computed(() => languageOptions.find(l => l.value === currentLanguage.value))
 
 // Login form data
 const formData = reactive<{ [key: string]: any }>({
@@ -501,36 +445,6 @@ const toggleMode = () => {
     (registerData as any)[key] = ''
   })
 }
-
-// Toggle language menu
-const toggleLanguageMenu = () => {
-  showLanguageMenu.value = !showLanguageMenu.value
-}
-
-// Select language
-const selectLanguage = (lang: string) => {
-  locale.value = lang
-  localStorage.setItem('locale', lang)
-  showLanguageMenu.value = false
-  MessagePlugin.success(t('language.languageSaved'))
-}
-
-// Close language menu when clicking outside
-const handleClickOutside = (event: MouseEvent) => {
-  const target = event.target as HTMLElement
-  if (!target.closest('.language-switch')) {
-    showLanguageMenu.value = false
-  }
-}
-
-// Add click outside listener
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
 
 const persistLoginResponse = async (response: any) => {
   // Backend renamed `tenant` to `active_tenant` and added `memberships`
@@ -751,7 +665,7 @@ onMounted(async () => {
     return
   }
 
-  const AUTO_SETUP_FAILED_KEY = 'weknora_auto_setup_failed'
+  const AUTO_SETUP_FAILED_KEY = 'xinwiki_auto_setup_failed'
   if (localStorage.getItem(AUTO_SETUP_FAILED_KEY) !== 'true') {
     try {
       const response = await autoSetup()
@@ -779,7 +693,7 @@ onMounted(async () => {
   min-height: 100%;
   overflow: hidden;
   position: relative;
-  background: linear-gradient(225deg, #022c22 0%, #064e3b 15%, #065f46 25%, #047857 38%, #059669 50%, #07C05F 65%, #10B981 78%, #34D399 90%, #6EE7B7 100%);
+  background: linear-gradient(225deg, #0A192F 0%, #0F2A52 15%, #123A75 25%, #164D9A 38%, #0F62C4 50%, #0071E3 65%, #007AFF 78%, #3A9BFF 90%, #71B8FF 100%);
 
   &::before {
     content: '';
@@ -815,7 +729,7 @@ onMounted(async () => {
   border: 2px solid rgba(255, 255, 255, 0.3);
   box-shadow:
     0 0 15px rgba(255, 255, 255, 0.35),
-    0 0 30px rgba(16, 185, 129, 0.2),
+    0 0 30px rgba(0, 122, 255, 0.3),
     inset 0 0 8px rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
@@ -1136,14 +1050,20 @@ onMounted(async () => {
 
 .header-logo {
   position: fixed;
-  top: 32px;
+  top: 28px;
   left: 50px;
   z-index: 100;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 
-  .logo-image {
-    width: 120px;
-    height: auto;
+  .logo-text {
+    font-size: 24px;
+    font-weight: 700;
+    color: white;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    letter-spacing: -0.5px;
   }
 }
 
@@ -1349,7 +1269,7 @@ onMounted(async () => {
   margin: 10px 0 0;
   padding: 8px 12px;
   border-radius: 8px;
-  background: var(--td-success-color-light, rgba(7, 192, 95, 0.08));
+  background: rgba(0, 122, 255, 0.08);
   color: var(--td-brand-color-active);
   font-size: 12.5px;
   line-height: 1.5;
@@ -1397,7 +1317,7 @@ onMounted(async () => {
     &:hover {
       border-color: var(--td-brand-color-active);
       color: var(--td-brand-color-active);
-      background: var(--td-success-color-light, rgba(7, 192, 95, 0.08));
+      background: rgba(0, 122, 255, 0.08);
     }
   }
 }
@@ -1428,7 +1348,7 @@ onMounted(async () => {
 
     &:focus-within {
       border-color: var(--td-brand-color);
-      box-shadow: 0 0 0 3px rgba(7, 192, 95, 0.1);
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
     }
 
     &:hover {
@@ -1757,45 +1677,17 @@ onMounted(async () => {
 <style lang="less">
 html[theme-mode="dark"] {
   .login-layout {
-    background: linear-gradient(225deg, #011a14 0%, #032e22 15%, #043a2c 25%, #05503d 38%, #046647 50%, #038a56 65%, #049b60 78%, #06a06a 90%, #07b074 100%);
+    background: linear-gradient(225deg, #0A192F 0%, #0F2A52 15%, #123A75 25%, #164D9A 38%, #0F62C4 50%, #0071E3 65%, #007AFF 78%, #3A9BFF 90%, #71B8FF 100%);
   }
 
   .knowledge-node {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.15), 0 0 15px rgba(0, 122, 255, 0.2);
   }
 
   .connection-line {
     stroke: rgba(255, 255, 255, 0.25);
-  }
-
-  .header-logo .logo-image {
-    filter: invert(1) hue-rotate(180deg) brightness(1.1);
-  }
-
-  .header-link {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.15);
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-  }
-
-  .language-switch button {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.15);
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-  }
-
-  .language-dropdown {
-    background: rgba(36, 36, 36, 0.97) !important;
-    border-color: var(--td-component-stroke) !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
   }
 
   .tag {
@@ -1821,6 +1713,7 @@ html[theme-mode="dark"] {
 
     &:focus-within {
       border-color: var(--td-brand-color) !important;
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15) !important;
     }
   }
 
@@ -1829,7 +1722,7 @@ html[theme-mode="dark"] {
   }
 
   .login-features .feature-icon {
-    background: rgba(6, 176, 77, 0.15);
+    background: rgba(0, 122, 255, 0.15);
   }
 }
 </style>

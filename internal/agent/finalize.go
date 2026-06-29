@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	agenttools "github.com/Tencent/WeKnora/internal/agent/tools"
-	"github.com/Tencent/WeKnora/internal/common"
-	"github.com/Tencent/WeKnora/internal/event"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/models/chat"
-	"github.com/Tencent/WeKnora/internal/types"
+	agenttools "github.com/Tencent/XinWiki/internal/agent/tools"
+	"github.com/Tencent/XinWiki/internal/common"
+	"github.com/Tencent/XinWiki/internal/event"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/models/chat"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // streamFinalAnswerToEventBus streams the final answer generation through EventBus
@@ -179,6 +179,17 @@ func (e *AgentEngine) emitCompletionEvent(
 		knowledgeRefsInterface = append(knowledgeRefsInterface, ref)
 	}
 
+	// Collect thinking chain and token usage if tracker is enabled
+	var thinkingSteps interface{}
+	var tokenUsage interface{}
+	if e.thinkingTracker != nil && e.thinkingTracker.IsTracingEnabled() {
+		// Add final answer step
+		e.thinkingTracker.AddFinalAnswer(state.FinalAnswer, nil)
+		thinkingSteps = e.thinkingTracker.GetSteps()
+		totalTokens := e.thinkingTracker.GetTotalTokens()
+		tokenUsage = totalTokens
+	}
+
 	e.eventBus.Emit(ctx, event.Event{
 		ID:        generateEventID("complete"),
 		Type:      event.EventAgentComplete,
@@ -187,6 +198,8 @@ func (e *AgentEngine) emitCompletionEvent(
 			FinalAnswer:     state.FinalAnswer,
 			KnowledgeRefs:   knowledgeRefsInterface,
 			AgentSteps:      state.RoundSteps, // Include detailed execution steps for message storage
+			ThinkingSteps:   thinkingSteps,    // Include full thinking chain
+			TokenUsage:      tokenUsage,       // Include total token usage statistics
 			TotalSteps:      len(state.RoundSteps),
 			TotalDurationMs: time.Since(startTime).Milliseconds(),
 			MessageID:       messageID, // Include message ID for proper message update

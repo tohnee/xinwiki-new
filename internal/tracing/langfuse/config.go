@@ -1,5 +1,5 @@
 // Package langfuse implements a lightweight client for the Langfuse ingestion
-// API (https://langfuse.com/docs/api). It lets WeKnora record LLM traces,
+// API (https://langfuse.com/docs/api). It lets XinWiki record LLM traces,
 // generations and token usage in Langfuse without pulling in a heavy SDK.
 //
 // The integration is fully opt-in: when disabled (the default), all public
@@ -18,7 +18,7 @@ import (
 //
 // In practice users enable Langfuse purely through environment variables —
 // Host / PublicKey / SecretKey — which matches every other Langfuse SDK and
-// keeps WeKnora's YAML config free of secrets.
+// keeps XinWiki's YAML config free of secrets.
 type Config struct {
 	// Enabled is the master switch. If false the entire package is a no-op.
 	Enabled bool

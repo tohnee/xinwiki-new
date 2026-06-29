@@ -198,7 +198,7 @@ const loading = ref(true)
 const error = ref('')
 const showApiKey = ref(false)
 const resetting = ref(false)
-/** WeKnora Lite (Wails): real API origin is loopback + dynamic port, not window.location.origin */
+/** XinWiki Lite (Wails): real API origin is loopback + dynamic port, not window.location.origin */
 const wailsApiBaseURL = ref<string | null>(null)
 const showDesktopPortSetting = ref(false)
 const showDesktopBindPublicSetting = ref(false)
@@ -240,9 +240,9 @@ const apiBaseUrlDisplay = computed(() => {
   return `${base}/api/v1`
 })
 
-type WeKnoraDesktopWindow = Window & {
-  __WEKNORA_API_BASE__?: string
-  __WEKNORA_API_LAN_BASE__?: string
+type XinWikiDesktopWindow = Window & {
+  __XINWIKI_API_BASE__?: string
+  __XINWIKI_API_LAN_BASE__?: string
   go?: {
     main?: {
       App?: {
@@ -259,9 +259,9 @@ type WeKnoraDesktopWindow = Window & {
 }
 
 async function tryLoadWailsApiBaseURL() {
-  const win = window as WeKnoraDesktopWindow
+  const win = window as XinWikiDesktopWindow
   for (let i = 0; i < 40; i++) {
-    const injected = win.__WEKNORA_API_BASE__
+    const injected = win.__XINWIKI_API_BASE__
     if (typeof injected === 'string' && injected.trim()) {
       wailsApiBaseURL.value = injected.trim().replace(/\/$/, '')
       await tryLoadWailsLanHints(win)
@@ -285,8 +285,8 @@ async function tryLoadWailsApiBaseURL() {
   await tryLoadWailsLanHints(win)
 }
 
-async function tryLoadWailsLanHints(win: WeKnoraDesktopWindow) {
-  const injectedLan = win.__WEKNORA_API_LAN_BASE__
+async function tryLoadWailsLanHints(win: XinWikiDesktopWindow) {
+  const injectedLan = win.__XINWIKI_API_LAN_BASE__
   if (typeof injectedLan === 'string' && injectedLan.trim()) {
     wailsApiLanBaseURL.value = injectedLan.trim().replace(/\/$/, '')
   }
@@ -311,12 +311,12 @@ async function tryLoadWailsLanHints(win: WeKnoraDesktopWindow) {
   }
 }
 
-function desktopPortBindingsAvailable(win: WeKnoraDesktopWindow) {
+function desktopPortBindingsAvailable(win: XinWikiDesktopWindow) {
   const app = win.go?.main?.App
   return typeof app?.GetDesktopHTTPPortSetting === 'function' && typeof app?.SetDesktopHTTPPortSetting === 'function'
 }
 
-function desktopBindPublicBindingsAvailable(win: WeKnoraDesktopWindow) {
+function desktopBindPublicBindingsAvailable(win: XinWikiDesktopWindow) {
   const app = win.go?.main?.App
   return (
     typeof app?.GetDesktopHTTPBindPublicSetting === 'function' &&
@@ -325,7 +325,7 @@ function desktopBindPublicBindingsAvailable(win: WeKnoraDesktopWindow) {
 }
 
 async function loadDesktopApiPrefs() {
-  const win = window as WeKnoraDesktopWindow
+  const win = window as XinWikiDesktopWindow
   if (desktopPortBindingsAvailable(win)) {
     showDesktopPortSetting.value = true
     try {
@@ -348,7 +348,7 @@ async function loadDesktopApiPrefs() {
 
 const onDesktopBindPublicChange = async (value: boolean) => {
   const v = value === true
-  const win = window as WeKnoraDesktopWindow
+  const win = window as XinWikiDesktopWindow
   const fn = win.go?.main?.App?.SetDesktopHTTPBindPublicSetting
   if (typeof fn !== 'function') return
   try {
@@ -367,7 +367,7 @@ const saveDesktopPort = async () => {
     MessagePlugin.warning(t('tenant.api.desktopPortInvalid'))
     return
   }
-  const win = window as WeKnoraDesktopWindow
+  const win = window as XinWikiDesktopWindow
   const fn = win.go?.main?.App?.SetDesktopHTTPPortSetting
   if (typeof fn !== 'function') return
   try {
@@ -399,7 +399,7 @@ const loadInfo = async () => {
 }
 
 const openApiDoc = () => {
-  window.open('https://github.com/Tencent/WeKnora/blob/main/docs/api/README.md', '_blank')
+  window.open('https://github.com/Tencent/XinWiki/blob/main/docs/api/README.md', '_blank')
 }
 
 const fallbackCopyText = (text: string) => {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // --- IntoChatMessage tests ---

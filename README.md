@@ -1,30 +1,30 @@
 <p align="center">
   <picture>
-    <img src="./docs/images/logo.png" alt="WeKnora Logo" height="120"/>
+    <img src="./docs/images/logo.png" alt="XinWiki Logo" height="120"/>
   </picture>
 </p>
 
 <p align="center">
   <picture>
     <a href="https://trendshift.io/repositories/15289" target="_blank">
-      <img src="https://trendshift.io/api/badge/repositories/15289" alt="Tencent%2FWeKnora | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/>
+      <img src="https://trendshift.io/api/badge/repositories/15289" alt="Tencent%2FXinWiki | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/>
     </a>
   </picture>
 </p>
 <p align="center">
     <a href="https://weknora.weixin.qq.com" target="_blank">
-        <img alt="Official Website" src="https://img.shields.io/badge/Official Website-WeKnora-4e6b99">
+        <img alt="Official Website" src="https://img.shields.io/badge/Official Website-XinWiki-4e6b99">
     </a>
     <a href="https://chatbot.weixin.qq.com" target="_blank">
         <img alt="WeChat Dialog Open Platform" src="https://img.shields.io/badge/WeChat Dialog Open Platform-5ac725">
     </a>
     <a href="https://chromewebstore.google.com/detail/jpemjbopikggjlmikmclgbmkhhopjdgd" target="_blank">
-        <img alt="Chrome Extension" src="https://img.shields.io/badge/Chrome Extension-WeKnora-4285F4">
+        <img alt="Chrome Extension" src="https://img.shields.io/badge/Chrome Extension-XinWiki-4285F4">
     </a>
     <a href="https://clawhub.ai/lyingbug/weknora" target="_blank">
-        <img alt="ClawHub Skill" src="https://img.shields.io/badge/ClawHub Skill-WeKnora-ff6b35">
+        <img alt="ClawHub Skill" src="https://img.shields.io/badge/ClawHub Skill-XinWiki-ff6b35">
     </a>
-    <a href="https://github.com/Tencent/WeKnora/blob/main/LICENSE">
+    <a href="https://github.com/Tencent/XinWiki/blob/main/LICENSE">
         <img src="https://img.shields.io/badge/License-MIT-ffffff?labelColor=d4eaf7&color=2e6cc4" alt="License">
     </a>
     <a href="./CHANGELOG.md">
@@ -44,15 +44,15 @@
   </h4>
 </p>
 
-# 💡 WeKnora — Turn Documents into Living Knowledge with RAG, Agents and Auto-Wiki
+# 💡 XinWiki — Turn Documents into Living Knowledge with RAG, Agents and Auto-Wiki
 
 ## 📌 Overview
 
-[**WeKnora**](https://weknora.weixin.qq.com) is an open-source, LLM-powered knowledge framework built for enterprise-grade document understanding, semantic retrieval, and autonomous reasoning.
+[**XinWiki**](https://weknora.weixin.qq.com) is an open-source, LLM-powered knowledge framework built for enterprise-grade document understanding, semantic retrieval, and autonomous reasoning.
 
-It is organized around three core capabilities: **RAG-based Quick Q&A** for everyday lookups, a **ReAct Agent** that autonomously orchestrates retrieval, MCP tools and web search to handle complex multi-step tasks, and a brand-new **Wiki Mode** in which agents distill raw documents into a self-maintaining, interlinked markdown knowledge base with an interactive knowledge graph. Combined with multi-source ingestion (Feishu / Notion / Yuque, and growing), 20+ LLM provider integrations, full Langfuse observability, **enterprise-ready multi-tenant RBAC** (4-tier role matrix + per-resource ownership + per-tenant audit log), and a fully self-hostable modular architecture, WeKnora turns scattered documents into a queryable, reasoning-capable, continuously evolving knowledge asset.
+It is organized around three core capabilities: **RAG-based Quick Q&A** for everyday lookups, a **ReAct Agent** that autonomously orchestrates retrieval, MCP tools and web search to handle complex multi-step tasks, and a brand-new **Wiki Mode** in which agents distill raw documents into a self-maintaining, interlinked markdown knowledge base with an interactive knowledge graph. Combined with multi-source ingestion (Feishu / Notion / Yuque, and growing), 20+ LLM provider integrations, full Langfuse observability, **enterprise-ready multi-tenant RBAC** (4-tier role matrix + per-resource ownership + per-tenant audit log), and a fully self-hostable modular architecture, XinWiki turns scattered documents into a queryable, reasoning-capable, continuously evolving knowledge asset.
 
-The framework supports auto-syncing knowledge from Feishu, Notion, and Yuque (more data sources coming soon), handles 10+ document formats including PDF, Word, images, and Excel, and can serve Q&A directly through IM channels like WeCom, Feishu, Slack, and Telegram. It is compatible with major LLM providers including OpenAI, DeepSeek, Qwen (Alibaba Cloud), Zhipu, Hunyuan, Gemini, MiniMax, NVIDIA, and Ollama. Its fully modular design allows swapping LLMs, vector databases, and storage backends, with support for local and private cloud deployment ensuring complete data sovereignty. WeKnora also integrates with **Langfuse** for comprehensive observability into agent reasoning, token usage, and pipeline tracing.
+The framework supports auto-syncing knowledge from Feishu, Notion, and Yuque (more data sources coming soon), handles 10+ document formats including PDF, Word, images, and Excel, and can serve Q&A directly through IM channels like WeCom, Feishu, Slack, and Telegram. It is compatible with major LLM providers including OpenAI, DeepSeek, Qwen (Alibaba Cloud), Zhipu, Hunyuan, Gemini, MiniMax, NVIDIA, and Ollama. Its fully modular design allows swapping LLMs, vector databases, and storage backends, with support for local and private cloud deployment ensuring complete data sovereignty. XinWiki also integrates with **Langfuse** for comprehensive observability into agent reasoning, token usage, and pipeline tracing.
 
 
 ## ✨ Latest Updates
@@ -63,7 +63,7 @@ The framework supports auto-syncing knowledge from Feishu, Notion, and Yuque (mo
 - **v0.5.2** — Wiki ingest scales to 40k-document KBs (task queue + DLQ); MCP human-in-the-loop tool approval; Anthropic / Apache Doris / Tencent VectorDB / KS3 / SearXNG backends; adaptive 3-tier chunking with live preview; global ⌘K command palette; Yuque connector + WeChat Mini Program; `weknora` CLI preview.
 - **v0.5.1** — Knowledge-base batch management; tenant-wide IM channels overview; session search + user-scoped pinning; unified Model / Web Search / MCP settings cards; per-agent LLM timeout; desktop tenant switching.
 - **v0.5.0** — Wiki Mode GA — agents auto-generate structured, interlinked Markdown wiki pages with a knowledge graph; wiki browser + visual graph in the UI.
-- **v0.4.0** — WeKnora Cloud (hosted LLM + parsing); Chrome Extension; ClawHub Skill; WeChat IM; attachment processing; Azure OpenAI / Alibaba OSS; Notion connector; Baidu + Ollama web search; VectorStore management.
+- **v0.4.0** — XinWiki Cloud (hosted LLM + parsing); Chrome Extension; ClawHub Skill; WeChat IM; attachment processing; Azure OpenAI / Alibaba OSS; Notion connector; Baidu + Ollama web search; VectorStore management.
 - **v0.3.6** — ASR (audio); Feishu data-source auto-sync; OIDC; IM quote-reply context + thread-based sessions; document summarization; Tavily search; parallel tool calling; agent @mention scope restriction.
 - **v0.3.5** — Telegram / DingTalk / Mattermost IM; IM slash commands + QA queue; suggested questions; VLM auto-describe MCP tool images; Novita AI; channel tracking.
 - **v0.3.4** — WeCom / Feishu / Slack IM; multimodal image support; NVIDIA model API; Weaviate; AWS S3; AES-256-GCM API-key encryption; built-in MCP service; hybrid-search optimization; `final_answer` tool.
@@ -144,21 +144,21 @@ Fully modular pipeline from document parsing, vectorization, and retrieval to LL
 | Security | AES-256-GCM at-rest encryption for API keys and MCP / data-source credentials with graceful key rotation; gRPC TLS + Token between app and docreader; SSRF-safe HTTP client; sandbox isolation for agent skills |
 | Observability | Integrated Langfuse (sole tracing backend) for ReAct loops, token tracking, tool calls, and pipeline tracing; built-in Langfuse-style document parsing trace timeline with stage-by-stage progress |
 | Task Management | MQ async tasks, automatic database migration on version upgrade |
-| Model Management | Centralized config, declarative built-in models via YAML, per-knowledge-base model selection, per-model thinking-mode config, multi-tenant built-in model sharing, WeKnora Cloud hosted models and parsing |
+| Model Management | Centralized config, declarative built-in models via YAML, per-knowledge-base model selection, per-model thinking-mode config, multi-tenant built-in model sharing, XinWiki Cloud hosted models and parsing |
 
 ## 🧩 Chrome Extension
 
-[**WeKnora Chrome Extension**](https://chromewebstore.google.com/detail/jpemjbopikggjlmikmclgbmkhhopjdgd) lets you capture web content directly into your WeKnora knowledge base. Select text, images, or entire pages in the browser and save them as knowledge entries with one click — no copy-paste or file upload needed.
+[**XinWiki Chrome Extension**](https://chromewebstore.google.com/detail/jpemjbopikggjlmikmclgbmkhhopjdgd) lets you capture web content directly into your XinWiki knowledge base. Select text, images, or entire pages in the browser and save them as knowledge entries with one click — no copy-paste or file upload needed.
 
 
 ## 📱 WeChat Mini Program
 
-The [WeKnora Mini Program](./miniprogram/README.md) provides a lightweight mobile client for configuring WeKnora API access, selecting knowledge bases, importing URLs, and asking knowledge chat from WeChat.
+The [XinWiki Mini Program](./miniprogram/README.md) provides a lightweight mobile client for configuring XinWiki API access, selecting knowledge bases, importing URLs, and asking knowledge chat from WeChat.
 
 
 ## 🦞 ClawHub Skill
 
-[**WeKnora ClawHub Skill**](https://clawhub.ai/lyingbug/weknora) is a WeKnora skill published on the ClawHub platform. Once installed, it enables document import (file / URL / Markdown), hybrid search (vector + keyword) across knowledge bases, and knowledge entry management — all through the WeKnora REST API.
+[**XinWiki ClawHub Skill**](https://clawhub.ai/lyingbug/weknora) is a XinWiki skill published on the ClawHub platform. Once installed, it enables document import (file / URL / Markdown), hybrid search (vector + keyword) across knowledge bases, and knowledge entry management — all through the XinWiki REST API.
 
 - **Document Import** — Upload files, import web pages, or write Markdown knowledge via the agent
 - **Hybrid Search** — Search within or across knowledge bases with vector + keyword retrieval
@@ -194,8 +194,8 @@ AI agents (Claude Code, Cursor, Aider, …) can rely on.
 ### 📦 Installation & Launch
 
 ```bash
-git clone https://github.com/Tencent/WeKnora.git
-cd WeKnora
+git clone https://github.com/Tencent/XinWiki.git
+cd XinWiki
 cp .env.example .env   # Edit .env as needed, see comments in the file
 docker compose up -d   # Start core services
 ```
@@ -234,11 +234,11 @@ Please refer to the [MCP Configuration Guide](./mcp-server/MCP_CONFIG.md) for th
 
 ## 🔌 Using WeChat Dialog Open Platform
 
-WeKnora serves as the core technology framework for the [WeChat Dialog Open Platform](https://chatbot.weixin.qq.com), providing a more convenient usage approach:
+XinWiki serves as the core technology framework for the [WeChat Dialog Open Platform](https://chatbot.weixin.qq.com), providing a more convenient usage approach:
 
 - **Zero-code Deployment**: Simply upload knowledge to quickly deploy intelligent Q&A services within the WeChat ecosystem, achieving an "ask and answer" experience
 - **Efficient Question Management**: Support for categorized management of high-frequency questions, with rich data tools to ensure accurate, reliable, and easily maintainable answers
-- **WeChat Ecosystem Integration**: Through the WeChat Dialog Open Platform, WeKnora's intelligent Q&A capabilities can be seamlessly integrated into WeChat Official Accounts, Mini Programs, and other WeChat scenarios, enhancing user interaction experiences
+- **WeChat Ecosystem Integration**: Through the WeChat Dialog Open Platform, XinWiki's intelligent Q&A capabilities can be seamlessly integrated into WeChat Official Accounts, Mini Programs, and other WeChat scenarios, enhancing user interaction experiences
 
 
 
@@ -278,7 +278,7 @@ make dev-frontend
 
 ## 🤝 Contributing
 
-Welcome to submit [Issues](https://github.com/Tencent/WeKnora/issues) or Pull Requests.
+Welcome to submit [Issues](https://github.com/Tencent/XinWiki/issues) or Pull Requests.
 
 **Process:** Fork → Create branch → Commit changes → Open PR
 
@@ -286,9 +286,9 @@ Welcome to submit [Issues](https://github.com/Tencent/WeKnora/issues) or Pull Re
 
 ## 🔒 Security Notice
 
-**Important:** Starting from v0.1.3, WeKnora includes login authentication functionality to enhance system security. For production deployments, we strongly recommend:
+**Important:** Starting from v0.1.3, XinWiki includes login authentication functionality to enhance system security. For production deployments, we strongly recommend:
 
-- Deploy WeKnora services in internal/private network environments rather than public internet
+- Deploy XinWiki services in internal/private network environments rather than public internet
 - Avoid exposing the service directly to public networks to prevent potential information leakage
 - Configure proper firewall rules and access controls for your deployment environment
 - Regularly update to the latest version for security patches and improvements
@@ -297,7 +297,7 @@ Welcome to submit [Issues](https://github.com/Tencent/WeKnora/issues) or Pull Re
 
 Thanks to these excellent contributors:
 
-[![Contributors](https://contrib.rocks/image?repo=Tencent/WeKnora)](https://github.com/Tencent/WeKnora/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=Tencent/XinWiki)](https://github.com/Tencent/XinWiki/graphs/contributors)
 
 ## 📄 License
 
@@ -306,10 +306,10 @@ You are free to use, modify, and distribute the code with proper attribution.
 
 ## 📈 Project Statistics
 
-<a href="https://www.star-history.com/#Tencent/WeKnora&type=date&legend=top-left">
+<a href="https://www.star-history.com/#Tencent/XinWiki&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Tencent/WeKnora&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Tencent/WeKnora&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Tencent/WeKnora&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Tencent/XinWiki&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Tencent/XinWiki&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Tencent/XinWiki&type=date&legend=top-left" />
  </picture>
 </a>

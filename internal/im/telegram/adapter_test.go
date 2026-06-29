@@ -3,7 +3,7 @@ package telegram
 import (
 	"testing"
 
-	"github.com/Tencent/WeKnora/internal/im"
+	"github.com/Tencent/XinWiki/internal/im"
 )
 
 func TestParseTelegramMessage_ForumTopicThread(t *testing.T) {

@@ -10,14 +10,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/datasource"
-	"github.com/Tencent/WeKnora/internal/logger"
+	"github.com/Tencent/XinWiki/internal/datasource"
+	"github.com/Tencent/XinWiki/internal/logger"
 )
 
 const (
 	defaultTimeout  = 30 * time.Second
 	defaultPageSize = 100
-	userAgent       = "WeKnora-Yuque-Connector/1.0"
+	userAgent       = "XinWiki-Yuque-Connector/1.0"
 )
 
 // client wraps the Yuque Open API.

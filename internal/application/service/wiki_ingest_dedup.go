@@ -5,8 +5,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/Tencent/WeKnora/internal/searchutil"
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/searchutil"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // Pre-filtering candidate existing pages before the dedup LLM call.

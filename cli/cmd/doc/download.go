@@ -10,8 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
 )
 
 // downloadFields enumerates the fields surfaced for `--format json` discovery on
@@ -38,7 +38,7 @@ type DownloadService interface {
 	OpenKnowledgeFile(ctx context.Context, knowledgeID string) (string, io.ReadCloser, error)
 }
 
-// NewCmdDownload builds `weknora doc download <id>`. Positional id, output
+// NewCmdDownload builds `xinwiki doc download <id>`. Positional id, output
 // flag, `-` sentinel for stdout. Flags: `-O, --output <file>` for
 // destination, `--clobber` for overwrite control.
 func NewCmdDownload(f *cmdutil.Factory) *cobra.Command {
@@ -58,11 +58,11 @@ With --format json, on success emits a JSON envelope whose data has
 path, bytes, and filename fields. When output is stdout (--output -),
 the JSON envelope is suppressed because the raw bytes already occupy
 stdout.`,
-		Example: `  weknora doc download doc_abc                       # writes ./<server-name>
-  weknora doc download doc_abc -O report.pdf
-  weknora doc download doc_abc --output -            # stream to stdout (binary safe)
-  weknora doc download doc_abc -O report.pdf --clobber
-  weknora doc download doc_abc -O report.pdf --format json   # JSON envelope`,
+		Example: `  xinwiki doc download doc_abc                       # writes ./<server-name>
+  xinwiki doc download doc_abc -O report.pdf
+  xinwiki doc download doc_abc --output -            # stream to stdout (binary safe)
+  xinwiki doc download doc_abc -O report.pdf --clobber
+  xinwiki doc download doc_abc -O report.pdf --format json   # JSON envelope`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			fopts, err := cmdutil.CheckFormatFlag(c)

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	filesvc "github.com/Tencent/WeKnora/internal/application/service/file"
+	filesvc "github.com/Tencent/XinWiki/internal/application/service/file"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -18,17 +18,17 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/dig"
 
-	"github.com/Tencent/WeKnora/internal/config"
-	"github.com/Tencent/WeKnora/internal/handler"
-	"github.com/Tencent/WeKnora/internal/handler/session"
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/middleware"
-	"github.com/Tencent/WeKnora/internal/tracing/langfuse"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/config"
+	"github.com/Tencent/XinWiki/internal/handler"
+	"github.com/Tencent/XinWiki/internal/handler/session"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/middleware"
+	"github.com/Tencent/XinWiki/internal/tracing/langfuse"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 
-	_ "github.com/Tencent/WeKnora/docs" // swagger docs
+	_ "github.com/Tencent/XinWiki/docs" // swagger docs
 )
 
 // RouterParams 路由参数
@@ -84,8 +84,12 @@ type RouterParams struct {
 	RedisClient                  *redis.Client
 	DataSourceHandler            *handler.DataSourceHandler
 	DataSourceCredentialsHandler *handler.DataSourceCredentialsHandler
-	WeKnoraCloudHandler          *handler.WeKnoraCloudHandler
+	XinWikiCloudHandler          *handler.XinWikiCloudHandler
 	WikiPageHandler              *handler.WikiPageHandler
+	CostTrackingHandler          *handler.CostTrackingHandler
+	ConflictDetectionHandler     *handler.ConflictDetectionHandler
+	RAGEvaluationHandler         *handler.RAGEvaluationHandler
+	ModelRouterHandler           *handler.ModelRouterHandler
 }
 
 // NewRouter 创建新的路由
@@ -202,7 +206,7 @@ func NewRouter(params RouterParams) *gin.Engine {
 		)
 
 		RegisterAuthRoutes(v1, params.AuthHandler)
-		RegisterTenantRoutes(v1, params.TenantHandler, params.TenantMemberHandler, params.TenantInvitationHandler, params.AuditLogHandler, rbacGuards)
+		RegisterTenantRoutes(v1, params.TenantHandler, params.TenantMemberHandler, params.TenantInvitationHandler, params.AuditLogHandler, params.CostTrackingHandler, params.ConflictDetectionHandler, params.RAGEvaluationHandler, params.ModelRouterHandler, rbacGuards)
 		RegisterMyInvitationRoutes(v1, params.TenantInvitationHandler)
 		RegisterKnowledgeBaseRoutes(v1, params.KBHandler, rbacGuards)
 		RegisterKnowledgeTagRoutes(v1, params.TagHandler, rbacGuards)
@@ -228,7 +232,7 @@ func NewRouter(params RouterParams) *gin.Engine {
 		RegisterIMChannelRoutes(v1, params.IMHandler, rbacGuards)
 		RegisterEmbedChannelRoutes(v1, params.EmbedChannelHandler, rbacGuards)
 		RegisterDataSourceRoutes(v1, params.DataSourceHandler, params.DataSourceCredentialsHandler, rbacGuards)
-		RegisterWeKnoraCloudRoutes(v1, params.WeKnoraCloudHandler, rbacGuards)
+		RegisterXinWikiCloudRoutes(v1, params.XinWikiCloudHandler, rbacGuards)
 		RegisterWikiPageRoutes(v1, params.WikiPageHandler, rbacGuards)
 		RegisterChunkerDebugRoutes(v1, rbacGuards)
 	}
@@ -536,6 +540,10 @@ func RegisterTenantRoutes(
 	memberHandler *handler.TenantMemberHandler,
 	invitationHandler *handler.TenantInvitationHandler,
 	auditLogHandler *handler.AuditLogHandler,
+	costTrackingHandler *handler.CostTrackingHandler,
+	conflictHandler *handler.ConflictDetectionHandler,
+	ragEvalHandler *handler.RAGEvaluationHandler,
+	modelRouterHandler *handler.ModelRouterHandler,
 	g *rbacGuards,
 ) {
 	// Cross-tenant superuser endpoints — promoted from handler if-blocks
@@ -612,6 +620,60 @@ func RegisterTenantRoutes(
 			// for environments wired without the audit dependency.
 			if auditLogHandler != nil {
 				tenantByID.GET("/audit-log", g.Admin(), auditLogHandler.ListTenantAuditLog)
+			}
+
+			// Cost tracking dashboard — Admin+ since cost data is sensitive
+			if costTrackingHandler != nil {
+				costRoutes := tenantByID.Group("/cost", g.Admin())
+				{
+					costRoutes.GET("/dashboard", costTrackingHandler.GetCostDashboard)
+					costRoutes.GET("/by-model", costTrackingHandler.GetModelCostBreakdown)
+					costRoutes.GET("/daily-trend", costTrackingHandler.GetDailyCostTrend)
+					costRoutes.POST("/trend", costTrackingHandler.QueryCostTrend)
+					costRoutes.GET("/summary", costTrackingHandler.GetCostSummary)
+					costRoutes.GET("/latency-stats", costTrackingHandler.GetModelLatencyStats)
+				}
+			}
+
+			// Knowledge conflict detection — Admin+ for governance
+			if conflictHandler != nil {
+				conflictRoutes := tenantByID.Group("/conflicts", g.Admin())
+				{
+					conflictRoutes.POST("/detect", conflictHandler.DetectConflicts)
+					conflictRoutes.GET("", conflictHandler.ListConflicts)
+					conflictRoutes.GET("/summary", conflictHandler.GetConflictSummary)
+					conflictRoutes.GET("/:conflict_id", conflictHandler.GetConflict)
+					conflictRoutes.POST("/:conflict_id/resolve", conflictHandler.ResolveConflict)
+				}
+			}
+
+			// RAG Citation accuracy evaluation — Admin+
+			if ragEvalHandler != nil {
+				citationRoutes := tenantByID.Group("/citations", g.Admin())
+				{
+					citationRoutes.POST("/evaluate", ragEvalHandler.EvaluateCitations)
+					citationRoutes.POST("/batch-evaluate", ragEvalHandler.BatchEvaluateCitations)
+					citationRoutes.GET("/metrics", ragEvalHandler.GetCitationMetrics)
+					citationRoutes.GET("/:report_id", ragEvalHandler.GetCitationReport)
+				}
+			}
+
+			// Model routing and Prompt template management — Admin+
+			if modelRouterHandler != nil {
+				modelRouteRoutes := tenantByID.Group("/model-routing", g.Admin())
+				{
+					modelRouteRoutes.POST("/select", modelRouterHandler.SelectModel)
+					modelRouteRoutes.GET("/policy", modelRouterHandler.GetRoutingPolicy)
+					modelRouteRoutes.PUT("/policy", modelRouterHandler.UpdateRoutingPolicy)
+				}
+				promptRoutes := tenantByID.Group("/prompts", g.Admin())
+				{
+					promptRoutes.POST("", modelRouterHandler.CreatePromptTemplate)
+					promptRoutes.GET("", modelRouterHandler.ListPromptTemplates)
+					promptRoutes.POST("/:template_id/render", modelRouterHandler.RenderPrompt)
+					promptRoutes.GET("/:template_id", modelRouterHandler.GetPromptTemplate)
+					promptRoutes.POST("/:template_id/activate", modelRouterHandler.ActivatePromptVersion)
+				}
 			}
 		}
 	}
@@ -842,7 +904,7 @@ func RegisterMCPServiceRoutes(
 	// MCP OAuth provider redirect. Registered OUTSIDE the /mcp-services group
 	// to avoid a static-vs-":id" route conflict, and left unauthenticated
 	// (allow-listed in middleware/auth.go) because the third-party browser
-	// redirect carries no WeKnora bearer — the single-use state authenticates.
+	// redirect carries no XinWiki bearer — the single-use state authenticates.
 	r.GET("/mcp-oauth/callback", oauthHandler.Callback)
 
 	mcpServices := r.Group("/mcp-services")
@@ -1745,13 +1807,13 @@ func RegisterDataSourceRoutes(
 	}
 }
 
-// RegisterWeKnoraCloudRoutes 注册 WeKnoraCloud 初始化路由
-// RegisterWeKnoraCloudRoutes registers the WeKnoraCloud credential
+// RegisterXinWikiCloudRoutes 注册 XinWikiCloud 初始化路由
+// RegisterXinWikiCloudRoutes registers the XinWikiCloud credential
 // management endpoints. SaveCredentials persists external SaaS keys
 // for the tenant (Admin+), Status is a low-risk readiness probe (Viewer+).
-func RegisterWeKnoraCloudRoutes(r *gin.RouterGroup, handler *handler.WeKnoraCloudHandler, g *rbacGuards) {
-	r.POST("/weknoracloud/credentials", g.Admin(), handler.SaveCredentials)
-	r.GET("/models/weknoracloud/status", g.Viewer(), handler.Status)
+func RegisterXinWikiCloudRoutes(r *gin.RouterGroup, handler *handler.XinWikiCloudHandler, g *rbacGuards) {
+	r.POST("/xinwikicloud/credentials", g.Admin(), handler.SaveCredentials)
+	r.GET("/models/xinwikicloud/status", g.Viewer(), handler.Status)
 }
 
 // RegisterWikiPageRoutes registers wiki page related routes.
@@ -1769,6 +1831,29 @@ func RegisterWikiPageRoutes(r *gin.RouterGroup, wikiHandler *handler.WikiPageHan
 		wiki.GET("/pages", g.Viewer(), wikiHandler.ListPages)
 		wiki.POST("/pages", g.OwnedWikiKBOrAdmin(), wikiHandler.CreatePage)
 		wiki.PUT("/move-page", g.OwnedWikiKBOrAdmin(), wikiHandler.MovePage)
+
+		// Review workflow routes (must be before /*slug wildcard)
+		wiki.POST("/pages/*slug/submit-review", g.OwnedWikiKBOrAdmin(), wikiHandler.SubmitReview)
+		wiki.POST("/pages/*slug/approve", g.Admin(), wikiHandler.Approve)
+		wiki.POST("/pages/*slug/reject", g.Admin(), wikiHandler.Reject)
+		wiki.POST("/pages/*slug/deprecate", g.Admin(), wikiHandler.Deprecate)
+		wiki.POST("/pages/*slug/archive", g.Admin(), wikiHandler.Archive)
+
+		// Supersession routes
+		wiki.POST("/supersessions", g.Admin(), wikiHandler.Supersede)
+		wiki.GET("/pages/*slug/supersession", g.Viewer(), wikiHandler.GetSupersession)
+		wiki.GET("/supersessions", g.Viewer(), wikiHandler.ListSupersessions)
+		wiki.GET("/pages/*slug/superseding", g.Viewer(), wikiHandler.ListSuperseding)
+
+		// Milestone C: Confidence, Quality & Freshness routes (must be before /*slug wildcard)
+		wiki.POST("/pages/*slug/access", g.Viewer(), wikiHandler.RecordPageAccess)
+		wiki.POST("/pages/*slug/feedback", g.Viewer(), wikiHandler.RecordFeedback)
+		wiki.POST("/pages/*slug/expert-validation", g.Admin(), wikiHandler.SetExpertValidation)
+		wiki.PUT("/pages/*slug/criticality", g.Admin(), wikiHandler.SetCriticalityLevel)
+		wiki.GET("/pages/*slug/quality-scores", g.Viewer(), wikiHandler.GetQualityScores)
+		wiki.POST("/pages/*slug/refresh-scores", g.OwnedWikiKBOrAdmin(), wikiHandler.RefreshScores)
+		wiki.POST("/refresh-all-scores", g.Admin(), wikiHandler.RefreshAllScores)
+
 		wiki.GET("/pages/*slug", g.Viewer(), wikiHandler.GetPage)
 		wiki.PUT("/pages/*slug", g.OwnedWikiKBOrAdmin(), wikiHandler.UpdatePage)
 		wiki.DELETE("/pages/*slug", g.OwnedWikiKBOrAdmin(), wikiHandler.DeletePage)

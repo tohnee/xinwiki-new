@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/logger"
-	"github.com/Tencent/WeKnora/internal/models/provider"
-	secutils "github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/models/provider"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 	openai "github.com/sashabaranov/go-openai"
 )
 

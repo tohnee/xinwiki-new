@@ -399,7 +399,7 @@ let movePollTimer: ReturnType<typeof setInterval> | null = null;
 
 // View mode (grid / list) — persisted per browser
 type DocViewMode = 'grid' | 'list';
-const VIEW_MODE_KEY = 'weknora.kb.docs.viewMode';
+const VIEW_MODE_KEY = 'xinwiki.kb.docs.viewMode';
 const initViewMode = (): DocViewMode => {
   try {
     return localStorage.getItem(VIEW_MODE_KEY) === 'list' ? 'list' : 'grid';
@@ -1049,13 +1049,13 @@ onMounted(() => {
 
   window.addEventListener('knowledgeFileUploaded', handleFileUploaded as EventListener);
   window.addEventListener('openURLImportDialog', handleOpenURLImportDialog as EventListener);
-  window.addEventListener('weknora:open-knowledge', handleOpenKnowledgeEvent as EventListener);
+  window.addEventListener('xinwiki:open-knowledge', handleOpenKnowledgeEvent as EventListener);
 });
 
 onUnmounted(() => {
   window.removeEventListener('knowledgeFileUploaded', handleFileUploaded as EventListener);
   window.removeEventListener('openURLImportDialog', handleOpenURLImportDialog as EventListener);
-  window.removeEventListener('weknora:open-knowledge', handleOpenKnowledgeEvent as EventListener);
+  window.removeEventListener('xinwiki:open-knowledge', handleOpenKnowledgeEvent as EventListener);
   stopMovePoll();
   if (timeout !== null) {
     clearTimeout(timeout);

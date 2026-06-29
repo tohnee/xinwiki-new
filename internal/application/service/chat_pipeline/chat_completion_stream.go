@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
-	"github.com/Tencent/WeKnora/internal/event"
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/event"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 	"github.com/google/uuid"
 )
 
@@ -15,15 +17,18 @@ import (
 // as a plugin that can be registered to EventManager
 type PluginChatCompletionStream struct {
 	modelService interfaces.ModelService // Interface for model operations
+	costService  interfaces.CostTrackingService
 }
 
 // NewPluginChatCompletionStream creates a new PluginChatCompletionStream instance
 // and registers it with the EventManager
 func NewPluginChatCompletionStream(eventManager *EventManager,
 	modelService interfaces.ModelService,
+	costService interfaces.CostTrackingService,
 ) *PluginChatCompletionStream {
 	res := &PluginChatCompletionStream{
 		modelService: modelService,
+		costService:  costService,
 	}
 	eventManager.Register(res)
 	return res
@@ -79,6 +84,7 @@ func (p *PluginChatCompletionStream) OnEvent(ctx context.Context,
 	pipelineInfo(ctx, "Stream", "model_call", map[string]interface{}{
 		"chat_model": chatManage.ChatModelID,
 	})
+	startTime := time.Now()
 	responseChan, err := chatModel.ChatStream(ctx, chatMessages, opt)
 	if err != nil {
 		pipelineError(ctx, "Stream", "model_call", map[string]interface{}{
@@ -108,6 +114,8 @@ func (p *PluginChatCompletionStream) OnEvent(ctx context.Context,
 		thinkingID := fmt.Sprintf("%s-thinking", uuid.New().String()[:8])
 		answerID := fmt.Sprintf("%s-answer", uuid.New().String()[:8])
 		thinkingOpen := false
+		var streamErr error
+		var finalUsage *types.TokenUsage
 
 		closeThinking := func() {
 			if !thinkingOpen {
@@ -131,6 +139,31 @@ func (p *PluginChatCompletionStream) OnEvent(ctx context.Context,
 				pipelineInfo(ctx, "Stream", "context_cancelled", map[string]interface{}{
 					"session_id": chatManage.SessionID,
 				})
+				// Record cost tracking
+					if p.costService != nil {
+						latencyMs := int(time.Since(startTime).Milliseconds())
+						usage := &types.TokenUsage{}
+						if finalUsage != nil {
+							usage = finalUsage
+						}
+						logErr := p.costService.LogCallWithUsage(
+							context.Background(),
+							chatManage.TenantID,
+							chatManage.UserID,
+							chatManage.SessionID,
+							"",
+							chatManage.ChatModelID,
+							types.ModelTypeKnowledgeQA,
+							types.LLMRequestTypeChatCompletion,
+							usage,
+							latencyMs,
+							streamErr,
+							"",
+						)
+						if logErr != nil {
+							logger.Warnf(ctx, "Failed to log LLM stream cost (cancelled): %v", logErr)
+						}
+					}
 				return
 
 			case response, ok := <-responseChan:
@@ -139,10 +172,41 @@ func (p *PluginChatCompletionStream) OnEvent(ctx context.Context,
 					pipelineInfo(ctx, "Stream", "channel_close", map[string]interface{}{
 						"session_id": chatManage.SessionID,
 					})
+					// Record cost tracking on channel close
+					if p.costService != nil {
+						latencyMs := int(time.Since(startTime).Milliseconds())
+						usage := &types.TokenUsage{}
+						if finalUsage != nil {
+							usage = finalUsage
+						}
+						logErr := p.costService.LogCallWithUsage(
+							context.Background(),
+							chatManage.TenantID,
+							chatManage.UserID,
+							chatManage.SessionID,
+							"",
+							chatManage.ChatModelID,
+							types.ModelTypeKnowledgeQA,
+							types.LLMRequestTypeChatCompletion,
+							usage,
+							latencyMs,
+							streamErr,
+							"",
+						)
+						if logErr != nil {
+							logger.Warnf(ctx, "Failed to log LLM stream cost (closed): %v", logErr)
+						}
+					}
 					return
 				}
 
+				// Capture usage info if present
+				if response.Usage != nil {
+					finalUsage = response.Usage
+				}
+
 				if response.ResponseType == types.ResponseTypeError {
+					streamErr = errors.New(response.Content)
 					pipelineError(ctx, "Stream", "stream_error", map[string]interface{}{
 						"session_id": chatManage.SessionID,
 						"error":      response.Content,
@@ -190,6 +254,32 @@ func (p *PluginChatCompletionStream) OnEvent(ctx context.Context,
 							Done:    response.Done,
 						},
 					})
+
+					// Record cost when stream is done
+					if response.Done && p.costService != nil {
+						latencyMs := int(time.Since(startTime).Milliseconds())
+						usage := &types.TokenUsage{}
+						if finalUsage != nil {
+							usage = finalUsage
+						}
+						logErr := p.costService.LogCallWithUsage(
+							context.Background(),
+							chatManage.TenantID,
+							chatManage.UserID,
+							chatManage.SessionID,
+							"",
+							chatManage.ChatModelID,
+							types.ModelTypeKnowledgeQA,
+							types.LLMRequestTypeChatCompletion,
+							usage,
+							latencyMs,
+							streamErr,
+							"",
+						)
+						if logErr != nil {
+							logger.Warnf(ctx, "Failed to log LLM stream cost (done): %v", logErr)
+						}
+					}
 				}
 			}
 		}

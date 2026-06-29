@@ -1,4 +1,4 @@
-// Package client provides the implementation for interacting with the WeKnora API
+// Package client provides the implementation for interacting with the XinWiki API
 // This package encapsulates CRUD operations for server resources and provides a friendly interface for callers
 package client
 
@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-// Client is the client for interacting with the WeKnora service.
+// Client is the client for interacting with the XinWiki service.
 //
 // Authentication uses one of two credential kinds:
 //   - API key (long-lived, set via X-API-Key)        — see WithAPIKey
@@ -175,11 +175,11 @@ func (c *Client) applyAuthHeaders(ctx context.Context, req *http.Request) {
 	}
 }
 
-// Raw performs a raw HTTP request against the WeKnora API with the client's
+// Raw performs a raw HTTP request against the XinWiki API with the client's
 // auth headers, X-Request-ID, and X-Tenant-ID injection applied.
 //
 // Experimental: this method is intended for one-off integrations and the
-// `weknora api` CLI passthrough. The signature, return type, and behavior may
+// `xinwiki api` CLI passthrough. The signature, return type, and behavior may
 // change in any minor version. Prefer typed methods (ListKnowledgeBases,
 // GetKnowledgeBase, etc.) when they exist.
 func (c *Client) Raw(ctx context.Context, method, path string, body interface{}) (*http.Response, error) {

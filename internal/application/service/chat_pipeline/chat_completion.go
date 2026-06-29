@@ -2,22 +2,26 @@ package chatpipeline
 
 import (
 	"context"
+	"time"
 
-	"github.com/Tencent/WeKnora/internal/types"
-	"github.com/Tencent/WeKnora/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/types/interfaces"
 )
 
 // PluginChatCompletion implements chat completion functionality
 // as a plugin that can be registered to EventManager
 type PluginChatCompletion struct {
-	modelService interfaces.ModelService // Interface for model operations
+	modelService interfaces.ModelService
+	costService  interfaces.CostTrackingService
 }
 
 // NewPluginChatCompletion creates a new PluginChatCompletion instance
 // and registers it with the EventManager
-func NewPluginChatCompletion(eventManager *EventManager, modelService interfaces.ModelService) *PluginChatCompletion {
+func NewPluginChatCompletion(eventManager *EventManager, modelService interfaces.ModelService, costService interfaces.CostTrackingService) *PluginChatCompletion {
 	res := &PluginChatCompletion{
 		modelService: modelService,
+		costService:  costService,
 	}
 	eventManager.Register(res)
 	return res
@@ -56,7 +60,41 @@ func (p *PluginChatCompletion) OnEvent(
 	pipelineInfo(ctx, "Completion", "model_call", map[string]interface{}{
 		"chat_model": chatManage.ChatModelID,
 	})
+	startTime := time.Now()
 	chatResponse, err := chatModel.Chat(ctx, chatMessages, opt)
+	latencyMs := int(time.Since(startTime).Milliseconds())
+
+	// Record cost tracking asynchronously
+	if p.costService != nil {
+		go func() {
+			var callErr error
+			usage := &types.TokenUsage{}
+			if chatResponse != nil {
+				usage = &chatResponse.Usage
+			}
+			if err != nil {
+				callErr = err
+			}
+			logErr := p.costService.LogCallWithUsage(
+				context.Background(),
+				chatManage.TenantID,
+				chatManage.UserID,
+				chatManage.SessionID,
+				"",
+				chatManage.ChatModelID,
+				types.ModelTypeKnowledgeQA,
+				types.LLMRequestTypeChatCompletion,
+				usage,
+				latencyMs,
+				callErr,
+				"",
+			)
+			if logErr != nil {
+				logger.Warnf(ctx, "Failed to log LLM call cost: %v", logErr)
+			}
+		}()
+	}
+
 	if err != nil {
 		pipelineError(ctx, "Completion", "model_call", map[string]interface{}{
 			"chat_model": chatManage.ChatModelID,

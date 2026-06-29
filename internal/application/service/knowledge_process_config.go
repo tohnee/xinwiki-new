@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	werrors "github.com/Tencent/WeKnora/internal/errors"
-	"github.com/Tencent/WeKnora/internal/types"
+	werrors "github.com/Tencent/XinWiki/internal/errors"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // ResolveProcessConfig merges KB defaults with per-upload overrides for the parse pipeline.

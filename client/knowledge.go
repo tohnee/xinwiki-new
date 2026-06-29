@@ -1,4 +1,4 @@
-// Package client provides the implementation for interacting with the WeKnora API
+// Package client provides the implementation for interacting with the XinWiki API
 // The Knowledge related interfaces are used to manage knowledge entries in the knowledge base
 // Knowledge entries can be created from local files, web URLs, or directly from text content
 // They can also be retrieved, deleted, and downloaded as files
@@ -428,7 +428,7 @@ func (c *Client) DownloadKnowledgeFile(ctx context.Context, knowledgeID string, 
 // empty when the server didn't send one) and a streaming reader for the
 // body. Callers MUST Close the returned reader.
 //
-// Used by `weknora doc download` so the CLI can inspect the filename
+// Used by `xinwiki doc download` so the CLI can inspect the filename
 // before opening the destination file — avoids streaming the full body
 // to a temp file just to discover the request would have been rejected
 // (overwrite without --force, missing --out for unnamed downloads, etc.).

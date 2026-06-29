@@ -139,6 +139,8 @@ type AgentCompleteData struct {
 	FinalAnswer     string                 `json:"final_answer"`
 	KnowledgeRefs   []interface{}          `json:"knowledge_refs,omitempty"` // []*types.SearchResult
 	AgentSteps      interface{}            `json:"agent_steps,omitempty"`    // []types.AgentStep - detailed execution steps
+	ThinkingSteps   interface{}            `json:"thinking_steps,omitempty"` // []types.ThinkingStep - full thinking chain
+	TokenUsage      interface{}            `json:"token_usage,omitempty"`    // types.TokenUsageDetail - total token usage
 	TotalDurationMs int64                  `json:"total_duration_ms"`
 	MessageID       string                 `json:"message_id,omitempty"` // Assistant message ID
 	RequestID       string                 `json:"request_id,omitempty"`
@@ -236,4 +238,21 @@ type ToolApprovalResolvedData struct {
 	Reason    string `json:"reason,omitempty"`
 	TimedOut  bool   `json:"timed_out,omitempty"`
 	Canceled  bool   `json:"canceled,omitempty"`
+}
+
+// PermissionChangedData 权限变更事件数据（A5: 事件驱动ACL重算）
+// 当 Chunk/Document 的密级或ACL变更时发布，触发派生 Wiki/缓存 ACL 重算
+type PermissionChangedData struct {
+	TenantID      uint64   `json:"tenant_id"`                 // 租户ID
+	KBID          string   `json:"kb_id"`                     // 知识库ID
+	ResourceType  string   `json:"resource_type"`             // 资源类型: chunk/document/wiki
+	ResourceID    string   `json:"resource_id"`               // 资源ID
+	OldSecurityLevel string `json:"old_security_level"`       // 旧密级 L1~L4
+	NewSecurityLevel string `json:"new_security_level"`       // 新密级 L1~L4
+	OldAllowedUserIDs  []string `json:"old_allowed_user_ids"` // 旧允许用户列表
+	NewAllowedUserIDs  []string `json:"new_allowed_user_ids"` // 新允许用户列表
+	OldAllowedGroupIDs []string `json:"old_allowed_group_ids"`// 旧允许组列表
+	NewAllowedGroupIDs []string `json:"new_allowed_group_ids"`// 新允许组列表
+	Reason        string   `json:"reason,omitempty"`          // 变更原因
+	ChangedBy     string   `json:"changed_by"`                // 操作者
 }

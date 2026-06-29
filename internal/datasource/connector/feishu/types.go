@@ -1,6 +1,6 @@
-// Package feishu implements the Feishu (飞书/Lark) data source connector for WeKnora.
+// Package feishu implements the Feishu (飞书/Lark) data source connector for XinWiki.
 //
-// It syncs documents from Feishu Wiki spaces and cloud documents into WeKnora knowledge bases.
+// It syncs documents from Feishu Wiki spaces and cloud documents into XinWiki knowledge bases.
 //
 // Feishu API docs:
 //   - Wiki spaces:      https://open.feishu.cn/document/server-docs/docs/wiki-v2/space/list

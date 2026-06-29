@@ -14,7 +14,7 @@ func TestSetAgentHelp_EmitsJSONWhenEnvSet(t *testing.T) {
 	ah := AgentHelp{
 		UsedFor:       "frob a bar",
 		RequiredFlags: []string{"--name"},
-		Examples:      []string{"weknora foo --name=x"},
+		Examples:      []string{"xinwiki foo --name=x"},
 	}
 	SetAgentHelp(cmd, ah)
 

@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/Tencent/WeKnora/internal/utils"
+	"github.com/Tencent/XinWiki/internal/utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -75,7 +75,7 @@ type ModelParameters struct {
 	// 保留字段（Authorization、api-key、Content-Type、Accept 等）会在运行期被忽略以避免破坏签名/鉴权流程。
 	CustomHeaders  map[string]string `yaml:"custom_headers,omitempty" json:"custom_headers,omitempty"`
 	SupportsVision bool              `yaml:"supports_vision"      json:"supports_vision"` // Whether the model accepts image/multimodal input
-	// WeKnoraCloud 厂商专用凭证
+	// XinWikiCloud 厂商专用凭证
 	AppID     string `yaml:"app_id,omitempty"     json:"app_id,omitempty"`
 	AppSecret string `yaml:"app_secret,omitempty" json:"app_secret,omitempty"` // AES-256 加密存储，实际承载上游 API Key
 }
@@ -122,6 +122,10 @@ type Model struct {
 	Description string `yaml:"description" json:"description"`
 	// Model parameters in JSON format
 	Parameters ModelParameters `yaml:"parameters"  json:"parameters"  gorm:"type:json"`
+	// Pricing: cost per million tokens in USD
+	InputPricePerMillion       float64 `yaml:"input_price_per_million"        json:"input_price_per_million"        gorm:"type:decimal(20,10);default:0"`
+	OutputPricePerMillion      float64 `yaml:"output_price_per_million"       json:"output_price_per_million"       gorm:"type:decimal(20,10);default:0"`
+	CachedInputPricePerMillion float64 `yaml:"cached_input_price_per_million" json:"cached_input_price_per_million" gorm:"type:decimal(20,10);default:0"`
 	// Whether the model is the default model
 	IsDefault bool `yaml:"is_default"  json:"is_default"`
 	// Whether the model is a builtin model (visible to all tenants)
@@ -142,6 +146,27 @@ type Model struct {
 	UpdatedAt time.Time `yaml:"updated_at"  json:"updated_at"`
 	// Deletion time of the model
 	DeletedAt gorm.DeletedAt `yaml:"deleted_at"  json:"deleted_at"  gorm:"index"`
+}
+
+// CalculateCost estimates the cost in USD for a given token usage.
+func (m *Model) CalculateCost(usage *TokenUsage) float64 {
+	if usage == nil {
+		return 0
+	}
+	cachedPrice := m.CachedInputPricePerMillion
+	if cachedPrice <= 0 {
+		cachedPrice = m.InputPricePerMillion
+	}
+	cachedTokens := usage.CachedTokens
+	if cachedTokens > usage.PromptTokens {
+		cachedTokens = usage.PromptTokens
+	}
+	nonCachedInput := usage.PromptTokens - cachedTokens
+	cost := 0.0
+	cost += float64(nonCachedInput) / 1_000_000 * m.InputPricePerMillion
+	cost += float64(cachedTokens) / 1_000_000 * cachedPrice
+	cost += float64(usage.CompletionTokens) / 1_000_000 * m.OutputPricePerMillion
+	return cost
 }
 
 // Value implements the driver.Valuer interface, used to convert ModelParameters to database value.

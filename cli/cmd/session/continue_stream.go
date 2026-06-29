@@ -1,4 +1,4 @@
-// continue_stream.go implements `weknora session continue-stream` —
+// continue_stream.go implements `xinwiki session continue-stream` —
 // re-attach to an SSE event buffer for an in-progress or already-completed
 // assistant message under a known session_id.
 //
@@ -14,7 +14,7 @@
 //     After TTL the server returns an error which the CLI maps to
 //     local.sse_stream_aborted.
 //
-// Output shape matches `weknora chat` and `weknora session ask` NDJSON mode:
+// Output shape matches `xinwiki chat` and `xinwiki session ask` NDJSON mode:
 // one CLI-injected init line carrying {session_id, message_id, profile} at
 // stream head, then SDK StreamResponse events verbatim. The init line lets
 // agents thread the resume to the original message in their dedupe table
@@ -26,10 +26,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
-	"github.com/Tencent/WeKnora/cli/internal/output"
-	sdk "github.com/Tencent/WeKnora/client"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/output"
+	sdk "github.com/Tencent/XinWiki/client"
 )
 
 // continueStreamFields enumerates the NDJSON init-event + raw SDK event
@@ -54,7 +54,7 @@ type ContinueStreamService interface {
 	ContinueStream(ctx context.Context, sessionID, messageID string, cb func(*sdk.StreamResponse) error) error
 }
 
-// NewCmdContinueStream builds `weknora session continue-stream <session-id> --message <id>`.
+// NewCmdContinueStream builds `xinwiki session continue-stream <session-id> --message <id>`.
 func NewCmdContinueStream(f *cmdutil.Factory) *cobra.Command {
 	opts := &ContinueStreamOptions{}
 	cmd := &cobra.Command{
@@ -90,8 +90,8 @@ regardless of --format value. The operator use case (incident response,
 debugging) always wants the raw event log; there is no human-text rendering.
 --format json and --format ndjson behave identically here; --format text is
 silently treated as NDJSON.`,
-		Example: `  weknora session continue-stream sess_xyz --message msg_abc
-  weknora session continue-stream sess_xyz -m msg_abc --format ndjson`,
+		Example: `  xinwiki session continue-stream sess_xyz --message msg_abc
+  xinwiki session continue-stream sess_xyz -m msg_abc --format ndjson`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			opts.SessionID = args[0]
@@ -115,7 +115,7 @@ silently treated as NDJSON.`,
 		UsedFor:       "Resume an SSE event stream for an in-progress or completed assistant message. Produces an NDJSON event stream: init line (session_id, message_id) then raw SDK StreamResponse events.",
 		RequiredFlags: []string{"--message (message_id from prior init / agent_query event)"},
 		Examples: []string{
-			"weknora session continue-stream sess_xyz --message msg_abc --format json",
+			"xinwiki session continue-stream sess_xyz --message msg_abc --format json",
 			"# Network-blip recovery: replay with same session_id + message_id from the original 'session ask' init event",
 		},
 		Output: "NDJSON stream: {type:init, session_id, message_id, profile} then SDK StreamResponse events (response_type, content, done, knowledge_references, assistant_message_id, ...)",

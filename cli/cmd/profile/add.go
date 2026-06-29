@@ -5,9 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tencent/WeKnora/cli/internal/cmdutil"
-	"github.com/Tencent/WeKnora/cli/internal/config"
-	"github.com/Tencent/WeKnora/cli/internal/iostreams"
+	"github.com/Tencent/XinWiki/cli/internal/cmdutil"
+	"github.com/Tencent/XinWiki/cli/internal/config"
+	"github.com/Tencent/XinWiki/cli/internal/iostreams"
 )
 
 type AddOptions struct {
@@ -31,12 +31,12 @@ type addResult struct {
 	Current bool   `json:"current"`
 }
 
-// NewCmdAdd builds `weknora profile add`. Registers a *credentialless*
+// NewCmdAdd builds `xinwiki profile add`. Registers a *credentialless*
 // connection target - host + optional user only. Credentials for the new
 // profile are attached separately by making it active and running
-// `weknora auth login`, separating "where" the CLI talks to (the host) and
+// `xinwiki auth login`, separating "where" the CLI talks to (the host) and
 // "how" it authenticates (the credential). Pass --use to switch to the new
-// profile immediately, then run `weknora auth login`.
+// profile immediately, then run `xinwiki auth login`.
 func NewCmdAdd(f *cmdutil.Factory) *cobra.Command {
 	opts := &AddOptions{}
 	cmd := &cobra.Command{
@@ -44,14 +44,14 @@ func NewCmdAdd(f *cmdutil.Factory) *cobra.Command {
 		Short: "Register a new profile (host without credentials)",
 		Long: `Add a new profile entry to config.yaml. Stores host (and optionally
 user) but does NOT prompt for credentials. To attach credentials, make the
-profile active (` + "`weknora profile use <n>`" + `, or ` + "`profile add <n> --use`" + `) and run
-` + "`weknora auth login`" + `.
+profile active (` + "`xinwiki profile use <n>`" + `, or ` + "`profile add <n> --use`" + `) and run
+` + "`xinwiki auth login`" + `.
 
 The first profile added is auto-selected as the current profile. Subsequent
 adds leave the current profile untouched unless --use is passed.`,
-		Example: `  weknora profile add staging --host https://staging.example.com
-  weknora profile add prod    --host https://prod.example.com --user alice@example.com
-  weknora profile add prod    --host https://prod.example.com --use   # switch to it now`,
+		Example: `  xinwiki profile add staging --host https://staging.example.com
+  xinwiki profile add prod    --host https://prod.example.com --user alice@example.com
+  xinwiki profile add prod    --host https://prod.example.com --use   # switch to it now`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			fopts, err := cmdutil.CheckFormatFlag(c)
@@ -78,7 +78,7 @@ adds leave the current profile untouched unless --use is passed.`,
 				return &cmdutil.Error{
 					Code:    cmdutil.CodeResourceAlreadyExists,
 					Message: fmt.Sprintf("profile %q already exists", name),
-					Hint:    fmt.Sprintf("use a different name, or run `weknora profile remove %s` first", name),
+					Hint:    fmt.Sprintf("use a different name, or run `xinwiki profile remove %s` first", name),
 				}
 			}
 			if handled, err := cmdutil.HandleDryRun(c, opts.DryRun, cmdutil.DryRunPlan{
@@ -127,7 +127,7 @@ func runAdd(opts *AddOptions, fopts *cmdutil.FormatOptions, name string) error {
 		return &cmdutil.Error{
 			Code:    cmdutil.CodeResourceAlreadyExists,
 			Message: fmt.Sprintf("profile %q already exists", name),
-			Hint:    fmt.Sprintf("use a different name, or run `weknora profile remove %s` first", name),
+			Hint:    fmt.Sprintf("use a different name, or run `xinwiki profile remove %s` first", name),
 		}
 	}
 	return runAddWithConfig(opts, fopts, name, host, cfg)
@@ -155,9 +155,9 @@ func runAddWithConfig(opts *AddOptions, fopts *cmdutil.FormatOptions, name, host
 		return fopts.Emit(iostreams.IO.Out, addResult{Name: name, Host: host, User: opts.User, Current: current}, nil)
 	}
 	if current {
-		fmt.Fprintf(iostreams.IO.Out, "✓ Added profile %s (now current). Run `weknora auth login` to attach credentials.\n", name)
+		fmt.Fprintf(iostreams.IO.Out, "✓ Added profile %s (now current). Run `xinwiki auth login` to attach credentials.\n", name)
 	} else {
-		fmt.Fprintf(iostreams.IO.Out, "✓ Added profile %s. Run `weknora profile use %s` then `weknora auth login` to attach credentials.\n", name, name)
+		fmt.Fprintf(iostreams.IO.Out, "✓ Added profile %s. Run `xinwiki profile use %s` then `xinwiki auth login` to attach credentials.\n", name, name)
 	}
 	return nil
 }

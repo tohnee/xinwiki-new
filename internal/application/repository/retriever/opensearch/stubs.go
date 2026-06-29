@@ -3,7 +3,7 @@ package opensearch
 import (
 	"context"
 
-	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/Tencent/XinWiki/internal/types"
 )
 
 // This file holds the remaining stubs for methods whose real implementation
