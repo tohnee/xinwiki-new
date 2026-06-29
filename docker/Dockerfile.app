@@ -75,13 +75,14 @@ RUN if [ -n "$APK_MIRROR_ARG" ]; then \
         gosu \
         ffmpeg && \
     python3 -m pip install --break-system-packages --upgrade pip setuptools wheel && \
-    mkdir -p /home/appuser/.local/bin && \
-    COPY --from=ghcr.io/astral-sh/uv:0.6.6 /uv /home/appuser/.local/bin/uv && \
-    ln -sf /home/appuser/.local/bin/uv /usr/local/bin/uvx && \
-    chown -R appuser:appuser /home/appuser && \
-    chmod +x /usr/local/bin/uvx && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Install uv from official image (avoids curl|sh supply chain risk)
+COPY --from=ghcr.io/astral-sh/uv:0.6.6 /uv /home/appuser/.local/bin/uv
+RUN ln -sf /home/appuser/.local/bin/uv /usr/local/bin/uvx && \
+    chown -R appuser:appuser /home/appuser && \
+    chmod +x /usr/local/bin/uvx
 
 # Create data directories and set permissions
 RUN mkdir -p /data/files && \
@@ -100,7 +101,7 @@ COPY --from=builder /app/skills/preloaded ./skills/preloaded
 # Keep a read-only backup so bind-mount cannot erase built-in skills
 COPY --from=builder /app/skills/preloaded ./skills/_builtin
 COPY --from=builder /root/.duckdb /home/appuser/.duckdb
-COPY --from=builder /app/WeKnora .
+COPY --from=builder /app/XinWiki .
 
 # Copy and make entrypoint script executable
 COPY --from=builder /app/scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
@@ -113,4 +114,4 @@ EXPOSE 8080
 
 
 ENTRYPOINT ["./scripts/docker-entrypoint.sh"]
-CMD ["./WeKnora"]
+CMD ["./XinWiki"]
