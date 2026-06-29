@@ -1,5 +1,5 @@
 [Unit]
-Description=WeKnora Lite - Knowledge Base Management System
+Description=XinWiki Lite - Knowledge Base Management System
 After=network.target
 
 [Service]
@@ -8,7 +8,7 @@ User=xinwiki
 Group=xinwiki
 WorkingDirectory=/opt/xinwiki
 EnvironmentFile=/opt/xinwiki/.env.lite
-ExecStart=/opt/xinwiki/WeKnora-lite
+ExecStart=/opt/xinwiki/XinWiki-lite
 Restart=on-failure
 RestartSec=5
 LimitNOFILE=65536

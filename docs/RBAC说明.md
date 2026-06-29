@@ -127,8 +127,8 @@ audit:
 
 | 环境变量 | YAML 路径 | 取值 |
 |----------|-----------|------|
-| `WEKNORA_TENANT_ENABLE_RBAC` | `tenant.enable_rbac` | `true` / `false` |
-| `WEKNORA_AUDIT_RETENTION_DAYS` | `audit.retention_days` | 非负整数 |
+| `XINWIKI_TENANT_ENABLE_RBAC` | `tenant.enable_rbac` | `true` / `false` |
+| `XINWIKI_AUDIT_RETENTION_DAYS` | `audit.retention_days` | 非负整数 |
 
 `auth.registration_mode` 没有专属环境变量，沿用历史的 `DISABLE_REGISTRATION=true`——一旦设置，启动时会把 `auth.registration_mode` 强制改成 `invite_only`，保证后端 API 和 `/auth/config` 驱动的前端注册入口一致。
 
@@ -168,7 +168,7 @@ audit:
 ### 回滚
 
 ```bash
-export WEKNORA_TENANT_ENABLE_RBAC=false
+export XINWIKI_TENANT_ENABLE_RBAC=false
 # 重启服务即可回到观察模式
 ```
 
@@ -203,7 +203,7 @@ Pinia 中的 `authStore` 暴露：
     <td width="50%" align="center">
       <b>自助创建工作区</b><br/>
       <img src="./images/rbac-create-workspace.png" alt="创建新空间" width="100%"/>
-      <br/><sub>任何用户都可以自助创建租户，创建后自动成为新空间的 Owner（受 <code>WEKNORA_TENANT_MAX_PER_USER</code> 上限保护）。</sub>
+      <br/><sub>任何用户都可以自助创建租户，创建后自动成为新空间的 Owner（受 <code>XINWIKI_TENANT_MAX_PER_USER</code> 上限保护）。</sub>
     </td>
   </tr>
   <tr>

@@ -12,7 +12,7 @@ This directory contains a WeChat Mini Program plugin for XinWiki. It gives mobil
 1. Open `miniprogram/` in WeChat DevTools.
 2. Copy `project.private.config.json.example` to `project.private.config.json` and set your real Mini Program AppID. The shared `project.config.json` intentionally does not include an AppID to avoid forcing maintainers into a placeholder project.
 3. Open the **Settings** tab and fill in:
-   - API Base URL, for example `https://weknora.example.com`;
+   - API Base URL, for example `https://xinwiki.example.com`;
    - API Key from the XinWiki tenant settings page.
 4. Open the **Knowledge** tab, refresh knowledge bases, and select the target knowledge base.
 5. Import a URL or switch to **Chat** to ask questions.

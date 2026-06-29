@@ -1,11 +1,11 @@
 <view class="page">
   <view class="card">
-    <view class="title">Connect WeKnora</view>
-    <view class="muted">Use your WeKnora API endpoint and tenant API key.</view>
+    <view class="title">Connect XinWiki</view>
+    <view class="muted">Use your XinWiki API endpoint and tenant API key.</view>
 
     <view class="field">
       <text class="label">API Base URL</text>
-      <input value="{{baseUrl}}" placeholder="https://your-weknora.example.com" bindinput="onBaseUrlInput" />
+      <input value="{{baseUrl}}" placeholder="https://your-xinwiki.example.com" bindinput="onBaseUrlInput" />
     </view>
 
     <view class="field">

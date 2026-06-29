@@ -90,13 +90,13 @@ func TestRequireRole_FailOpenWhenRBACDisabled(t *testing.T) {
 	}
 }
 
-func TestRequireRole_NilConfigFailsOpen(t *testing.T) {
-	// Defensive: nil config must not panic and must fail open (no enforcement
-	// configured = behave like the legacy path).
+func TestRequireRole_NilConfigFailsClosed(t *testing.T) {
+	// Security: nil config must fail closed (deny by default).
+	// A wiring bug that leaves cfg nil should not silently disable RBAC.
 	w := rbacTestHarness(types.TenantRoleViewer, "u1",
 		RequireRole(types.TenantRoleAdmin, nil))
-	if w.Code != http.StatusOK {
-		t.Fatalf("nil config must fail open, got %d", w.Code)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("nil config must fail closed (403), got %d", w.Code)
 	}
 }
 

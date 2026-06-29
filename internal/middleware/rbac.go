@@ -244,8 +244,16 @@ func RequireOwnershipOrRole(min types.TenantRole, lookup CreatorLookup, cfg *con
 // role-only checks (logging, fast paths), but rejection is downgraded
 // to a warning and ownership lookups are skipped entirely so the dormant
 // rollout window incurs no per-request DB cost.
+// rbacEnforcementEnabled returns true only when RBAC is explicitly configured
+// and enabled. When cfg is nil or Tenant is nil, it defaults to true (fail-closed)
+// to prevent accidental privilege escalation from configuration wiring bugs.
 func rbacEnforcementEnabled(cfg *config.Config) bool {
-	return cfg != nil && cfg.Tenant.IsRBACEnforced()
+	if cfg == nil || cfg.Tenant == nil {
+		// Fail-closed: when config is missing, enforce RBAC (deny by default).
+		// This prevents a wiring bug from silently disabling all access control.
+		return true
+	}
+	return cfg.Tenant.IsRBACEnforced()
 }
 
 // isCrossTenantSuperuser was moved to access.go (renamed to
