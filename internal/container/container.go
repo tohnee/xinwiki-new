@@ -619,12 +619,8 @@ func initDatabase(cfg *config.Config) (*gorm.DB, error) {
 		// Run base migrations (all versioned migrations including embeddings)
 		// The embeddings migration will be conditionally executed based on skip_embedding parameter in DSN
 		if err := database.RunMigrationsWithOptions(migrateDSN, migrationOpts); err != nil {
-			// Log warning but don't fail startup - migrations might be handled externally
-			logger.Warnf(context.Background(), "Database migration failed: %v", err)
-			logger.Warnf(
-				context.Background(),
-				"Continuing with application startup. Please run migrations manually if needed.",
-			)
+			logger.Errorf(context.Background(), "Database migration failed: %v", err)
+			return nil, fmt.Errorf("database migration failed: %w; please run migrations manually or set AUTO_MIGRATE=false", err)
 		}
 
 		// Post-migration: resolve __pending_env__ storage provider markers for historical KBs.
@@ -653,9 +649,21 @@ func initDatabase(cfg *config.Config) (*gorm.DB, error) {
 		// prevents "database is locked" errors from concurrent goroutines.
 		sqlDB.SetMaxOpenConns(1)
 	} else {
+		// Production connection pool settings.
+		// MaxOpenConns defaults to 0 (unlimited) which can exhaust postgres
+		// max_connections under high concurrency. Default to 50, configurable
+		// via DB_MAX_OPEN_CONNS env var.
+		maxOpenConns := 50
+		if v := os.Getenv("DB_MAX_OPEN_CONNS"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				maxOpenConns = n
+			}
+		}
+		sqlDB.SetMaxOpenConns(maxOpenConns)
 		sqlDB.SetMaxIdleConns(10)
 	}
 	sqlDB.SetConnMaxLifetime(time.Duration(10) * time.Minute)
+	sqlDB.SetConnMaxIdleTime(5 * time.Minute)
 
 	return db, nil
 }

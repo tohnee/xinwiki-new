@@ -76,9 +76,9 @@ RUN if [ -n "$APK_MIRROR_ARG" ]; then \
         ffmpeg && \
     python3 -m pip install --break-system-packages --upgrade pip setuptools wheel && \
     mkdir -p /home/appuser/.local/bin && \
-    curl -LsSf https://astral.sh/uv/install.sh | CARGO_HOME=/home/appuser/.cargo UV_INSTALL_DIR=/home/appuser/.local/bin sh && \
+    COPY --from=ghcr.io/astral-sh/uv:0.6.6 /uv /home/appuser/.local/bin/uv && \
+    ln -sf /home/appuser/.local/bin/uv /usr/local/bin/uvx && \
     chown -R appuser:appuser /home/appuser && \
-    ln -sf /home/appuser/.local/bin/uvx /usr/local/bin/uvx && \
     chmod +x /usr/local/bin/uvx && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

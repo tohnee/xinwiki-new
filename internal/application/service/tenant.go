@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -22,6 +23,20 @@ import (
 
 var apiKeySecret = func() []byte {
 	return []byte(os.Getenv("TENANT_AES_KEY"))
+}
+
+// validateAESKey validates that the TENANT_AES_KEY is a valid AES key length.
+// Returns an error if the key is empty or not 16/24/32 bytes.
+func validateAESKey() error {
+	key := apiKeySecret()
+	if len(key) == 0 {
+		return errors.New("TENANT_AES_KEY is not set; generate one with: openssl rand -hex 16")
+	}
+	kl := len(key)
+	if kl != 16 && kl != 24 && kl != 32 {
+		return fmt.Errorf("TENANT_AES_KEY is %d bytes; must be 16, 24, or 32 bytes for AES", kl)
+	}
+	return nil
 }
 
 // ListTenantsParams defines parameters for listing tenants with filtering and pagination
@@ -54,7 +69,11 @@ func (s *tenantService) CreateTenant(ctx context.Context, tenant *types.Tenant) 
 	logger.Infof(ctx, "Creating tenant, name: %s", tenant.Name)
 
 	// Create tenant with initial values
-	tenant.APIKey = s.generateApiKey(0)
+	initialAPIKey, err := s.generateApiKey(0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate initial API key: %w", err)
+	}
+	tenant.APIKey = initialAPIKey
 	tenant.Status = "active"
 	tenant.CreatedAt = time.Now()
 	tenant.UpdatedAt = time.Now()
@@ -75,7 +94,10 @@ func (s *tenantService) CreateTenant(ctx context.Context, tenant *types.Tenant) 
 	}
 
 	logger.Infof(ctx, "Tenant created successfully, ID: %d, generating official API Key", tenant.ID)
-	plaintextAPIKey := s.generateApiKey(tenant.ID)
+	plaintextAPIKey, err := s.generateApiKey(tenant.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate API key: %w", err)
+	}
 	tenant.APIKey = plaintextAPIKey
 
 	// Manually encrypt APIKey before update, because db.Updates() does not trigger BeforeSave hook
@@ -154,7 +176,11 @@ func (s *tenantService) UpdateTenant(ctx context.Context, tenant *types.Tenant) 
 	// Generate new API key if empty
 	if tenant.APIKey == "" {
 		logger.Info(ctx, "API Key is empty, generating new API Key")
-		tenant.APIKey = s.generateApiKey(tenant.ID)
+		newKey, err := s.generateApiKey(tenant.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate API key: %w", err)
+		}
+		tenant.APIKey = newKey
 	}
 
 	tenant.UpdatedAt = time.Now()
@@ -227,7 +253,10 @@ func (s *tenantService) UpdateAPIKey(ctx context.Context, id uint64) (string, er
 	}
 
 	logger.Infof(ctx, "Generating new API Key for tenant, ID: %d", id)
-	plaintextAPIKey := s.generateApiKey(tenant.ID)
+	plaintextAPIKey, err := s.generateApiKey(tenant.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate API key: %w", err)
+	}
 	tenant.APIKey = plaintextAPIKey
 
 	// Manually encrypt APIKey before update, because db.Updates() does not trigger BeforeSave hook
@@ -248,8 +277,13 @@ func (s *tenantService) UpdateAPIKey(ctx context.Context, id uint64) (string, er
 	return plaintextAPIKey, nil
 }
 
-// generateApiKey generates a secure API key for tenant authentication
-func (r *tenantService) generateApiKey(tenantID uint64) string {
+// generateApiKey generates a secure API key for tenant authentication.
+// Returns an error if AES encryption fails (e.g. TENANT_AES_KEY invalid).
+func (r *tenantService) generateApiKey(tenantID uint64) (string, error) {
+	if err := validateAESKey(); err != nil {
+		return "", err
+	}
+
 	// 1. Convert tenant_id to bytes
 	idBytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(idBytes, uint64(tenantID))
@@ -257,17 +291,17 @@ func (r *tenantService) generateApiKey(tenantID uint64) string {
 	// 2. Encrypt tenant_id using AES-GCM
 	block, err := aes.NewCipher(apiKeySecret())
 	if err != nil {
-		panic("Failed to create AES cipher: " + err.Error())
+		return "", fmt.Errorf("failed to create AES cipher: %w", err)
 	}
 
 	nonce := make([]byte, 12)
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		panic(err.Error())
+		return "", fmt.Errorf("failed to generate nonce: %w", err)
 	}
 
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
-		panic("Failed to create GCM cipher: " + err.Error())
+		return "", fmt.Errorf("failed to create GCM cipher: %w", err)
 	}
 
 	ciphertext := aesgcm.Seal(nil, nonce, idBytes, nil)
@@ -277,7 +311,7 @@ func (r *tenantService) generateApiKey(tenantID uint64) string {
 	encoded := base64.RawURLEncoding.EncodeToString(combined)
 
 	// Create final API Key in format: sk-{encrypted_part}
-	return "sk-" + encoded
+	return "sk-" + encoded, nil
 }
 
 // ExtractTenantIDFromAPIKey extracts the tenant ID from an API key

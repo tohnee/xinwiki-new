@@ -102,6 +102,39 @@ var startupEnvVars = []envVarSpec{
 	{name: "RETRIEVE_DRIVER"},
 }
 
+// ValidateStartupEnv performs hard validation of security-critical env vars.
+// Returns an error if any required variable is missing or has an invalid value.
+// This should be called early in startup to fail-fast on misconfiguration.
+func ValidateStartupEnv() error {
+	var errs []string
+
+	// SYSTEM_AES_KEY must be exactly 32 bytes if set.
+	if k := os.Getenv("SYSTEM_AES_KEY"); k != "" && len(k) != 32 {
+		errs = append(errs, fmt.Sprintf(
+			"SYSTEM_AES_KEY is %d bytes; AES-256 requires exactly 32 bytes", len(k)))
+	}
+
+	// JWT_SECRET must be at least 32 characters in production.
+	if jwt := os.Getenv("JWT_SECRET"); len(jwt) < 32 {
+		errs = append(errs, fmt.Sprintf(
+			"JWT_SECRET is %d chars; minimum 32 characters required for production security", len(jwt)))
+	}
+
+	// TENANT_AES_KEY must be 16, 24, or 32 bytes (valid AES key sizes).
+	if k := os.Getenv("TENANT_AES_KEY"); k != "" {
+		kl := len(k)
+		if kl != 16 && kl != 24 && kl != 32 {
+			errs = append(errs, fmt.Sprintf(
+				"TENANT_AES_KEY is %d bytes; must be 16, 24, or 32 bytes for AES", kl))
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("startup env validation failed: %s", strings.Join(errs, "; "))
+	}
+	return nil
+}
+
 // LogStartupEnv prints a single banner block summarising the curated set
 // of env vars in startupEnvVars. Sensitive values are reported as
 // "set (N chars)" — the goal is to give the operator confidence the

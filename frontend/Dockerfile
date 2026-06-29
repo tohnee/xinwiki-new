@@ -9,6 +9,9 @@ COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
+# Run as non-root user (nginx:101 is built into nginx:stable-alpine)
+USER 101
+
 ENV MAX_FILE_SIZE_MB=50
 
 EXPOSE 80

@@ -25,6 +25,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -49,6 +50,12 @@ func main() {
 	// Mute Gin's per-route registration spam (one line per route × ~150
 	// routes) — replaced by a single summary printed after router build.
 	runtime.SilenceGinRouteSpam()
+	// Validate security-critical env vars in production mode (fail-fast).
+	if gin.Mode() == gin.ReleaseMode {
+		if err := runtime.ValidateStartupEnv(); err != nil {
+			log.Fatalf("FATAL: %v", err)
+		}
+	}
 	// Print the env banner before container build so operators see what
 	// config landed even when DB / storage init fails.
 	runtime.LogStartupEnv(context.Background())

@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
+	"github.com/Tencent/XinWiki/internal/logger"
 	"github.com/Tencent/XinWiki/internal/models/embedding"
 	"github.com/Tencent/XinWiki/internal/types"
 	"github.com/Tencent/XinWiki/internal/types/interfaces"
-	"time"
 )
 
 // Router 定义读写分离路由器接口，打破 service ↔ retriever 导入循环
@@ -132,11 +133,32 @@ func (w *routerWrapper) EngineType() types.RetrieverEngineType {
 }
 
 func (w *routerWrapper) Retrieve(ctx context.Context, params types.RetrieveParams) ([]*types.RetrieveResult, error) {
+	start := time.Now()
+	log := logger.GetLogger(ctx)
+	log.Infof("[Retriever] Retrieve request: storeID=%s, type=%s, topK=%d, kbIDs=%v",
+		w.storeID, params.RetrieverType, params.TopK, params.KnowledgeBaseIDs)
+
 	reader, err := w.router.GetReader(ctx, w.storeID, params.ConsistencyLevel, nil)
 	if err != nil {
+		log.Errorf("[Retriever] Failed to get reader for store %s: %v", w.storeID, err)
 		return nil, err
 	}
-	return reader.Retrieve(ctx, params)
+
+	results, err := reader.Retrieve(ctx, params)
+	duration := time.Since(start)
+	if err != nil {
+		log.Errorf("[Retriever] Retrieve failed for store %s after %dms: %v",
+			w.storeID, duration.Milliseconds(), err)
+		return nil, err
+	}
+
+	totalResults := 0
+	for _, r := range results {
+		totalResults += len(r.Results)
+	}
+	log.Infof("[Retriever] Retrieve completed: storeID=%s, totalResults=%d, duration=%dms",
+		w.storeID, totalResults, duration.Milliseconds())
+	return results, nil
 }
 
 func (w *routerWrapper) Support() []types.RetrieverType {
@@ -291,14 +313,17 @@ func (r *RetrieveEngineRegistry) Register(repo interfaces.RetrieveEngineService)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	log := logger.GetLogger(context.Background())
 	if _, exists := r.byEngineType[repo.EngineType()]; exists {
 		return fmt.Errorf("repository type %s already registered", repo.EngineType())
 	}
 
+	log.Infof("[Retriever] Registering engine by type: %s, support=%v", repo.EngineType(), repo.Support())
 	r.byEngineType[repo.EngineType()] = repo
 	// 环境变量引擎也注册到router（单节点模式）
 	wrapped := engineWrapper(string(repo.EngineType()), repo)
 	_ = r.router.RegisterEngine(string(repo.EngineType()), wrapped, nil)
+	log.Infof("[Retriever] Engine %s registered successfully", repo.EngineType())
 	return nil
 }
 
