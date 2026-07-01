@@ -2,10 +2,13 @@ package uum
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/Tencent/XinWiki/internal/logger"
 )
@@ -39,12 +42,16 @@ func (s *service) UpdateProvider(ctx context.Context, provider *Provider) error 
 		return errors.New("provider id is required")
 	}
 	provider.UpdatedAt = time.Now()
+	// Invalidate cached validator so config changes (issuer, client_id) take effect.
+	s.invalidateOIDCValidator(provider.ID)
 	return s.repo.UpdateProvider(ctx, provider)
 }
 
 func (s *service) DeleteProvider(ctx context.Context, tenantID, providerID string) error {
 	// Stop any running scheduler for this provider
 	s.StopSyncSchedulerForProvider(providerID)
+	// Invalidate cached OIDC validator so next creation starts fresh.
+	s.invalidateOIDCValidator(providerID)
 	return s.repo.DeleteProvider(ctx, tenantID, providerID)
 }
 
@@ -169,18 +176,95 @@ func (s *service) ValidateSAMLAssertion(ctx context.Context, tenantID string, sa
 	return nil, fmt.Errorf("SAML SSO is not yet implemented; do not accept unvalidated assertions")
 }
 
-func (s *service) ValidateOIDCToken(ctx context.Context, tenantID string, token string) (*OIDCToken, error) {
-	// CRITICAL SECURITY: OIDC token validation requires:
-	//   1. Discovering the IdP's JWKS endpoint via .well-known/openid-configuration
-	//   2. Verifying the JWT signature against the IdP's public keys
-	//   3. Validating iss, aud, exp, nbf, and (optionally) nonce/azp claims
-	// A proper implementation should use github.com/coreos/go-oidc or a
-	// similar library. Returning a "not implemented" error prevents
-	// authentication bypass via forged JWTs.
-	_ = ctx
-	_ = tenantID
-	_ = token
-	return nil, fmt.Errorf("OIDC SSO is not yet implemented; do not accept unvalidated tokens")
+func (s *service) ValidateOIDCToken(ctx context.Context, tenantID string, rawToken string) (*OIDCToken, error) {
+	if rawToken == "" {
+		return nil, errors.New("OIDC token is required")
+	}
+
+	// First pass: parse the unverified token to learn its issuer (iss) so we
+	// can locate the correct OIDC provider for this tenant without requiring
+	// the caller to pass a providerID.
+	parsed, _, err := jwt.NewParser().ParseUnverified(rawToken, &oidcClaims{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse OIDC token: %w", err)
+	}
+	claims, ok := parsed.Claims.(*oidcClaims)
+	if !ok || claims.Issuer == "" {
+		return nil, errors.New("OIDC token missing 'iss' claim")
+	}
+	tokenIssuer := claims.Issuer
+
+	// List OIDC providers for the tenant and find the one matching the issuer.
+	providers, err := s.repo.ListProviders(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list UUM providers: %w", err)
+	}
+
+	var matchedProvider *Provider
+	for _, p := range providers {
+		if p.Type != ProviderOIDC || p.Status != StatusActive {
+			continue
+		}
+		iss, _ := p.Config["issuer"].(string)
+		if iss == tokenIssuer {
+			matchedProvider = p
+			break
+		}
+	}
+	if matchedProvider == nil {
+		return nil, fmt.Errorf("no active OIDC provider found for issuer %q in tenant %q", tokenIssuer, tenantID)
+	}
+
+	// Get or create a cached OIDC validator for this provider.
+	validator, err := s.getOrCreateOIDCValidator(ctx, matchedProvider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize OIDC validator: %w", err)
+	}
+
+	validated, err := validator.Validate(ctx, rawToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// Auto-provision user on successful SSO login (JIT provisioning).
+	if err := s.provisionUserFromOIDCToken(ctx, tenantID, matchedProvider, validated); err != nil {
+		logger.Warnf(ctx, "[uum] failed to auto-provision user %s from OIDC token: %v", validated.Subject, err)
+		// Provisioning failure must NOT block login.
+	}
+
+	return validated, nil
+}
+
+// getOrCreateOIDCValidator returns a cached oidcValidator for the given
+// provider, creating one on first use. Safe for concurrent use.
+func (s *service) getOrCreateOIDCValidator(ctx context.Context, provider *Provider) (*oidcValidator, error) {
+	s.oidcValidatorsMu.RLock()
+	if v, ok := s.oidcValidators[provider.ID]; ok {
+		s.oidcValidatorsMu.RUnlock()
+		return v, nil
+	}
+	s.oidcValidatorsMu.RUnlock()
+
+	s.oidcValidatorsMu.Lock()
+	defer s.oidcValidatorsMu.Unlock()
+
+	// Double-check after acquiring write lock.
+	if v, ok := s.oidcValidators[provider.ID]; ok {
+		return v, nil
+	}
+	v, err := newOIDCValidator(provider, s.httpClient)
+	if err != nil {
+		return nil, err
+	}
+	s.oidcValidators[provider.ID] = v
+	return v, nil
+}
+
+// invalidateOIDCValidator removes a cached validator (e.g. after provider update/delete).
+func (s *service) invalidateOIDCValidator(providerID string) {
+	s.oidcValidatorsMu.Lock()
+	defer s.oidcValidatorsMu.Unlock()
+	delete(s.oidcValidators, providerID)
 }
 
 func (s *service) BuildSSOURL(ctx context.Context, tenantID, providerID string, redirectURI string) (string, error) {
@@ -193,10 +277,26 @@ func (s *service) BuildSSOURL(ctx context.Context, tenantID, providerID string, 
 	case ProviderSAML:
 		return s.buildSAMLSSOURL(ctx, provider, redirectURI)
 	case ProviderOIDC:
-		return s.buildOIDCSSOURL(ctx, provider, redirectURI)
+		// Generate a random state for CSRF protection. Callers that need to
+		// correlate the callback should retrieve the state via a separate
+		// mechanism (e.g. session storage) in the future; for now we use a
+		// random nonce.
+		state := generateOIDCState()
+		return buildOIDCAuthorizationURL(ctx, provider, redirectURI, state, "")
 	default:
 		return "", fmt.Errorf("SSO not supported for provider type: %s", provider.Type)
 	}
+}
+
+// generateOIDCState produces a cryptographically random 16-byte hex state
+// parameter for OIDC CSRF protection.
+func generateOIDCState() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		// Fall back to UUID if crypto rand fails (extremely unlikely).
+		return newID()
+	}
+	return fmt.Sprintf("%x", b)
 }
 
 // --- User Provisioning ---
@@ -485,15 +585,4 @@ func (s *service) buildSAMLSSOURL(ctx context.Context, provider *Provider, redir
 		return "", errors.New("sso_url not configured in SAML provider")
 	}
 	return ssoURL, nil
-}
-
-func (s *service) buildOIDCSSOURL(ctx context.Context, provider *Provider, redirectURI string) (string, error) {
-	// Actual implementation would build OIDC authorization URL
-	authzEndpoint, ok := provider.Config["authorization_endpoint"].(string)
-	if !ok {
-		return "", errors.New("authorization_endpoint not configured in OIDC provider")
-	}
-	clientID, _ := provider.Config["client_id"].(string)
-	return fmt.Sprintf("%s?client_id=%s&redirect_uri=%s&response_type=code&scope=openid+email+profile",
-		authzEndpoint, clientID, redirectURI), nil
 }

@@ -4,6 +4,8 @@ package uum
 
 import (
 	"context"
+	"net/http"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -236,9 +238,15 @@ type UserRepository interface {
 type ServiceOption func(*service)
 
 type service struct {
-	repo     Repository
-	userRepo UserRepository
-	schedulers map[string]context.CancelFunc
+	repo          Repository
+	userRepo      UserRepository
+	schedulers    map[string]context.CancelFunc
+	httpClient    *http.Client
+
+	// oidcValidators caches OIDC validators by providerID to avoid
+	// re-fetching JWKS on every token validation request.
+	oidcValidatorsMu sync.RWMutex
+	oidcValidators   map[string]*oidcValidator
 }
 
 // Repository defines the data access interface for UUM providers and sync events.
@@ -256,14 +264,25 @@ type Repository interface {
 // NewService creates a new UUM service instance.
 func NewService(repo Repository, userRepo UserRepository, opts ...ServiceOption) Service {
 	s := &service{
-		repo:       repo,
-		userRepo:   userRepo,
-		schedulers: make(map[string]context.CancelFunc),
+		repo:           repo,
+		userRepo:       userRepo,
+		schedulers:     make(map[string]context.CancelFunc),
+		oidcValidators: make(map[string]*oidcValidator),
 	}
 	for _, opt := range opts {
 		opt(s)
 	}
+	if s.httpClient == nil {
+		s.httpClient = &http.Client{Timeout: 10 * time.Second}
+	}
 	return s
+}
+
+// WithHTTPClient sets a custom HTTP client for the UUM service (used for OIDC discovery).
+func WithHTTPClient(cli *http.Client) ServiceOption {
+	return func(s *service) {
+		s.httpClient = cli
+	}
 }
 
 // generateID creates a new UUID for UUM entities.
