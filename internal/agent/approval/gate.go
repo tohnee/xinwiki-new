@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -15,6 +14,7 @@ import (
 	"github.com/Tencent/XinWiki/internal/config"
 	"github.com/Tencent/XinWiki/internal/event"
 	"github.com/Tencent/XinWiki/internal/logger"
+	"github.com/Tencent/XinWiki/internal/utils"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
@@ -61,7 +61,7 @@ type resolveAck struct {
 
 // pubsubChannel returns the namespaced pubsub channel name.
 func pubsubChannel() string {
-	if ns := strings.TrimSpace(os.Getenv("WEKNORA_REDIS_NAMESPACE")); ns != "" {
+	if ns := strings.TrimSpace(utils.ResolveEnv("REDIS_NAMESPACE")); ns != "" {
 		return pubsubChannelBase + ":" + ns
 	}
 	return pubsubChannelBase
@@ -174,7 +174,7 @@ func NewGate(cfg *config.Config, checker Checker, rdb *redis.Client) *Gate {
 	}
 	// Default fail-close: if the checker errors, require approval (safer for a
 	// HITL feature). Set WEKNORA_AGENT_TOOL_APPROVAL_FAIL_OPEN=true to revert.
-	failClose := !strings.EqualFold(strings.TrimSpace(os.Getenv("WEKNORA_AGENT_TOOL_APPROVAL_FAIL_OPEN")), "true")
+	failClose := !strings.EqualFold(strings.TrimSpace(utils.ResolveEnv("AGENT_TOOL_APPROVAL_FAIL_OPEN")), "true")
 	g := &Gate{
 		pending:   make(map[string]*waiter),
 		checker:   checker,

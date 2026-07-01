@@ -10,7 +10,13 @@
 
 BINARY      := weknora
 BUILD_DIR   := bin
-PKG         := github.com/Tencent/WeKnora/cli
+# The CLI Go module path. Kept in sync with cli/go.mod's `module` line.
+# The Makefile previously pointed at github.com/Tencent/WeKnora/cli (the
+# pre-brand-migration module path), so the -ldflags -X flags injected
+# build.* var values into a package path that no longer existed - the
+# linker silently dropped them and the CLI shipped with build.Version="dev"
+# / Commit="none" / Date="unknown" regardless of the actual git tag.
+PKG         := github.com/Tencent/XinWiki/cli
 
 VERSION     := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT      := $(shell git rev-parse --short HEAD 2>/dev/null || echo none)

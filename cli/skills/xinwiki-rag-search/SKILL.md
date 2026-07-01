@@ -1,13 +1,13 @@
 ---
-name: weknora-rag-search
-description: Use when retrieving from or asking questions against a XinWiki knowledge base via the `weknora` CLI — and especially when unsure whether to use `chat`, `session ask`, or `search chunks` for a given goal.
+name: xinwiki-rag-search
+description: Use when retrieving from or asking questions against a XinWiki knowledge base via the `xinwiki` CLI — and especially when unsure whether to use `chat`, `session ask`, or `search chunks` for a given goal.
 metadata:
   tested_against: v0.9
 ---
 
 # XinWiki — retrieval & RAG queries
 
-**REQUIRED BACKGROUND:** read the `weknora-shared` skill first (auth, `--kb`
+**REQUIRED BACKGROUND:** read the `xinwiki-shared` skill first (auth, `--kb`
 resolution, the JSON envelope, exit codes, streaming/NDJSON output).
 
 XinWiki gives you several ways to "ask about a knowledge base." Picking the wrong
@@ -32,7 +32,7 @@ one wastes turns or returns the wrong shape. Use the decision table.
 2. **`chat` vs `session ask`.** `chat` = plain KB RAG Q&A. `session ask --agent
    <id>` = invoke a *configured custom agent* (it may scope its own KBs, call
    tools, do web search). If the user set up an agent for this, prefer it
-   (`weknora agent list` to find ids); otherwise `chat`.
+   (`xinwiki agent list` to find ids); otherwise `chat`.
 3. **One-shot vs multi-turn.** Both `chat` and `session ask` print an `init`
    event with a `session_id`. Pass `--session <id>` on the next call to continue
    the conversation. See `references/chat.md`.
@@ -40,17 +40,17 @@ one wastes turns or returns the wrong shape. Use the decision table.
 ## Safety / Gotchas
 
 - `chat`, `search chunks`, `search docs` need a KB: pass `--kb <id-or-name>`, or
-  set `WEKNORA_KB_ID`, or `weknora link` the directory (resolved in that order).
+  set `XINWIKI_KB_ID`, or `xinwiki link` the directory (resolved in that order).
   If none resolves it's exit 1 (`local.kb_id_required`); a bad name is exit 1
-  (`local.kb_not_found`). Resolve names with `weknora kb list` / `search kb`.
+  (`local.kb_not_found`). Resolve names with `xinwiki kb list` / `search kb`.
   (`search kb` / `search sessions` are tenant-wide and take no `--kb`.)
 - `chat` / `session ask` stream **NDJSON** by default. Parse line-by-line; keep
   the `init` event's `session_id` **and** `message_id`. Use `--format text` only
   for a human transcript.
 - A stalled stream is not stopped by Ctrl-C (that just drops your local
   connection; the server keeps generating + billing). Stop it server-side:
-  `weknora session stop <session-id> --message <message-id>` (ids from `init`).
-  Re-attach to a stream with `weknora session continue-stream <session-id>
+  `xinwiki session stop <session-id> --message <message-id>` (ids from `init`).
+  Re-attach to a stream with `xinwiki session continue-stream <session-id>
   --message <message-id>`.
 - `search chunks --limit` defaults to **8** (tuned for an LLM context window);
   the `search docs/kb/sessions` lists default to 30. Tune retrieval with
@@ -61,14 +61,14 @@ one wastes turns or returns the wrong shape. Use the decision table.
 
 ```bash
 # raw retrieval to reason over
-weknora search chunks "retry backoff policy" --kb engineering --limit 12
+xinwiki search chunks "retry backoff policy" --kb engineering --limit 12
 
 # grounded answer (human transcript)
-weknora chat "How do we handle retries?" --kb engineering --format text
+xinwiki chat "How do we handle retries?" --kb engineering --format text
 
 # continue the conversation (session id from the prior init event)
-weknora chat "And the max attempts?" --kb engineering --session sess_abc
+xinwiki chat "And the max attempts?" --kb engineering --session sess_abc
 
 # answer via a custom agent
-weknora session ask --agent ag_123 "Summarize this quarter's incidents"
+xinwiki session ask --agent ag_123 "Summarize this quarter's incidents"
 ```

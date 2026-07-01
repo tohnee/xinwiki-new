@@ -262,11 +262,12 @@ func rbacEnforcementEnabled(cfg *config.Config) bool {
 // RequireOwnershipOrRole guards above.
 
 // warnOnNilConfig emits a one-shot startup warning when a guard is
-// constructed with a nil-or-incomplete config. nil cfg makes
-// rbacEnforcementEnabled return false, which means an entire deployment
-// silently runs with RBAC disabled — usually because of a configuration
-// bug rather than an intentional choice. Operators should see a noisy
-// log line at boot pointing at the misconfiguration.
+// constructed with a nil-or-incomplete config. rbacEnforcementEnabled is
+// fail-closed: a nil cfg makes it return true, so the deployment runs with
+// RBAC fully ON and requests whose role cannot be resolved against the
+// missing config are denied (403). That is almost always a wiring bug
+// rather than an intentional choice, so operators get a noisy boot log
+// line pointing at the misconfiguration.
 var nilCfgWarnOnce sync.Once
 
 func warnOnNilConfig(cfg *config.Config) {
@@ -276,7 +277,8 @@ func warnOnNilConfig(cfg *config.Config) {
 	nilCfgWarnOnce.Do(func() {
 		logger.Errorf(context.Background(),
 			"[rbac] middleware constructed with nil/incomplete config "+
-				"(cfg=%v); enforcement is permanently disabled. This is "+
-				"almost certainly a wiring bug.", cfg)
+				"(cfg=%v); enforcement is fail-closed (ON) — requests will "+
+				"be denied until config is fixed. This is almost certainly "+
+				"a wiring bug.", cfg)
 	})
 }

@@ -96,4 +96,78 @@ func TestModel_CalculateCost(t *testing.T) {
 		cost := m.CalculateCost(usage)
 		assert.InDelta(t, expected, cost, 0.000001)
 	})
+
+	// Anthropic uses ADDITIVE cache billing: Anthropic's input_tokens EXCLUDES
+	// cache_read_input_tokens and cache_creation_input_tokens, and each is
+	// billed ADDITIVELY at distinct published rates (~0.1× for read,
+	// ~1.25× for creation). The prior arithmetic (treated cache as a subset
+	// of prompt) under-billed ~90% on cached retries -- this test locks in
+	// the additive semantics.
+	t.Run("anthropic_additive_cache_billing_default_ratios", func(t *testing.T) {
+		m := &Model{
+			InputPricePerMillion:  3.0,
+			OutputPricePerMillion: 15.0,
+			Parameters: ModelParameters{Provider: "anthropic"},
+			// CachedInputPricePerMillion intentionally zero -- must fall
+			// back to the 0.1× Anthropic published ratio.
+		}
+		usage := &TokenUsage{
+			PromptTokens:        1000, // Anthropic input_tokens (NON-cached)
+			CompletionTokens:    500,
+			CacheReadTokens:     800,
+			CacheCreationTokens: 200,
+		}
+		// 1000 input billed at full rate, 800 cache_read at 0.1×=0.30,
+		// 200 cache_creation at 1.25×=3.75, 500 completion at 15.
+		expected := (1000.0/1_000_000)*3.0 +
+			(800.0/1_000_000)*0.30 +
+			(200.0/1_000_000)*3.75 +
+			(500.0/1_000_000)*15.0
+		cost := m.CalculateCost(usage)
+		assert.InDelta(t, expected, cost, 0.000001)
+	})
+
+	// When the operator has filled CachedInputPricePerMillion (e.g. for an
+	// Anthropic model with a different per-call discount), that value is
+	// honored for cache_read; cache_creation is still priced at Anthropic's
+	// documented 1.25× input price (no separate field yet).
+	t.Run("anthropic_honors_operator_set_cache_read_price", func(t *testing.T) {
+		m := &Model{
+			InputPricePerMillion:       3.0,
+			OutputPricePerMillion:      15.0,
+			CachedInputPricePerMillion: 0.15,
+			Parameters:                 ModelParameters{Provider: "anthropic"},
+		}
+		usage := &TokenUsage{
+			PromptTokens:        1000,
+			CompletionTokens:    500,
+			CacheReadTokens:      800,
+			CacheCreationTokens:  200,
+		}
+		expected := (1000.0/1_000_000)*3.0 +
+			(800.0/1_000_000)*0.15 +
+			(200.0/1_000_000)*(1.25*3.0) +
+			(500.0/1_000_000)*15.0
+		cost := m.CalculateCost(usage)
+		assert.InDelta(t, expected, cost, 0.000001)
+	})
+
+	// Anthropic without any cache activity must produce the same number as
+	// the OpenAI-style path (just prompt + completion) so a non-cached
+	// retry doesn't regress on cost.
+	t.Run("anthropic_no_cache_matches_basic_path", func(t *testing.T) {
+		m := &Model{
+			InputPricePerMillion:  3.0,
+			OutputPricePerMillion: 15.0,
+			Parameters:            ModelParameters{Provider: "anthropic"},
+		}
+		usage := &TokenUsage{
+			PromptTokens:     1000,
+			CompletionTokens: 500,
+			TotalTokens:      1500,
+		}
+		expected := (1000.0/1_000_000)*3.0 + (500.0/1_000_000)*15.0
+		cost := m.CalculateCost(usage)
+		assert.InDelta(t, expected, cost, 0.000001)
+	})
 }

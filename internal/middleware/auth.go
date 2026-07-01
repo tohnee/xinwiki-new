@@ -10,17 +10,24 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Tencent/XinWiki/internal/config"
 	"github.com/Tencent/XinWiki/internal/logger"
 	"github.com/Tencent/XinWiki/internal/types"
 	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 	"github.com/gin-gonic/gin"
 )
 
 // 无需认证的API列表
 var noAuthAPI = map[string][]string{
 	"/health":                 {"GET"},
+	// Prometheus metrics scrape: must be reachable by external scrape
+	// controllers without a XinWiki bearer token. If authenticated scraping
+	// is needed, prefer a reverse-proxy auth gate in front of /metrics rather
+	// than coupling it to the app session model.
+	"/metrics": {"GET"},
 	"/api/v1/auth/register":   {"POST"},
 	"/api/v1/auth/login":      {"POST"},
 	"/api/v1/auth/auto-setup": {"POST"},
@@ -40,7 +47,7 @@ var noAuthAPI = map[string][]string{
 	// redirects the browser here without a XinWiki bearer token. The request
 	// is authenticated by the opaque, single-use `state` parameter instead.
 	"/api/v1/mcp-oauth/callback": {"GET"},
-	"/api/v1/auth/refresh":            {"POST"},
+	"/api/v1/auth/refresh":       {"POST"},
 	// IM platforms (Feishu, Slack, etc.) commonly issue a HEAD request
 	// before GET to validate Content-Type / Content-Length when rendering
 	// image previews — both verbs must be allowed for image links to work.
@@ -67,6 +74,7 @@ func Auth(
 	tenantService interfaces.TenantService,
 	userService interfaces.UserService,
 	memberService interfaces.TenantMemberService,
+	apiKeyRepo interfaces.APIKeyRepository,
 	cfg *config.Config,
 ) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -189,50 +197,97 @@ func Auth(
 			}
 		}
 
-		// 尝试X-API-Key认证（兼容模式）
+		// 尝试X-API-Key认证。两条路径：
+		//   (a) 新版 scoped api_keys 表（按 hash 查询，带 Scopes）；
+		//   (b) 旧版 Tenant.APIKey（全租户主钥匙，向后兼容授予 "*" 全量 scope）。
+		// 先尝试 (a)，未命中再走 (b)。两条路径都写入 AuthMethod=apikey +
+		// APIKeyScopes，供 RequireScope 守卫按 scope 鉴权；JWT 路径不写这两个键，
+		// 因此 RequireScope 对 JWT 请求自动放行（由角色守卫鉴权）。
 		apiKey := c.GetHeader("X-API-Key")
 		if apiKey != "" {
-			// Get tenant information
-			tenantID, err := tenantService.ExtractTenantIDFromAPIKey(apiKey)
-			if err != nil {
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": "Unauthorized: invalid API key format",
-				})
-				c.Abort()
-				return
+			ctx := c.Request.Context()
+			var (
+				tenantID uint64
+				t        *types.Tenant
+				scopes   []string
+				scoped   bool
+			)
+
+			// (a) Scoped api_keys lookup by hash.
+			if apiKeyRepo != nil {
+				if k, err := apiKeyRepo.GetByHash(ctx, secutils.HashAPIKey(apiKey)); err == nil && k != nil {
+					// Expired scoped key -> reject (do NOT fall back to legacy;
+					// a revoked/expired new key must not authenticate as master).
+					if k.ExpiresAt != nil && k.ExpiresAt.Before(time.Now()) {
+						c.JSON(http.StatusUnauthorized, gin.H{
+							"error": "Unauthorized: API key expired",
+						})
+						c.Abort()
+						return
+					}
+					tenantID = k.TenantID
+					scopes = []string(k.Scopes)
+					scoped = true
+					// Best-effort: load tenant for TenantInfoContextKey.
+					if tt, e := tenantService.GetTenantByID(ctx, tenantID); e == nil && tt != nil {
+						t = tt
+					}
+					// Best-effort usage stamp; never blocks authentication.
+					keyID := k.ID
+					go func() { _ = apiKeyRepo.TouchLastUsed(context.Background(), keyID, time.Now()) }()
+				}
 			}
 
-			// Verify API key validity (matches the one in database)
-			t, err := tenantService.GetTenantByID(c.Request.Context(), tenantID)
-			if err != nil {
-				log.Printf("Error getting tenant by ID: %v, tenantID: %d", err, tenantID)
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": "Unauthorized: invalid API key",
-				})
-				c.Abort()
-				return
-			}
-
-			if t == nil || subtle.ConstantTimeCompare([]byte(t.APIKey), []byte(apiKey)) != 1 {
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": "Unauthorized: invalid API key",
-				})
-				c.Abort()
-				return
+			// (b) Legacy Tenant.APIKey fallback.
+			if !scoped {
+				extractedID, err := tenantService.ExtractTenantIDFromAPIKey(apiKey)
+				if err != nil {
+					c.JSON(http.StatusUnauthorized, gin.H{
+						"error": "Unauthorized: invalid API key format",
+					})
+					c.Abort()
+					return
+				}
+				tenantID = extractedID
+				tt, err := tenantService.GetTenantByID(ctx, tenantID)
+				if err != nil {
+					log.Printf("Error getting tenant by ID: %v, tenantID: %d", err, tenantID)
+					c.JSON(http.StatusUnauthorized, gin.H{
+						"error": "Unauthorized: invalid API key",
+					})
+					c.Abort()
+					return
+				}
+				if tt == nil || subtle.ConstantTimeCompare([]byte(tt.APIKey), []byte(apiKey)) != 1 {
+					c.JSON(http.StatusUnauthorized, gin.H{
+						"error": "Unauthorized: invalid API key",
+					})
+					c.Abort()
+					return
+				}
+				t = tt
+				// Legacy key = tenant-wide master key: backward-compat full scope.
+				scopes = []string{types.ScopeAll}
 			}
 
 			// 存储租户和用户信息到上下文
 			c.Set(types.TenantIDContextKey.String(), tenantID)
-			c.Set(types.TenantInfoContextKey.String(), t)
+			if t != nil {
+				c.Set(types.TenantInfoContextKey.String(), t)
+			}
+			c.Set(types.AuthMethodContextKey.String(), types.AuthMethodAPIKey)
+			c.Set(types.APIKeyScopesContextKey.String(), scopes)
 
-			ctx := context.WithValue(
-				context.WithValue(c.Request.Context(), types.TenantIDContextKey, tenantID),
+			reqCtx := context.WithValue(
+				context.WithValue(ctx, types.TenantIDContextKey, tenantID),
 				types.TenantInfoContextKey, t,
 			)
+			reqCtx = context.WithValue(reqCtx, types.AuthMethodContextKey, types.AuthMethodAPIKey)
+			reqCtx = context.WithValue(reqCtx, types.APIKeyScopesContextKey, scopes)
 
 			// 通过 TenantID 关联查询用户；找不到时构造系统虚拟用户，
 			// 确保所有依赖 UserContextKey 的下游 handler 正常工作。
-			user, err := userService.GetUserByTenantID(c.Request.Context(), tenantID)
+			user, err := userService.GetUserByTenantID(ctx, tenantID)
 			if err != nil || user == nil {
 				// Synthetic user. The "system-<tenantID>" shape is recognised
 				// by types.IsSyntheticUserID, which RBAC service-layer code
@@ -261,12 +316,12 @@ func Auth(
 			c.Set(types.UserIDContextKey.String(), user.ID)
 			c.Set(types.TenantRoleContextKey.String(), types.TenantRoleAdmin)
 			c.Set(types.SystemAdminContextKey.String(), false)
-			ctx = context.WithValue(ctx, types.UserContextKey, user)
-			ctx = context.WithValue(ctx, types.UserIDContextKey, user.ID)
-			ctx = context.WithValue(ctx, types.TenantRoleContextKey, types.TenantRoleAdmin)
-			ctx = context.WithValue(ctx, types.SystemAdminContextKey, false)
+			reqCtx = context.WithValue(reqCtx, types.UserContextKey, user)
+			reqCtx = context.WithValue(reqCtx, types.UserIDContextKey, user.ID)
+			reqCtx = context.WithValue(reqCtx, types.TenantRoleContextKey, types.TenantRoleAdmin)
+			reqCtx = context.WithValue(reqCtx, types.SystemAdminContextKey, false)
 
-			c.Request = c.Request.WithContext(ctx)
+			c.Request = c.Request.WithContext(reqCtx)
 			c.Next()
 			return
 		}

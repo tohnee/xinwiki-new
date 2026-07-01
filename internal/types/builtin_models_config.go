@@ -38,6 +38,18 @@ type BuiltinModelEntry struct {
 	IsDefault   bool            `yaml:"is_default"`
 	Status      ModelStatus     `yaml:"status"`
 	Parameters  ModelParameters `yaml:"parameters"`
+	// Pricing fields (USD per million tokens). When left at zero the
+	// cost-tracking subsystem silently reports $0 for calls to this model —
+	// the cost dashboard shows blank totals and agent runs are uncosted.
+	// Operators who want real usage economics MUST populate these for at
+	// least their LLM/Rerank built-ins; embeddings are typically cheap
+	// enough to leave at zero unless the provider publishes per-token rates.
+	// cached_input_price_per_million controls the cache-read discount for
+	// providers whose `input_tokens` excludes cache hits (Anthropic); leave
+	// it at zero for Anthropic to fall back to the published 0.1x ratio.
+	InputPricePerMillion       float64 `yaml:"input_price_per_million"`
+	OutputPricePerMillion      float64 `yaml:"output_price_per_million"`
+	CachedInputPricePerMillion float64 `yaml:"cached_input_price_per_million"`
 }
 
 type builtinModelsFile struct {
@@ -155,6 +167,14 @@ func LoadBuiltinModelsConfig(ctx context.Context, db *gorm.DB, configDir string)
 				"tenant_id", "name", "type", "source", "description",
 				"parameters", "is_default", "status", "is_builtin",
 				"managed_by", "deleted_at", "updated_at",
+				// Pricing fields must be part of the UPSERT assignment list
+				// so editing builtin_models.yaml actually reconciles running
+				// price configuration (the dashboard silently reports $0
+				// when these are missing). Without them the OnConflict path
+				// keeps whatever the row already has on UPDATE, ignoring the
+				// YAML change.
+				"input_price_per_million", "output_price_per_million",
+				"cached_input_price_per_million",
 			}),
 		}).Create(&m)
 		if res.Error != nil {
@@ -287,16 +307,19 @@ func (e *BuiltinModelEntry) toModel() Model {
 		status = ModelStatusActive
 	}
 	return Model{
-		ID:          e.ID,
-		TenantID:    tenantID,
-		Name:        e.Name,
-		Type:        e.Type,
-		Source:      source,
-		Description: e.Description,
-		Parameters:  e.Parameters,
-		IsDefault:   e.IsDefault,
-		IsBuiltin:   true,
-		ManagedBy:   BuiltinModelManagedBy,
-		Status:      status,
+		ID:                         e.ID,
+		TenantID:                   tenantID,
+		Name:                       e.Name,
+		Type:                       e.Type,
+		Source:                     source,
+		Description:                e.Description,
+		Parameters:                 e.Parameters,
+		IsDefault:                  e.IsDefault,
+		IsBuiltin:                  true,
+		ManagedBy:                  BuiltinModelManagedBy,
+		Status:                     status,
+		InputPricePerMillion:       e.InputPricePerMillion,
+		OutputPricePerMillion:      e.OutputPricePerMillion,
+		CachedInputPricePerMillion: e.CachedInputPricePerMillion,
 	}
 }

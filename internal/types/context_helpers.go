@@ -2,13 +2,16 @@ package types
 
 import (
 	"context"
-	"os"
 	"strings"
+
+	"github.com/Tencent/XinWiki/internal/utils"
 )
 
-// EnvLanguage returns the WEKNORA_LANGUAGE environment variable value, or empty string if unset.
+// EnvLanguage returns the configured document-processing language locale,
+// preferring the XINWIKI_LANGUAGE env var and falling back to the legacy
+// WEKNORA_LANGUAGE, or empty string if neither is set.
 func EnvLanguage() string {
-	return strings.TrimSpace(os.Getenv("WEKNORA_LANGUAGE"))
+	return strings.TrimSpace(utils.ResolveEnv("LANGUAGE"))
 }
 
 // DefaultLanguage returns the configured default language locale.

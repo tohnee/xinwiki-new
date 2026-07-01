@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/Tencent/XinWiki/internal/utils"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -57,7 +57,7 @@ func newOAuthStateStore(rdb *redis.Client) *oauthStateStore {
 }
 
 func (s *oauthStateStore) key(state string) string {
-	ns := strings.TrimSpace(os.Getenv("WEKNORA_REDIS_NAMESPACE"))
+	ns := strings.TrimSpace(utils.ResolveEnv("REDIS_NAMESPACE"))
 	if ns != "" {
 		return "xinwiki:mcp_oauth_state:" + ns + ":" + state
 	}
