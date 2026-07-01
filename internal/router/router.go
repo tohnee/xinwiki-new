@@ -13,6 +13,7 @@ import (
 	filesvc "github.com/Tencent/XinWiki/internal/application/service/file"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -51,6 +52,11 @@ type RouterParams struct {
 	KnowledgeHandler             *handler.KnowledgeHandler
 	TenantHandler                *handler.TenantHandler
 	TenantService                interfaces.TenantService
+	APIKeyRepository             interfaces.APIKeyRepository
+	APIKeyService                interfaces.APIKeyService
+	APIKeyHandler                *handler.APIKeyHandler
+	ArtifactService              interfaces.ArtifactService
+	ArtifactHandler              *handler.ArtifactHandler
 	TenantMemberService          interfaces.TenantMemberService
 	TenantMemberHandler          *handler.TenantMemberHandler
 	TenantInvitationHandler      *handler.TenantInvitationHandler
@@ -131,6 +137,17 @@ func NewRouter(params RouterParams) *gin.Engine {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
+	// Prometheus metrics scrape endpoint. The metrics themselves are
+	// registered with the default Prometheus registry by promauto in
+	// internal/application/service/{embedding_batcher,vectorstore_metrics}.go;
+	// this handler just exposes that registry so an external scraper can pull
+	// them. Auth middleware whitelists it (see middleware/auth.go noAuthAPI)
+	// because kube-style probes and scrapers usually cannot present a bearer
+	// token. If an operator needs authenticated scraping they should put a
+	// reverse-proxy auth gate in front rather than coupling metrics to the
+	// app's session model.
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
 	// Swagger API 文档（仅在非生产环境下启用）
 	// 通过 GIN_MODE 环境变量判断：release 模式下禁用 Swagger
 	if gin.Mode() != gin.ReleaseMode {
@@ -163,7 +180,7 @@ func NewRouter(params RouterParams) *gin.Engine {
 	RegisterEmbedPublicRoutes(r, params.EmbedChannelHandler, params.EmbedChannelService, params.TenantService, params.RedisClient, params.FileService)
 
 	// 认证中间件
-	r.Use(middleware.Auth(params.TenantService, params.UserService, params.TenantMemberService, params.Config))
+	r.Use(middleware.Auth(params.TenantService, params.UserService, params.TenantMemberService, params.APIKeyRepository, params.Config))
 
 	// 文件服务：统一代理本地/MinIO/COS/TOS存储后端（需要认证）
 	serveFiles(r, params.FileService)
@@ -210,6 +227,8 @@ func NewRouter(params RouterParams) *gin.Engine {
 		RegisterAuthRoutes(v1, params.AuthHandler)
 		RegisterTenantRoutes(v1, params.TenantHandler, params.TenantMemberHandler, params.TenantInvitationHandler, params.AuditLogHandler, params.CostTrackingHandler, params.ConflictDetectionHandler, params.RAGEvaluationHandler, params.ModelRouterHandler, rbacGuards)
 		RegisterMyInvitationRoutes(v1, params.TenantInvitationHandler)
+		RegisterAPIKeyRoutes(v1, params.APIKeyHandler, rbacGuards)
+		RegisterArtifactRoutes(v1, params.ArtifactHandler, rbacGuards)
 		RegisterKnowledgeBaseRoutes(v1, params.KBHandler, rbacGuards)
 		RegisterKnowledgeTagRoutes(v1, params.TagHandler, rbacGuards)
 		RegisterKnowledgeRoutes(v1, params.KnowledgeHandler, rbacGuards)
@@ -264,21 +283,21 @@ func RegisterChunkRoutes(r *gin.RouterGroup, handler *handler.ChunkHandler, g *r
 	chunks := r.Group("/chunks")
 	{
 		// 获取分块列表 — Viewer+ 且对父 KB 有 read 权限（own / shared / via shared agent）
-		chunks.GET("/:knowledge_id", g.Viewer(), g.KBAccessReadFromKnowledgeIDParam("knowledge_id"), handler.ListKnowledgeChunks)
+		chunks.GET("/:knowledge_id", middleware.RequireScope(types.ScopeDocRead), g.Viewer(), g.KBAccessReadFromKnowledgeIDParam("knowledge_id"), handler.ListKnowledgeChunks)
 		// 通过chunk_id获取单个chunk（不需要knowledge_id） — Viewer+ 且对父 KB 有 read 权限
-		chunks.GET("/by-id/:id", g.Viewer(), g.KBAccessReadFromChunkIDParam("id"), handler.GetChunkByIDOnly)
+		chunks.GET("/by-id/:id", middleware.RequireScope(types.ScopeDocRead), g.Viewer(), g.KBAccessReadFromChunkIDParam("id"), handler.GetChunkByIDOnly)
 		// 删除分块 — KB owner OR Admin+，且对父 KB 有 write 权限
-		chunks.DELETE("/:knowledge_id/:id", g.OwnedChunkKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("knowledge_id"), handler.DeleteChunk)
+		chunks.DELETE("/:knowledge_id/:id", middleware.RequireScope(types.ScopeDocWrite), g.OwnedChunkKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("knowledge_id"), handler.DeleteChunk)
 		// 删除知识下的所有分块 — KB owner OR Admin+，且对父 KB 有 write 权限
-		chunks.DELETE("/:knowledge_id", g.OwnedChunkKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("knowledge_id"), handler.DeleteChunksByKnowledgeID)
+		chunks.DELETE("/:knowledge_id", middleware.RequireScope(types.ScopeDocWrite), g.OwnedChunkKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("knowledge_id"), handler.DeleteChunksByKnowledgeID)
 		// 更新分块信息 — KB owner OR Admin+，且对父 KB 有 write 权限
-		chunks.PUT("/:knowledge_id/:id", g.OwnedChunkKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("knowledge_id"), handler.UpdateChunk)
+		chunks.PUT("/:knowledge_id/:id", middleware.RequireScope(types.ScopeDocWrite), g.OwnedChunkKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("knowledge_id"), handler.UpdateChunk)
 		// 删除单个生成的问题（通过分块 id） — 与其它 chunk mutation 一致：
 		// KB owner OR Admin+。早期这里因为链路 (chunk_id -> knowledge_id ->
 		// kb -> creator_id) 还没接通，被临时降级成 Contributor，导致一个
 		// 「能编辑所有 chunk 的同样规则在这条路由上反而更宽松」的不一致。
 		// 现在通过 KBCreatorLookupFromChunkIDParam 把那一跳补上，统一矩阵。
-		chunks.DELETE("/by-id/:id/questions", g.OwnedChunkKBOrAdminFromChunkID(), g.KBAccessWriteFromChunkIDParam("id"), handler.DeleteGeneratedQuestion)
+		chunks.DELETE("/by-id/:id/questions", middleware.RequireScope(types.ScopeDocWrite), g.OwnedChunkKBOrAdminFromChunkID(), g.KBAccessWriteFromChunkIDParam("id"), handler.DeleteGeneratedQuestion)
 	}
 }
 
@@ -292,17 +311,29 @@ func RegisterChunkRoutes(r *gin.RouterGroup, handler *handler.ChunkHandler, g *r
 // reuse OwnedKBOrAdmin because the URL :id is the KB id directly.
 // Cross-:id batch operations stay Contributor-gated — they don't have
 // a single owning KB to check against.
+// RegisterKnowledgeRoutes 注册知识相关的路由
+//
+// RequireScope enforces the doc scope on API-key callers (reads need
+// doc:read, mutations need doc:write); JWT callers and the legacy "*" master
+// key bypass it. Per-KB ownership applies on the per-:id mutating routes
+// (PR 5, #1303): the URL :id is a knowledge id, OwnedKnowledgeKBOrAdmin
+// walks it back to KB.CreatorID so a Contributor who owns the KB can
+// edit/delete any of its documents while a non-owner Contributor gets 403.
+// KB-scoped upload routes (`/knowledge-bases/:id/knowledge/...`) reuse
+// OwnedKBOrAdmin because the URL :id is the KB id directly. Cross-:id batch
+// operations stay Contributor-gated — they don't have a single owning KB to
+// check against.
 func RegisterKnowledgeRoutes(r *gin.RouterGroup, handler *handler.KnowledgeHandler, g *rbacGuards) {
 	// 知识库下的知识路由组（URL :id is the KB id）
 	kb := r.Group("/knowledge-bases/:id/knowledge")
 	{
-		kb.POST("/file", g.OwnedKBOrAdmin(), g.KBAccessWrite("id"), handler.CreateKnowledgeFromFile)
-		kb.POST("/url", g.OwnedKBOrAdmin(), g.KBAccessWrite("id"), handler.CreateKnowledgeFromURL)
-		kb.POST("/manual", g.OwnedKBOrAdmin(), g.KBAccessWrite("id"), handler.CreateManualKnowledge)
-		kb.GET("", g.Viewer(), g.KBAccessRead("id"), handler.ListKnowledge)
+		kb.POST("/file", middleware.RequireScope(types.ScopeDocWrite), g.OwnedKBOrAdmin(), g.KBAccessWrite("id"), handler.CreateKnowledgeFromFile)
+		kb.POST("/url", middleware.RequireScope(types.ScopeDocWrite), g.OwnedKBOrAdmin(), g.KBAccessWrite("id"), handler.CreateKnowledgeFromURL)
+		kb.POST("/manual", middleware.RequireScope(types.ScopeDocWrite), g.OwnedKBOrAdmin(), g.KBAccessWrite("id"), handler.CreateManualKnowledge)
+		kb.GET("", middleware.RequireScope(types.ScopeDocRead), g.Viewer(), g.KBAccessRead("id"), handler.ListKnowledge)
 		// Clearing all contents under a KB is a destructive op; gate
 		// behind Admin instead of Contributor.
-		kb.DELETE("", g.Admin(), g.KBAccessWrite("id"), handler.ClearKnowledgeBaseContents)
+		kb.DELETE("", middleware.RequireScope(types.ScopeDocWrite), g.Admin(), g.KBAccessWrite("id"), handler.ClearKnowledgeBaseContents)
 	}
 
 	// 知识路由组（URL :id is a knowledge id; the guard walks it to the parent KB）
@@ -312,27 +343,27 @@ func RegisterKnowledgeRoutes(r *gin.RouterGroup, handler *handler.KnowledgeHandl
 		// KB — they accept arbitrary knowledge IDs and the handler must
 		// fan out the access check itself. So /batch and /search keep
 		// the role-only floor; /move and /batch-delete stay Contributor.
-		k.GET("/batch", g.Viewer(), handler.GetKnowledgeBatch)
-		k.GET("/:id", g.Viewer(), g.KBAccessReadFromKnowledgeIDParam("id"), handler.GetKnowledge)
-		k.GET("/:id/stages", g.Viewer(), g.KBAccessReadFromKnowledgeIDParam("id"), handler.GetKnowledgeSpans)
-		k.GET("/:id/spans", g.Viewer(), g.KBAccessReadFromKnowledgeIDParam("id"), handler.GetKnowledgeSpans)
-		k.DELETE("/:id", g.OwnedKnowledgeKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("id"), handler.DeleteKnowledge)
-		k.PUT("/:id", g.OwnedKnowledgeKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("id"), handler.UpdateKnowledge)
-		k.PUT("/manual/:id", g.OwnedKnowledgeKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("id"), handler.UpdateManualKnowledge)
-		k.POST("/:id/reparse", g.OwnedKnowledgeKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("id"), handler.ReparseKnowledge)
-		k.POST("/:id/cancel-parse", g.OwnedKnowledgeKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("id"), handler.CancelKnowledgeParse)
-		k.GET("/:id/download", g.Viewer(), g.KBAccessReadFromKnowledgeIDParam("id"), handler.DownloadKnowledgeFile)
-		k.GET("/:id/preview", g.Viewer(), g.KBAccessReadFromKnowledgeIDParam("id"), handler.PreviewKnowledgeFile)
-		k.PUT("/image/:id/:chunk_id", g.OwnedKnowledgeKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("id"), handler.UpdateImageInfo)
+		k.GET("/batch", middleware.RequireScope(types.ScopeDocRead), g.Viewer(), handler.GetKnowledgeBatch)
+		k.GET("/:id", middleware.RequireScope(types.ScopeDocRead), g.Viewer(), g.KBAccessReadFromKnowledgeIDParam("id"), handler.GetKnowledge)
+		k.GET("/:id/stages", middleware.RequireScope(types.ScopeDocRead), g.Viewer(), g.KBAccessReadFromKnowledgeIDParam("id"), handler.GetKnowledgeSpans)
+		k.GET("/:id/spans", middleware.RequireScope(types.ScopeDocRead), g.Viewer(), g.KBAccessReadFromKnowledgeIDParam("id"), handler.GetKnowledgeSpans)
+		k.DELETE("/:id", middleware.RequireScope(types.ScopeDocWrite), g.OwnedKnowledgeKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("id"), handler.DeleteKnowledge)
+		k.PUT("/:id", middleware.RequireScope(types.ScopeDocWrite), g.OwnedKnowledgeKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("id"), handler.UpdateKnowledge)
+		k.PUT("/manual/:id", middleware.RequireScope(types.ScopeDocWrite), g.OwnedKnowledgeKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("id"), handler.UpdateManualKnowledge)
+		k.POST("/:id/reparse", middleware.RequireScope(types.ScopeDocWrite), g.OwnedKnowledgeKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("id"), handler.ReparseKnowledge)
+		k.POST("/:id/cancel-parse", middleware.RequireScope(types.ScopeDocWrite), g.OwnedKnowledgeKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("id"), handler.CancelKnowledgeParse)
+		k.GET("/:id/download", middleware.RequireScope(types.ScopeDocRead), g.Viewer(), g.KBAccessReadFromKnowledgeIDParam("id"), handler.DownloadKnowledgeFile)
+		k.GET("/:id/preview", middleware.RequireScope(types.ScopeDocRead), g.Viewer(), g.KBAccessReadFromKnowledgeIDParam("id"), handler.PreviewKnowledgeFile)
+		k.PUT("/image/:id/:chunk_id", middleware.RequireScope(types.ScopeDocWrite), g.OwnedKnowledgeKBOrAdmin(), g.KBAccessWriteFromKnowledgeIDParam("id"), handler.UpdateImageInfo)
 		// Batch / cross-KB ops stay Contributor-gated: there is no
 		// single owning KB to walk back to. A future PR could add a
 		// "must own every targeted KB" guard if the requirement
 		// surfaces.
-		k.PUT("/tags", g.Contributor(), handler.UpdateKnowledgeTagBatch)
-		k.GET("/search", g.Viewer(), handler.SearchKnowledge)
-		k.POST("/batch-delete", g.Contributor(), handler.BatchDeleteKnowledge)
-		k.POST("/move", g.Contributor(), handler.MoveKnowledge)
-		k.GET("/move/progress/:task_id", g.Viewer(), handler.GetKnowledgeMoveProgress)
+		k.PUT("/tags", middleware.RequireScope(types.ScopeDocWrite), g.Contributor(), handler.UpdateKnowledgeTagBatch)
+		k.GET("/search", middleware.RequireScope(types.ScopeDocRead), g.Viewer(), handler.SearchKnowledge)
+		k.POST("/batch-delete", middleware.RequireScope(types.ScopeDocWrite), g.Contributor(), handler.BatchDeleteKnowledge)
+		k.POST("/move", middleware.RequireScope(types.ScopeDocWrite), g.Contributor(), handler.MoveKnowledge)
+		k.GET("/move/progress/:task_id", middleware.RequireScope(types.ScopeDocRead), g.Viewer(), handler.GetKnowledgeMoveProgress)
 	}
 }
 
@@ -377,20 +408,26 @@ func RegisterFAQRoutes(r *gin.RouterGroup, handler *handler.FAQHandler, g *rbacG
 }
 
 // RegisterKnowledgeBaseRoutes 注册知识库相关的路由
+//
+// RequireScope is prepended on every route so a scoped API key is enforced
+// on the KB surface (reads need kb:read, mutations need kb:write). JWT
+// callers bypass RequireScope and are authorised by the role/ownership
+// guards as before; the legacy tenant-wide Tenant.APIKey authenticates with
+// the "*" super scope and is likewise unaffected.
 func RegisterKnowledgeBaseRoutes(r *gin.RouterGroup, handler *handler.KnowledgeBaseHandler, g *rbacGuards) {
 	// 知识库路由组
 	kb := r.Group("/knowledge-bases")
 	{
 		// 创建知识库 — Contributor+ (no :id, role-only floor)
-		kb.POST("", g.Contributor(), handler.CreateKnowledgeBase)
+		kb.POST("", middleware.RequireScope(types.ScopeKBWrite), g.Contributor(), handler.CreateKnowledgeBase)
 		// 获取知识库列表 — Viewer+ (no :id, role-only floor)
-		kb.GET("", g.Viewer(), handler.ListKnowledgeBases)
+		kb.GET("", middleware.RequireScope(types.ScopeKBRead), g.Viewer(), handler.ListKnowledgeBases)
 		// 获取知识库详情 — Viewer+ 且对 KB 有 read 权限
-		kb.GET("/:id", g.Viewer(), g.KBAccessRead("id"), handler.GetKnowledgeBase)
+		kb.GET("/:id", middleware.RequireScope(types.ScopeKBRead), g.Viewer(), g.KBAccessRead("id"), handler.GetKnowledgeBase)
 		// 更新知识库 — 创建者本人 OR Admin+ 且对 KB 有 write 权限
-		kb.PUT("/:id", g.OwnedKBOrAdmin(), g.KBAccessWrite("id"), handler.UpdateKnowledgeBase)
+		kb.PUT("/:id", middleware.RequireScope(types.ScopeKBWrite), g.OwnedKBOrAdmin(), g.KBAccessWrite("id"), handler.UpdateKnowledgeBase)
 		// 删除知识库 — 创建者本人 OR Admin+ 且对 KB 有 write 权限
-		kb.DELETE("/:id", g.OwnedKBOrAdmin(), g.KBAccessWrite("id"), handler.DeleteKnowledgeBase)
+		kb.DELETE("/:id", middleware.RequireScope(types.ScopeKBWrite), g.OwnedKBOrAdmin(), g.KBAccessWrite("id"), handler.DeleteKnowledgeBase)
 		// 置顶/取消置顶知识库 — 创建者本人 OR Admin+ 且对 KB 有 write 权限
 		// Pin state is now per-(user, kb) (migration 000050). Anyone with
 		// at least Viewer-level read access to the KB — including users
@@ -398,17 +435,17 @@ func RegisterKnowledgeBaseRoutes(r *gin.RouterGroup, handler *handler.KnowledgeB
 		// no edit permission is required. The OwnedKBOrAdmin guard was
 		// removed accordingly. The route still requires KB read access
 		// so callers can't poke at KBs they can't see.
-		kb.PUT("/:id/pin", g.Viewer(), g.KBAccessRead("id"), handler.TogglePinKnowledgeBase)
+		kb.PUT("/:id/pin", middleware.RequireScope(types.ScopeKBRead), g.Viewer(), g.KBAccessRead("id"), handler.TogglePinKnowledgeBase)
 		// 混合搜索 — Viewer+ 且对 KB 有 read 权限 (read-only)
 		// POST is preferred; GET with JSON body is kept for backward compatibility (#1727).
-		kb.POST("/:id/hybrid-search", g.Viewer(), g.KBAccessRead("id"), handler.HybridSearch)
-		kb.GET("/:id/hybrid-search", g.Viewer(), g.KBAccessRead("id"), handler.HybridSearch)
+		kb.POST("/:id/hybrid-search", middleware.RequireScope(types.ScopeKBRead), g.Viewer(), g.KBAccessRead("id"), handler.HybridSearch)
+		kb.GET("/:id/hybrid-search", middleware.RequireScope(types.ScopeKBRead), g.Viewer(), g.KBAccessRead("id"), handler.HybridSearch)
 		// 拷贝知识库 — Contributor+ (副本归调用者所有；不需要原 KB 的所有权)
-		kb.POST("/copy", g.Contributor(), handler.CopyKnowledgeBase)
+		kb.POST("/copy", middleware.RequireScope(types.ScopeKBWrite), g.Contributor(), handler.CopyKnowledgeBase)
 		// 获取知识库复制进度 — Viewer+
-		kb.GET("/copy/progress/:task_id", g.Viewer(), handler.GetKBCloneProgress)
+		kb.GET("/copy/progress/:task_id", middleware.RequireScope(types.ScopeKBRead), g.Viewer(), handler.GetKBCloneProgress)
 		// 获取可移动目标知识库列表 — Viewer+ 且对 KB 有 read 权限
-		kb.GET("/:id/move-targets", g.Viewer(), g.KBAccessRead("id"), handler.ListMoveTargets)
+		kb.GET("/:id/move-targets", middleware.RequireScope(types.ScopeKBRead), g.Viewer(), g.KBAccessRead("id"), handler.ListMoveTargets)
 	}
 }
 
@@ -486,20 +523,26 @@ func RegisterSessionRoutes(r *gin.RouterGroup, handler *session.Handler, g *rbac
 // RegisterChatRoutes 注册路由。Chat endpoints are tenant-member usage
 // surfaces; Viewer+ is sufficient because per-session/per-agent
 // authorisation is enforced inside the handlers.
+// RegisterChatRoutes wires the conversational Q&A surface. RequireScope
+// enforces the chat scope on knowledge-chat / knowledge-search and the
+// agent:run scope on agent-chat for API-key callers; JWT callers and the
+// legacy "*" master key bypass it. A scoped integration key can therefore
+// be limited to "may chat, may not mutate KBs" (chat) or "may run agents,
+// may not read KB listings" (agent:run) without affecting JWT users.
 func RegisterChatRoutes(r *gin.RouterGroup, handler *session.Handler, g *rbacGuards) {
-	knowledgeChat := r.Group("/knowledge-chat", g.Viewer())
+	knowledgeChat := r.Group("/knowledge-chat", middleware.RequireScope(types.ScopeChat), g.Viewer())
 	{
 		knowledgeChat.POST("/:session_id", handler.KnowledgeQA)
 	}
 
 	// Agent-based chat
-	agentChat := r.Group("/agent-chat", g.Viewer())
+	agentChat := r.Group("/agent-chat", middleware.RequireScope(types.ScopeAgentRun), g.Viewer())
 	{
 		agentChat.POST("/:session_id", handler.AgentQA)
 	}
 
 	// 新增知识检索接口，不需要session_id
-	knowledgeSearch := r.Group("/knowledge-search", g.Viewer())
+	knowledgeSearch := r.Group("/knowledge-search", middleware.RequireScope(types.ScopeChat), g.Viewer())
 	{
 		knowledgeSearch.POST("", handler.SearchKnowledge)
 	}
@@ -749,6 +792,49 @@ func RegisterMyInvitationRoutes(r *gin.RouterGroup, invitationHandler *handler.T
 		me.POST("/invitations/:inv_id/accept", invitationHandler.AcceptMyInvitation)
 		me.POST("/invitations/:inv_id/decline", invitationHandler.DeclineMyInvitation)
 	}
+}
+
+// RegisterAPIKeyRoutes wires the scoped API-key CRUD under /api-keys
+// (review 4.5). All three routes are Admin-gated for JWT callers (managing
+// credentials is an admin operation); RequireScope(admin:apikeys) additionally
+// constrains callers that authenticate with an API key — e.g. a rotation
+// script holding admin:apikeys — while JWT callers bypass the scope check
+// and are authorised by role alone. The plaintext secret is returned only on
+// POST (creation); GET never carries it. handler may be nil in builds without
+// the API-key dependency wired (no-op registration beats a startup crash).
+func RegisterAPIKeyRoutes(r *gin.RouterGroup, h *handler.APIKeyHandler, g *rbacGuards) {
+	if h == nil {
+		return
+	}
+	keys := r.Group("/api-keys", middleware.RequireScope(types.ScopeAdminAPIKeys))
+	{
+		keys.POST("", g.Admin(), h.CreateAPIKey)
+		keys.GET("", g.Admin(), h.ListAPIKeys)
+		keys.DELETE("/:id", g.Admin(), h.RevokeAPIKey)
+	}
+}
+
+// RegisterArtifactRoutes wires the generated-artifact CRUD (review 4.2).
+// Reads are Viewer+; mutations are Contributor+. RequireScope(chat) constrains
+// API-key callers (artifacts are products of chat/agent sessions, so a key
+// authorised to chat is authorised to manage its artifacts); JWT callers and
+// the legacy "*" master key bypass the scope check. The session-scoped list
+// mounts under /sessions/:session_id/artifacts for the chat/agent panel.
+// handler may be nil in builds without the artifact dependency wired.
+func RegisterArtifactRoutes(r *gin.RouterGroup, h *handler.ArtifactHandler, g *rbacGuards) {
+	if h == nil {
+		return
+	}
+	art := r.Group("/artifacts", middleware.RequireScope(types.ScopeChat))
+	{
+		art.POST("", g.Contributor(), h.CreateArtifact)
+		art.GET("", g.Viewer(), h.ListArtifacts)
+		art.GET("/:id", g.Viewer(), h.GetArtifact)
+		art.PUT("/:id/status", g.Contributor(), h.UpdateArtifactStatus)
+		art.DELETE("/:id", g.Contributor(), h.DeleteArtifact)
+	}
+	r.GET("/sessions/:session_id/artifacts",
+		middleware.RequireScope(types.ScopeChat), g.Viewer(), h.ListSessionArtifacts)
 }
 
 // RegisterAuthRoutes registers authentication routes
@@ -1293,10 +1379,11 @@ func RegisterIMChannelRoutes(r *gin.RouterGroup, imHandler *handler.IMHandler, g
 // trustedProxies returns the proxy CIDRs/IPs whose X-Forwarded-For headers
 // gin should trust when resolving the client IP. Defaults to loopback and
 // private ranges (covers the bundled nginx in a container network); override
-// with WEKNORA_TRUSTED_PROXIES (comma-separated). An explicit empty value
-// disables proxy trust entirely so ClientIP() returns the direct peer.
+// with TRUSTED_PROXIES (comma-separated; XINWIKI_* preferred, WEKNORA_* legacy).
+// An explicit empty value disables proxy trust entirely so ClientIP() returns
+// the direct peer.
 func trustedProxies() []string {
-	raw, ok := os.LookupEnv("WEKNORA_TRUSTED_PROXIES")
+	raw, ok := secutils.ResolveEnvNameLookup("WEKNORA_TRUSTED_PROXIES")
 	if !ok {
 		return []string{
 			"127.0.0.0/8",
@@ -1429,7 +1516,7 @@ func embedFrameAncestorsMiddleware(svc interfaces.EmbedChannelService) gin.Handl
 // from the ./web directory if it exists. Must be called BEFORE auth middleware
 // so static files are served without authentication.
 func serveFrontendStatic(r *gin.Engine) {
-	webDir := os.Getenv("WEKNORA_WEB_DIR")
+	webDir := secutils.ResolveEnv("WEB_DIR")
 	if webDir == "" {
 		webDir = "./web"
 	}

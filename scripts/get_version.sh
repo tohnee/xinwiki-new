@@ -68,7 +68,16 @@ EOF
         ;;
     "ldflags")
         # 输出Go ldflags格式
-        echo "-X 'github.com/Tencent/WeKnora/internal/handler.Version=$VERSION' -X 'github.com/Tencent/WeKnora/internal/handler.Edition=$EDITION' -X 'github.com/Tencent/WeKnora/internal/handler.CommitID=$COMMIT_ID' -X 'github.com/Tencent/WeKnora/internal/handler.BuildTime=$BUILD_TIME' -X 'github.com/Tencent/WeKnora/internal/handler.GoVersion=$GO_VERSION'"
+        # The module path was renamed from github.com/Tencent/WeKnora to
+        # github.com/Tencent/XinWiki during the brand migration. The old
+        # ldflag paths silently no-op'd (the `-X` flag points at a package
+        # that no longer exists, so the linker just drops it), which left
+        # handler.Edition stuck on its source-level default "standard"
+        # forever — the Lite auto-setup gate at internal/handler/auth.go:728
+        # and the Lite swagger gate at internal/router/router.go:172 never
+        # fired. Fixed by pointing at the real module path so the ldflag
+        # actually reaches the var.
+        echo "-X 'github.com/Tencent/XinWiki/internal/handler.Version=$VERSION' -X 'github.com/Tencent/XinWiki/internal/handler.Edition=$EDITION' -X 'github.com/Tencent/XinWiki/internal/handler.CommitID=$COMMIT_ID' -X 'github.com/Tencent/XinWiki/internal/handler.BuildTime=$BUILD_TIME' -X 'github.com/Tencent/XinWiki/internal/handler.GoVersion=$GO_VERSION'"
         ;;
     "info")
         # 输出信息格式

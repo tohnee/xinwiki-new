@@ -8,13 +8,13 @@ package main
 
 import (
 	"context"
-	"os"
 	"strings"
 
 	"go.uber.org/dig"
 
 	"github.com/Tencent/XinWiki/internal/logger"
 	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/utils"
 )
 
 // bootstrapEnvVar is the env var that names the email of the user who
@@ -38,7 +38,9 @@ const bootstrapEnvVar = "WEKNORA_BOOTSTRAP_SYSTEM_ADMIN_EMAIL"
 // here as additional dig.Invoke calls.
 func runStartupBootstrap(c *dig.Container) {
 	ctx := context.Background()
-	email := strings.TrimSpace(os.Getenv(bootstrapEnvVar))
+	// ResolveEnvName prefers XINWIKI_BOOTSTRAP_SYSTEM_ADMIN_EMAIL and falls
+	// back to the legacy WEKNORA_* name, so existing deployments keep working.
+	email := strings.TrimSpace(utils.ResolveEnvName(bootstrapEnvVar))
 	if email == "" {
 		return
 	}

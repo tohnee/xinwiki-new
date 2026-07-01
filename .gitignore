@@ -55,6 +55,10 @@ Claude.md
 configure-ollama.sh
 fix-docker.sh
 
+# Docker镜像产物（二进制大文件，不入库）
+docker/images/amd64/
+docker/images/*.tar.gz
+docker/images/*.tar.gz.sha256
+
 # WeChat Mini Program local/private configuration
 miniprogram/project.private.config.json
-tar.gz

@@ -73,3 +73,51 @@ builtin_models: []
 #       base_url: https://api.openai.com/v1
 #       api_key: ${OPENAI_API_KEY}
 #       provider: openai
+#
+# ----- Pricing example (USD per 1,000,000 tokens) ---------------------------
+#
+# `input_price_per_million` / `output_price_per_million` / `cached_input_price_per_million`
+# are optional but recommended for any model you actually use for chat / RAG.
+# When left at zero the cost dashboard silently reports $0 for calls to the
+# model, and CalculateCost returns 0 — so agent runs go uncosted even when a
+# real upstream bill is being racked up. Re-applied on every startup, so editing
+# the YAML + restart reconciles price changes on an existing row.
+#
+# OpenAI / DeepSeek / Azure / etc. treat the cached portion of prompt_tokens
+# as a SUBSET of the prompt and bill it at cached_input_price_per_million.
+# Leave the field at zero for those providers to fall back to the full input
+# rate (i.e. no discount).
+#
+# Anthropic uses ADDITIVE cache billing: cache_read and cache_creation tokens
+# are reported as SEPARATE events, additive to input_tokens, and billed at
+# distinct rates (~0.1x input for cache_read, ~1.25x input for cache_creation).
+# The loader's default for cached_input_price_per_million=0 maps to a 0.1x
+# ratio for Anthropic cache_read. For non-Anthropic providers 0 means "fall
+# back to no discount" instead, so set it explicitly when OpenAI-style caching
+# applies.
+#
+# builtin_models:
+#   - id: builtin-openai-chat
+#     name: gpt-4o
+#     type: KnowledgeQA
+#     source: remote
+#     parameters:
+#       base_url: https://api.openai.com/v1
+#       api_key: ${OPENAI_API_KEY}
+#       provider: openai
+#     input_price_per_million: 2.5
+#     output_price_per_million: 10.0
+#     cached_input_price_per_million: 1.25   # OpenAI prompt-cache: 50% discount
+#   - id: builtin-anthropic-sonnet
+#     name: claude-3-5-sonnet-20241022
+#     type: KnowledgeQA
+#     source: remote
+#     parameters:
+#       base_url: https://api.anthropic.com
+#       api_key: ${ANTHROPIC_API_KEY}
+#       provider: anthropic
+#     input_price_per_million: 3.0
+#     output_price_per_million: 15.0
+#     # Anthropic: leaving this at 0 falls back to the published 0.1x ratio
+#     # — cache_creation is always priced at 1.25x input_price_per_million.
+#     cached_input_price_per_million: 0.3
