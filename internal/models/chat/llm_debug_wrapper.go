@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -39,7 +40,13 @@ func (d *debugChat) ChatStream(ctx context.Context, messages []Message, opts *Ch
 
 	wrapped := make(chan types.StreamResponse)
 	go func() {
-		defer close(wrapped)
+		defer func() {
+			if r := recover(); r != nil {
+				logger.ErrorWithFields(ctx, fmt.Errorf("llm_debug_wrapper stream copier panicked: %v", r),
+					logger.Fields{"stacktrace": string(debug.Stack()), "model": d.inner.GetModelName()})
+			}
+			close(wrapped)
+		}()
 		var content strings.Builder
 		var usage *types.TokenUsage
 		var toolCalls []types.LLMToolCall

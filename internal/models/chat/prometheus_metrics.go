@@ -2,11 +2,14 @@ package chat
 
 import (
 	"context"
+	"fmt"
+	"runtime/debug"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
+	"github.com/Tencent/XinWiki/internal/logger"
 	"github.com/Tencent/XinWiki/internal/types"
 )
 
@@ -108,7 +111,14 @@ func (p *prometheusChat) ChatStream(ctx context.Context, messages []Message, opt
 
 	outCh := make(chan types.StreamResponse, 32)
 	go func() {
-		defer close(outCh)
+		defer func() {
+			if r := recover(); r != nil {
+				logger.ErrorWithFields(ctx, fmt.Errorf("prometheus_metrics stream copier panicked: %v", r),
+					logger.Fields{"model": model, "provider": p.provider, "stacktrace": string(debug.Stack())})
+				llmActiveRequests.WithLabelValues(model, "stream").Dec()
+			}
+			close(outCh)
+		}()
 		result := "success"
 		chunks := 0
 		var finalUsage *types.TokenUsage

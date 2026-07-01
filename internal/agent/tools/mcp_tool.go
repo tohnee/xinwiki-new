@@ -437,15 +437,20 @@ func RegisterMCPTools(
 		return nil
 	}
 
-	// Use provided context, but don't add timeout here
-	// The GetOrCreateClient has its own timeout for connection/init
-	// For ListTools, we use a reasonable timeout to prevent hanging
-	// but longer than before since ListTools may need time for SSE communication
+	// Use provided context, but ensure there is a bounding timeout for the
+	// ListTools call. We check ctx.Deadline() (rather than comparing against
+	// context.Background()) because callers may pass a derived-with-values
+	// context that has no deadline, and the old equality check would miss
+	// that case — leaving ListTools to hang indefinitely if the MCP server
+	// never responds. If no deadline is set (or the existing deadline is
+	// further out than our safety bound), apply a default 30s timeout.
 	listToolsTimeout := 30 * time.Second
-	if ctx == nil || ctx == context.Background() {
-		// If no context provided, create one with timeout
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if deadline, ok := ctx.Deadline(); !ok || time.Until(deadline) > listToolsTimeout {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(context.Background(), listToolsTimeout)
+		ctx, cancel = context.WithTimeout(ctx, listToolsTimeout)
 		defer cancel()
 	}
 
@@ -454,67 +459,73 @@ func RegisterMCPTools(
 			continue
 		}
 
-		// Get or create client (this may take time, but has its own timeout)
-		client, err := mcpManager.GetOrCreateClient(ctx, service)
-		if err != nil {
-			logger.GetLogger(ctx).Errorf("Failed to create MCP client for service %s: %v", service.Name, err)
-			continue
-		}
-
-		// For stdio transport, ensure connection is released after listing tools
-		isStdio := service.TransportType == types.MCPTransportStdio
-		if isStdio {
-			defer func() {
-				if err := client.Disconnect(); err != nil {
-					logger.GetLogger(ctx).Warnf("Failed to disconnect stdio MCP client after listing tools: %v", err)
-				}
-			}()
-		}
-
-		// List tools from the service with timeout.
-		// If the cached connection is stale, disconnect and retry once.
-		listCtx, cancel := context.WithTimeout(ctx, listToolsTimeout)
-		mcpTools, err := client.ListTools(listCtx)
-		cancel()
-
-		if err != nil && !isStdio {
-			logger.GetLogger(ctx).Warnf("Failed to list tools from MCP service %s (will retry with fresh connection): %v", service.Name, err)
-			_ = client.Disconnect()
-
-			client, err = mcpManager.GetOrCreateClient(ctx, service)
+		// Wrap per-service work in a closure so defers run at the end of each
+		// iteration instead of piling up until the function returns (which
+		// would leak stdio MCP client connections when many services are
+		// registered).
+		func() {
+			// Get or create client (this may take time, but has its own timeout)
+			client, err := mcpManager.GetOrCreateClient(ctx, service)
 			if err != nil {
-				logger.GetLogger(ctx).Errorf("Failed to reconnect MCP client for service %s: %v", service.Name, err)
-				continue
+				logger.GetLogger(ctx).Errorf("Failed to create MCP client for service %s: %v", service.Name, err)
+				return
 			}
 
-			retryCtx, retryCancel := context.WithTimeout(ctx, listToolsTimeout)
-			mcpTools, err = client.ListTools(retryCtx)
-			retryCancel()
-		}
+			// For stdio transport, ensure connection is released after listing tools
+			isStdio := service.TransportType == types.MCPTransportStdio
+			if isStdio {
+				defer func() {
+					if err := client.Disconnect(); err != nil {
+						logger.GetLogger(ctx).Warnf("Failed to disconnect stdio MCP client after listing tools: %v", err)
+					}
+				}()
+			}
 
-		if err != nil {
-			logger.GetLogger(ctx).Errorf("Failed to list tools from MCP service %s: %v", service.Name, err)
-			continue
-		}
+			// List tools from the service with timeout.
+			// If the cached connection is stale, disconnect and retry once.
+			listCtx, cancel := context.WithTimeout(ctx, listToolsTimeout)
+			mcpTools, err := client.ListTools(listCtx)
+			cancel()
 
-		// Register each tool
-		for _, mcpTool := range mcpTools {
-			tool := NewMCPTool(service, mcpTool, mcpManager, gate)
-			toolName := tool.Name()
+			if err != nil && !isStdio {
+				logger.GetLogger(ctx).Warnf("Failed to list tools from MCP service %s (will retry with fresh connection): %v", service.Name, err)
+				_ = client.Disconnect()
 
-			// Check for name collision before registering (first-wins policy).
-			if existing, err := registry.GetTool(toolName); err == nil {
-				if mcpExisting, ok := existing.(*MCPTool); ok && mcpExisting.service.ID != service.ID {
-					logger.GetLogger(ctx).Warnf(
-						"MCP tool name collision: %q from service %q conflicts with service %q — skipped (first-wins)",
-						toolName, service.Name, mcpExisting.service.Name,
-					)
+				client, err = mcpManager.GetOrCreateClient(ctx, service)
+				if err != nil {
+					logger.GetLogger(ctx).Errorf("Failed to reconnect MCP client for service %s: %v", service.Name, err)
+					return
 				}
+
+				retryCtx, retryCancel := context.WithTimeout(ctx, listToolsTimeout)
+				mcpTools, err = client.ListTools(retryCtx)
+				retryCancel()
 			}
 
-			registry.RegisterTool(tool)
-			logger.GetLogger(ctx).Infof("Registered MCP tool: %s from service: %s", toolName, service.Name)
-		}
+			if err != nil {
+				logger.GetLogger(ctx).Errorf("Failed to list tools from MCP service %s: %v", service.Name, err)
+				return
+			}
+
+			// Register each tool
+			for _, mcpTool := range mcpTools {
+				tool := NewMCPTool(service, mcpTool, mcpManager, gate)
+				toolName := tool.Name()
+
+				// Check for name collision before registering (first-wins policy).
+				if existing, err := registry.GetTool(toolName); err == nil {
+					if mcpExisting, ok := existing.(*MCPTool); ok && mcpExisting.service.ID != service.ID {
+						logger.GetLogger(ctx).Warnf(
+							"MCP tool name collision: %q from service %q conflicts with service %q — skipped (first-wins)",
+							toolName, service.Name, mcpExisting.service.Name,
+						)
+					}
+				}
+
+				registry.RegisterTool(tool)
+				logger.GetLogger(ctx).Infof("Registered MCP tool: %s from service: %s", toolName, service.Name)
+			}
+		}()
 	}
 
 	return nil

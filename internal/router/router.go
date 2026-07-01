@@ -3,7 +3,9 @@ package router
 import (
 	"context"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -144,10 +146,14 @@ func NewRouter(params RouterParams) *gin.Engine {
 	// this handler just exposes that registry so an external scraper can pull
 	// them. Auth middleware whitelists it (see middleware/auth.go noAuthAPI)
 	// because kube-style probes and scrapers usually cannot present a bearer
-	// token. If an operator needs authenticated scraping they should put a
-	// reverse-proxy auth gate in front rather than coupling metrics to the
-	// app's session model.
-	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	// token.
+	//
+	// To prevent metrics leaking over the public internet, by default only
+	// loopback/private-IP requests are allowed (i.e., a scraper on the same
+	// host or a reverse proxy on the private network). Set
+	// METRICS_ALLOW_PUBLIC=true to disable the restriction (e.g. when the
+	// operator already has a separate auth gate or network policy).
+	r.GET("/metrics", metricsAccessGuard(), gin.WrapH(promhttp.Handler()))
 
 	// Swagger API 文档（仅在非生产环境下启用）
 	// 通过 GIN_MODE 环境变量判断：release 模式下禁用 Swagger
@@ -1436,21 +1442,88 @@ func buildCORSOriginFunc(cfg *config.Config) func(origin string) bool {
 			return true
 		}
 		if hasWildcard {
-			if strings.HasPrefix(origin, "http://localhost") ||
-				strings.HasPrefix(origin, "http://127.0.0.1") {
+			if isLocalhostOrigin(origin) {
 				return true
 			}
 			logger.Warnf(context.Background(), "[CORS] wildcard '*' with credentials is not allowed; rejecting origin: %s", origin)
 			return false
 		}
 		if len(allowed) == 0 {
-			if strings.HasPrefix(origin, "http://localhost") ||
-				strings.HasPrefix(origin, "http://127.0.0.1") {
+			if isLocalhostOrigin(origin) {
 				return true
 			}
 		}
 		return false
 	}
+}
+
+// isLocalhostOrigin reports whether origin is a localhost/loopback development
+// origin. It parses the origin URL and checks the hostname exactly, avoiding
+// prefix-matching bypasses like "http://localhost.evil.com" which would pass a
+// naive strings.HasPrefix check.
+func isLocalhostOrigin(origin string) bool {
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	host := u.Hostname()
+	return host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "0.0.0.0"
+}
+
+// metricsAccessGuard restricts /metrics to loopback and private-network
+// requesters unless METRICS_ALLOW_PUBLIC=true is set in the environment. It
+// uses c.ClientIP() which honours X-Forwarded-For / X-Real-IP when the
+// router is configured with TrustedPlatform, falling back to RemoteAddr.
+// This keeps operational metrics (request counts, latency histograms, Go
+// runtime stats) from leaking to the public internet while still allowing
+// a local Prometheus or sidecar scraper to work out of the box.
+func metricsAccessGuard() gin.HandlerFunc {
+	allowPublic := strings.EqualFold(strings.TrimSpace(os.Getenv("METRICS_ALLOW_PUBLIC")), "true")
+	return func(c *gin.Context) {
+		if allowPublic {
+			c.Next()
+			return
+		}
+		ip := c.ClientIP()
+		if isLoopbackOrPrivateIP(ip) {
+			c.Next()
+			return
+		}
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "metrics endpoint not accessible from this address"})
+	}
+}
+
+// isLoopbackOrPrivateIP reports whether ip is a loopback, link-local, or
+// RFC1918/ULA private address. It accepts bare hostnames (no port) as
+// returned by c.ClientIP().
+func isLoopbackOrPrivateIP(ip string) bool {
+	ip = strings.TrimSpace(ip)
+	if ip == "" {
+		return false
+	}
+	// Fast path for common loopback strings before net.ParseIP.
+	switch ip {
+	case "127.0.0.1", "::1", "localhost", "0.0.0.0":
+		return true
+	}
+	// Strip any IPv6 zone identifier (e.g. "fe80::1%eth0").
+	if i := strings.IndexByte(ip, '%'); i >= 0 {
+		ip = ip[:i]
+	}
+	parsed := net.ParseIP(ip)
+	if parsed == nil {
+		return false
+	}
+	if parsed.IsLoopback() || parsed.IsLinkLocalUnicast() || parsed.IsPrivate() || parsed.IsUnspecified() {
+		return true
+	}
+	// Unique Local Addresses (fc00::/7) — IsPrivate() covers these in Go 1.17+
+	// but we check the CIDR explicitly for older runtimes.
+	_, cidrULA, _ := net.ParseCIDR("fc00::/7")
+	if cidrULA != nil && cidrULA.Contains(parsed) {
+		return true
+	}
+	return false
 }
 
 // embedChannelIDFromPath extracts the channel id from an /embed/:channelID path.

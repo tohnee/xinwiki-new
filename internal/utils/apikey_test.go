@@ -59,7 +59,10 @@ func TestVerifyAPIKeyHash_EmptyHash(t *testing.T) {
 // TestGenerateAPIKeySecret_Format: the generated secret has the sk_ prefix and
 // reasonable entropy; the prefix is a short display fragment of the secret.
 func TestGenerateAPIKeySecret_Format(t *testing.T) {
-	secret, prefix := GenerateAPIKeySecret()
+	secret, prefix, err := GenerateAPIKeySecret()
+	if err != nil {
+		t.Fatalf("GenerateAPIKeySecret returned error: %v", err)
+	}
 	if !strings.HasPrefix(secret, "sk_") {
 		t.Errorf("secret 应以 'sk_' 开头，实际 %q", secret)
 	}
@@ -73,8 +76,14 @@ func TestGenerateAPIKeySecret_Format(t *testing.T) {
 
 // TestGenerateAPIKeySecret_Unique: two generations produce distinct secrets.
 func TestGenerateAPIKeySecret_Unique(t *testing.T) {
-	s1, _ := GenerateAPIKeySecret()
-	s2, _ := GenerateAPIKeySecret()
+	s1, _, err := GenerateAPIKeySecret()
+	if err != nil {
+		t.Fatalf("GenerateAPIKeySecret returned error: %v", err)
+	}
+	s2, _, err := GenerateAPIKeySecret()
+	if err != nil {
+		t.Fatalf("GenerateAPIKeySecret returned error: %v", err)
+	}
 	if s1 == s2 {
 		t.Errorf("两次生成的 secret 不应相同")
 	}
@@ -83,7 +92,10 @@ func TestGenerateAPIKeySecret_Unique(t *testing.T) {
 // TestGenerateAPIKeyID_Format: the generated key ID has the ak_ prefix and
 // enough entropy to be globally unique across a tenant's keys.
 func TestGenerateAPIKeyID_Format(t *testing.T) {
-	id := GenerateAPIKeyID()
+	id, err := GenerateAPIKeyID()
+	if err != nil {
+		t.Fatalf("GenerateAPIKeyID returned error: %v", err)
+	}
 	if !strings.HasPrefix(id, "ak_") {
 		t.Errorf("id 应以 'ak_' 开头，实际 %q", id)
 	}
@@ -94,7 +106,12 @@ func TestGenerateAPIKeyID_Format(t *testing.T) {
 
 // TestGenerateAPIKeyID_Unique: two generations produce distinct IDs.
 func TestGenerateAPIKeyID_Unique(t *testing.T) {
-	if GenerateAPIKeyID() == GenerateAPIKeyID() {
+	id1, err1 := GenerateAPIKeyID()
+	id2, err2 := GenerateAPIKeyID()
+	if err1 != nil || err2 != nil {
+		t.Fatalf("GenerateAPIKeyID returned error: err1=%v, err2=%v", err1, err2)
+	}
+	if id1 == id2 {
 		t.Errorf("两次生成的 id 不应相同")
 	}
 }
@@ -102,7 +119,10 @@ func TestGenerateAPIKeyID_Unique(t *testing.T) {
 // TestGenerateArtifactID_Format: the generated artifact ID has the art_ prefix
 // and enough entropy to be globally unique.
 func TestGenerateArtifactID_Format(t *testing.T) {
-	id := GenerateArtifactID()
+	id, err := GenerateArtifactID()
+	if err != nil {
+		t.Fatalf("GenerateArtifactID returned error: %v", err)
+	}
 	if !strings.HasPrefix(id, "art_") {
 		t.Errorf("artifact id 应以 'art_' 开头，实际 %q", id)
 	}
@@ -113,7 +133,12 @@ func TestGenerateArtifactID_Format(t *testing.T) {
 
 // TestGenerateArtifactID_Unique: two generations produce distinct IDs.
 func TestGenerateArtifactID_Unique(t *testing.T) {
-	if GenerateArtifactID() == GenerateArtifactID() {
+	id1, err1 := GenerateArtifactID()
+	id2, err2 := GenerateArtifactID()
+	if err1 != nil || err2 != nil {
+		t.Fatalf("GenerateArtifactID returned error: err1=%v, err2=%v", err1, err2)
+	}
+	if id1 == id2 {
 		t.Errorf("两次生成的 artifact id 不应相同")
 	}
 }

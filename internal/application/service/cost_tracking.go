@@ -19,6 +19,12 @@ type CostTrackingService struct {
 	callLogRepo     interfaces.LLMCallLogRepository
 }
 
+// logCallTimeout bounds how long a single cost-log write may take. Cost
+// logging runs on the hot path of chat completion (and sometimes in a
+// background goroutine after the request has returned); a DB stall must
+// not block callers indefinitely or leak goroutines on shutdown.
+const logCallTimeout = 5 * time.Second
+
 // NewCostTrackingService creates a new cost tracking service
 func NewCostTrackingService(
 	db *gorm.DB,
@@ -32,7 +38,14 @@ func NewCostTrackingService(
 	}
 }
 
-// LogCall records a single LLM call with automatic cost calculation
+// LogCall records a single LLM call with automatic cost calculation.
+//
+// The incoming ctx is used for tracing / log correlation only; a fresh
+// 5-second timeout context is derived from context.Background() for the
+// actual DB writes so that (a) logging cost data never blocks a chat
+// response longer than that budget, and (b) cost records are not silently
+// dropped because the caller's request context was cancelled right as the
+// response completed (a very common timing for post-completion bookkeeping).
 func (s *CostTrackingService) LogCall(
 	ctx context.Context,
 	log *types.LLMCallLog,
@@ -41,9 +54,16 @@ func (s *CostTrackingService) LogCall(
 		return fmt.Errorf("log cannot be nil")
 	}
 
-	// Calculate cost if model pricing is available
+	// Derive a bounded independent context for the DB operations. Use
+	// context.WithoutCancel to preserve trace/logging values from the
+	// caller while detaching from the caller's cancellation (so cost
+	// records aren't lost when the request ends), then apply our own
+	// timeout to avoid hanging forever if the DB is unhealthy.
+	writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), logCallTimeout)
+	defer cancel()
+
 	if log.ModelID != "" && log.EstimatedCost == 0 {
-		model, err := s.modelRepo.GetByIDAnyTenant(ctx, log.ModelID)
+		model, err := s.modelRepo.GetByIDAnyTenant(writeCtx, log.ModelID)
 		if err == nil && model != nil {
 			usage := &types.TokenUsage{
 				PromptTokens:     log.PromptTokens,
@@ -58,7 +78,7 @@ func (s *CostTrackingService) LogCall(
 		log.TotalTokens = log.PromptTokens + log.CompletionTokens
 	}
 
-	return s.callLogRepo.Create(ctx, log)
+	return s.callLogRepo.Create(writeCtx, log)
 }
 
 // LogCallWithUsage is a convenience method to log a call with TokenUsage

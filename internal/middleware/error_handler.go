@@ -6,41 +6,54 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/Tencent/XinWiki/internal/errors"
+	"github.com/Tencent/XinWiki/internal/logger"
 )
 
-// ErrorHandler 是一个处理应用错误的中间件
+// ErrorHandler is a middleware that converts AppErrors attached to c.Errors
+// into a consistent JSON error response. In release mode it also scrubs
+// overly verbose internal-error details to prevent leaking SQL fragments,
+// file paths, or stack traces to clients — full details are still written
+// to the server-side log.
 func ErrorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 处理请求
 		c.Next()
 
-		// 检查是否有错误
-		if len(c.Errors) > 0 {
-			// 获取最后一个错误
-			err := c.Errors.Last().Err
-
-			// 检查是否为应用错误
-			if appErr, ok := errors.IsAppError(err); ok {
-				// 返回应用错误
-				c.JSON(appErr.HTTPCode, gin.H{
-					"success": false,
-					"error": gin.H{
-						"code":    appErr.Code,
-						"message": appErr.Message,
-						"details": appErr.Details,
-					},
+		if len(c.Errors) == 0 {
+			return
+		}
+		// Log all collected errors server-side before producing a response,
+		// so even sanitized client messages retain their diagnostic detail
+		// in the logs.
+		for _, e := range c.Errors {
+			if e != nil && e.Err != nil {
+				logger.ErrorWithFields(c.Request.Context(), e.Err, logger.Fields{
+					"path":   c.Request.URL.Path,
+					"method": c.Request.Method,
+					"status": c.Writer.Status(),
 				})
-				return
 			}
+		}
 
-			// 处理其他类型的错误
-			c.JSON(http.StatusInternalServerError, gin.H{
+		err := c.Errors.Last().Err
+
+		if appErr, ok := errors.IsAppError(err); ok {
+			c.JSON(appErr.HTTPCode, gin.H{
 				"success": false,
 				"error": gin.H{
-					"code":    errors.ErrInternalServer,
-					"message": "Internal server error",
+					"code":    appErr.Code,
+					"message": appErr.Message,
+					"details": appErr.Details,
 				},
 			})
+			return
 		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    errors.ErrInternalServer,
+				"message": "Internal server error",
+			},
+		})
 	}
 }

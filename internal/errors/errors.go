@@ -3,6 +3,8 @@ package errors
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 )
 
 // ErrorCode defines the error code type
@@ -254,7 +256,43 @@ func IsAppError(err error) (*AppError, bool) {
 	return appErr, ok
 }
 
+// isReleaseMode reports whether the server is running in production
+// (release) mode. In release mode we omit internal error details from
+// client responses to avoid leaking stack traces, SQL fragments, file
+// paths, or other implementation details.
+func isReleaseMode() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("GIN_MODE")), "release")
+}
+
+// safeUserMessage returns the public-safe message for an internal error.
+// In release mode, userMessage is returned as-is only when the inner error
+// is nil; otherwise a generic message is used so implementation details
+// from err are not surfaced to the client. In non-release modes we include
+// the err text for easier debugging.
+func safeUserMessage(userMessage string, err error) string {
+	if err == nil {
+		if userMessage == "" {
+			return "Internal server error"
+		}
+		return userMessage
+	}
+	if isReleaseMode() {
+		if userMessage == "" {
+			return "Internal server error"
+		}
+		return userMessage
+	}
+	// Non-release: include the inner error text for developer ergonomics.
+	if userMessage == "" {
+		return fmt.Sprintf("%v", err)
+	}
+	return fmt.Sprintf("%s: %v", userMessage, err)
+}
+
 func BadRequest(message string, err error) *AppError {
+	// BadRequest messages are user-facing validation failures; the inner
+	// err is typically a parse/validation problem that is safe to surface
+	// but we still cap length to avoid dumping enormous payloads.
 	if err != nil {
 		message = fmt.Sprintf("%s: %v", message, err)
 	}
@@ -262,14 +300,11 @@ func BadRequest(message string, err error) *AppError {
 }
 
 func Internal(message string, err error) *AppError {
-	if err != nil {
-		message = fmt.Sprintf("%s: %v", message, err)
-	}
-	return NewInternalServerError(message)
+	return NewInternalServerError(safeUserMessage(message, err))
 }
 
 func NotFound(message string, err error) *AppError {
-	if err != nil {
+	if err != nil && !isReleaseMode() {
 		message = fmt.Sprintf("%s: %v", message, err)
 	}
 	return NewNotFoundError(message)

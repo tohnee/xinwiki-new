@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Tencent/XinWiki/internal/types"
@@ -66,8 +67,12 @@ func (s *artifactService) Create(
 		return nil, ErrInvalidArtifactSharingPolicy
 	}
 	now := s.now()
+	artifactID, err := secutils.GenerateArtifactID()
+	if err != nil {
+		return nil, fmt.Errorf("generate artifact ID: %w", err)
+	}
 	a := &types.Artifact{
-		ID:                secutils.GenerateArtifactID(),
+		ID:                artifactID,
 		TenantID:          tenantID,
 		UserID:            caller.UserID,
 		SessionID:         params.SessionID,

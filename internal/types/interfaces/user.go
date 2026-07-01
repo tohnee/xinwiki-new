@@ -14,6 +14,12 @@ type UserService interface {
 	Login(ctx context.Context, req *types.LoginRequest) (*types.LoginResponse, error)
 	// GetOIDCAuthorizationURL builds the third-party OIDC authorization URL
 	GetOIDCAuthorizationURL(ctx context.Context, redirectURI string) (*types.OIDCAuthURLResponse, error)
+	// ConsumeOIDCState validates the state parameter received in the OIDC
+	// callback and returns the redirect URI that was bound to it at
+	// authorization time. A missing/invalid/expired/already-consumed state
+	// returns an error. On success the state is atomically deleted so it
+	// cannot be replayed (CSRF / login-CSRF protection).
+	ConsumeOIDCState(ctx context.Context, state string) (redirectURI string, err error)
 	// LoginWithOIDC exchanges the callback code, auto-provisions users if needed, and completes login
 	LoginWithOIDC(ctx context.Context, code, redirectURI string) (*types.OIDCCallbackResponse, error)
 	// GetUserByID gets a user by ID

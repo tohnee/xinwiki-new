@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -62,10 +63,17 @@ func (s *apiKeyService) Create(
 		return nil, "", err
 	}
 
-	secret, prefix := secutils.GenerateAPIKeySecret()
+	secret, prefix, err := secutils.GenerateAPIKeySecret()
+	if err != nil {
+		return nil, "", fmt.Errorf("generate API key secret: %w", err)
+	}
+	keyID, err := secutils.GenerateAPIKeyID()
+	if err != nil {
+		return nil, "", fmt.Errorf("generate API key ID: %w", err)
+	}
 	now := s.now()
 	key := &types.APIKey{
-		ID:        secutils.GenerateAPIKeyID(),
+		ID:        keyID,
 		TenantID:  tenantID,
 		UserID:    userID,
 		Name:      name,

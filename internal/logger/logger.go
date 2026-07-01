@@ -8,10 +8,12 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
 
+	"github.com/gin-gonic/gin"
 	"github.com/Tencent/XinWiki/internal/types"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -321,7 +323,10 @@ func getLogLevelFromEnv() logrus.Level {
 	case "fatal":
 		return logrus.FatalLevel
 	default:
-		return logrus.DebugLevel // 无效配置时使用默认值
+		if gin.Mode() == gin.DebugMode {
+			return logrus.DebugLevel
+		}
+		return logrus.InfoLevel
 	}
 }
 
@@ -531,4 +536,28 @@ func CloneContext(ctx context.Context) context.Context {
 	}
 
 	return newCtx
+}
+
+// GoSafe launches fn in a new goroutine with panic recovery. Any panic is
+// logged at error level with the full stack trace so the process is not
+// terminated. Use this for fire-and-forget background goroutines where a
+// single panic should not bring down the whole server.
+//
+// The caller is responsible for ensuring fn respects context cancellation
+// for lifecycle management — GoSafe only provides the recover() safety net.
+// The name parameter is used in log output to identify the goroutine source.
+func GoSafe(ctx context.Context, name string, fn func()) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				ErrorWithFields(ctx,
+					fmt.Errorf("goroutine %q panicked: %v", name, r),
+					Fields{
+						"goroutine":  name,
+						"stacktrace": string(debug.Stack()),
+					})
+			}
+		}()
+		fn()
+	}()
 }

@@ -13,8 +13,33 @@ func TestBuildCORSOriginFunc_NoConfig_AllowsLocalhost(t *testing.T) {
 	assert.True(t, fn("http://localhost:3000"), "localhost:3000 should be allowed in dev mode")
 	assert.True(t, fn("http://localhost:8080"), "localhost:8080 should be allowed in dev mode")
 	assert.True(t, fn("http://127.0.0.1:5173"), "127.0.0.1 should be allowed in dev mode")
+	assert.True(t, fn("http://localhost"), "bare localhost should be allowed")
 	assert.False(t, fn("https://evil.com"), "evil.com should NOT be allowed in dev mode")
-	assert.False(t, fn("https://localhost.evil.com"), "localhost.evil.com should NOT be allowed")
+	assert.False(t, fn("https://localhost.evil.com"), "localhost.evil.com (https) should NOT be allowed")
+	assert.False(t, fn("http://localhost.evil.com"), "localhost.evil.com (http) prefix-bypass should NOT be allowed")
+	assert.False(t, fn("http://localhost.evil.com:3000"), "localhost.evil.com:3000 should NOT be allowed")
+}
+
+func TestIsLocalhostOrigin(t *testing.T) {
+	tests := []struct {
+		origin string
+		want   bool
+	}{
+		{"http://localhost:3000", true},
+		{"http://localhost", true},
+		{"http://127.0.0.1:5173", true},
+		{"http://127.0.0.1", true},
+		{"http://[::1]:8080", true},
+		{"http://0.0.0.0:3000", true},
+		{"http://localhost.evil.com", false},
+		{"http://localhost.evil.com:3000", false},
+		{"https://localhost.evil.com", false},
+		{"https://evil.com", false},
+		{"not-a-url", false},
+	}
+	for _, tc := range tests {
+		assert.Equal(t, tc.want, isLocalhostOrigin(tc.origin), "isLocalhostOrigin(%q)", tc.origin)
+	}
 }
 
 func TestBuildCORSOriginFunc_ExplicitOrigins(t *testing.T) {

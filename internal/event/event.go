@@ -3,6 +3,7 @@ package event
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"sync"
 
 	"github.com/google/uuid"
@@ -153,7 +154,8 @@ func (eb *EventBus) Emit(ctx context.Context, event Event) error {
 			go func() {
 				defer func() {
 					if r := recover(); r != nil {
-						logger.Errorf(ctx, "event handler panic recovered (type=%s): %v", event.Type, r)
+						logger.ErrorWithFields(ctx, fmt.Errorf("event handler panic recovered (type=%s): %v", event.Type, r),
+							logger.Fields{"event_type": event.Type, "event_id": event.ID, "stacktrace": string(debug.Stack())})
 					}
 				}()
 				_ = h(ctx, event)
@@ -200,6 +202,8 @@ func (eb *EventBus) EmitAndWait(ctx context.Context, event Event) error {
 			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
+					logger.ErrorWithFields(ctx, fmt.Errorf("event handler panic (type=%s): %v", event.Type, r),
+						logger.Fields{"event_type": event.Type, "event_id": event.ID, "stacktrace": string(debug.Stack())})
 					errChan <- fmt.Errorf("event handler panic (type=%s): %v", event.Type, r)
 				}
 			}()

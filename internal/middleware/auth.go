@@ -234,7 +234,9 @@ func Auth(
 					}
 					// Best-effort usage stamp; never blocks authentication.
 					keyID := k.ID
-					go func() { _ = apiKeyRepo.TouchLastUsed(context.Background(), keyID, time.Now()) }()
+					logger.GoSafe(ctx, "middleware.apikey.touch_last_used", func() {
+						_ = apiKeyRepo.TouchLastUsed(context.Background(), keyID, time.Now())
+					})
 				}
 			}
 

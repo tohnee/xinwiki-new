@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -95,6 +96,10 @@ func (s *organizationService) CreateOrganization(ctx context.Context, userID str
 	}
 
 	now := time.Now()
+	inviteCode, err := generateInviteCode()
+	if err != nil {
+		return nil, err
+	}
 	org := &types.Organization{
 		ID:                     uuid.New().String(),
 		Name:                   req.Name,
@@ -105,7 +110,7 @@ func (s *organizationService) CreateOrganization(ctx context.Context, userID str
 		// the owner user later moves to another tenant. See migration
 		// 000046 and the isOwnerTenant helper below.
 		OwnerTenantID:          tenantID,
-		InviteCode:             generateInviteCode(),
+		InviteCode:             inviteCode,
 		InviteCodeExpiresAt:    resolveInviteExpiry(validityDays, now),
 		InviteCodeValidityDays: validityDays,
 		MemberLimit:            memberLimit,
@@ -483,7 +488,10 @@ func (s *organizationService) GenerateInviteCode(ctx context.Context, orgID stri
 		validityDays = DefaultInviteCodeValidityDays
 	}
 
-	inviteCode := generateInviteCode()
+	inviteCode, err := generateInviteCode()
+	if err != nil {
+		return "", err
+	}
 	now := time.Now()
 	expiresAt := resolveInviteExpiry(validityDays, now)
 	if err := s.orgRepo.UpdateInviteCode(ctx, orgID, inviteCode, expiresAt); err != nil {
@@ -607,11 +615,15 @@ func (s *organizationService) isOwnerTenant(_ context.Context, org *types.Organi
 	return org.OwnerTenantID == tenantID
 }
 
-// generateInviteCode generates a random 16-character invite code
-func generateInviteCode() string {
+// generateInviteCode generates a random 16-character invite code.
+// Returns an error if crypto/rand fails instead of silently producing
+// a predictable code.
+func generateInviteCode() (string, error) {
 	bytes := make([]byte, 8)
-	_, _ = rand.Read(bytes)
-	return hex.EncodeToString(bytes)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", fmt.Errorf("generate invite code: crypto/rand failed: %w", err)
+	}
+	return hex.EncodeToString(bytes), nil
 }
 
 // ----------------

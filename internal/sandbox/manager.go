@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime/debug"
 	"sync"
+
+	"github.com/Tencent/XinWiki/internal/logger"
 )
 
 // DefaultManager implements the Manager interface
@@ -53,6 +56,13 @@ func (m *DefaultManager) initializeSandbox(ctx context.Context) error {
 			m.sandbox = dockerSandbox
 			// Pre-pull the sandbox image asynchronously so it's ready before first use
 			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						logger.ErrorWithFields(context.Background(),
+							fmt.Errorf("sandbox pre-pull goroutine panicked: %v", r),
+							logger.Fields{"image": m.config.DockerImage, "stacktrace": string(debug.Stack())})
+					}
+				}()
 				if err := dockerSandbox.EnsureImage(context.Background()); err != nil {
 					log.Printf("[sandbox] failed to pre-pull image %s: %v", m.config.DockerImage, err)
 				} else {

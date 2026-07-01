@@ -32,6 +32,96 @@ type oidcAuthorizationState struct {
 	RedirectURI string `json:"redirect_uri,omitempty"`
 }
 
+// oidcNonceStore is an in-memory, TTL-bounded store for OIDC authorization
+// nonces. It exists to bind the state parameter issued at
+// GetOIDCAuthorizationURL time to the ConsumeOIDCState call that happens on
+// the IdP callback — without server-side state the nonce in the state JWT/JSON
+// is forgeable and provides no CSRF protection. Entries are keyed by the raw
+// state string (which is already a high-entropy random nonce base64-encoded
+// with the redirect URI) and evicted by a background sweeper.
+type oidcNonceStore struct {
+	mu       sync.Mutex
+	entries  map[string]oidcNonceEntry
+	ttl      time.Duration
+	stopCh   chan struct{}
+	stopOnce sync.Once
+}
+
+type oidcNonceEntry struct {
+	redirectURI string
+	expiresAt   time.Time
+}
+
+const oidcNonceTTL = 10 * time.Minute
+
+func newOIDCNonceStore() *oidcNonceStore {
+	s := &oidcNonceStore{
+		entries: make(map[string]oidcNonceEntry),
+		ttl:     oidcNonceTTL,
+		stopCh:  make(chan struct{}),
+	}
+	return s
+}
+
+// Add records a state -> redirectURI binding with the configured TTL.
+func (s *oidcNonceStore) Add(state, redirectURI string) {
+	s.mu.Lock()
+	s.entries[state] = oidcNonceEntry{
+		redirectURI: redirectURI,
+		expiresAt:   time.Now().Add(s.ttl),
+	}
+	s.mu.Unlock()
+}
+
+// Consume atomically validates and removes a state binding. It returns the
+// stored redirect URI on success, or an error if the state is unknown,
+// expired, or has already been consumed (one-time use — prevents replay).
+func (s *oidcNonceStore) Consume(state string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	entry, ok := s.entries[state]
+	if !ok {
+		return "", errors.New("OIDC state is invalid or has already been used")
+	}
+	delete(s.entries, state)
+	if time.Now().After(entry.expiresAt) {
+		return "", errors.New("OIDC state has expired")
+	}
+	return entry.redirectURI, nil
+}
+
+// sweep evicts expired entries. Called periodically by runSweeper.
+func (s *oidcNonceStore) sweep() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now()
+	for k, v := range s.entries {
+		if now.After(v.expiresAt) {
+			delete(s.entries, k)
+		}
+	}
+}
+
+// runSweeper periodically evicts expired entries until Stop is called.
+// It must be launched once (e.g. via logger.GoSafe) after construction.
+func (s *oidcNonceStore) runSweeper() {
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			s.sweep()
+		case <-s.stopCh:
+			return
+		}
+	}
+}
+
+// Stop terminates the background sweeper. Safe to call multiple times.
+func (s *oidcNonceStore) Stop() {
+	s.stopOnce.Do(func() { close(s.stopCh) })
+}
+
 var (
 	jwtSecretOnce sync.Once
 	jwtSecret     string
@@ -62,6 +152,7 @@ type userService struct {
 	tenantService interfaces.TenantService
 	memberService interfaces.TenantMemberService
 	config        *config.Config
+	oidcStates    *oidcNonceStore
 }
 
 // NewUserService creates a new user service instance
@@ -72,12 +163,15 @@ func NewUserService(
 	tenantService interfaces.TenantService,
 	memberService interfaces.TenantMemberService,
 ) interfaces.UserService {
+	states := newOIDCNonceStore()
+	logger.GoSafe(context.Background(), "oidc-nonce-sweeper", states.runSweeper)
 	return &userService{
 		userRepo:      userRepo,
 		tokenRepo:     tokenRepo,
 		tenantService: tenantService,
 		memberService: memberService,
 		config:        configInfo,
+		oidcStates:    states,
 	}
 }
 
@@ -375,6 +469,11 @@ func (s *userService) GetOIDCAuthorizationURL(ctx context.Context, redirectURI s
 		return nil, fmt.Errorf("failed to encode OIDC state: %w", err)
 	}
 
+	// Persist the state server-side so the callback can prove it was issued
+	// by us (CSRF protection). Without this, the state parameter is just a
+	// client-chosen blob that an attacker can forge.
+	s.oidcStates.Add(state, strings.TrimSpace(redirectURI))
+
 	query := url.Values{}
 	query.Set("response_type", "code")
 	query.Set("client_id", cfg.ClientID)
@@ -395,6 +494,24 @@ func (s *userService) GetOIDCAuthorizationURL(ctx context.Context, redirectURI s
 		AuthorizationURL:    authURL,
 		State:               state,
 	}, nil
+}
+
+// ConsumeOIDCState validates the state parameter received in the OIDC
+// callback against the server-side store issued by GetOIDCAuthorizationURL.
+// On success it returns the redirect URI originally bound to the state and
+// atomically deletes the entry so the state cannot be replayed (one-time
+// use). Unknown, expired, or already-consumed states produce an error and the
+// caller MUST abort the OIDC login flow in that case.
+func (s *userService) ConsumeOIDCState(ctx context.Context, state string) (string, error) {
+	_ = ctx
+	state = strings.TrimSpace(state)
+	if state == "" {
+		return "", errors.New("OIDC state is required")
+	}
+	if s.oidcStates == nil {
+		return "", errors.New("OIDC state store is not initialized")
+	}
+	return s.oidcStates.Consume(state)
 }
 
 // LoginWithOIDC exchanges code for tokens, loads user info, provisions user if needed, and returns local login tokens.

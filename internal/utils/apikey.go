@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"fmt"
 )
 
 // apiKeyPrefixLen is the number of leading characters of the generated
@@ -36,32 +37,42 @@ func VerifyAPIKeyHash(plaintext, storedHash string) bool {
 // chars) and its display prefix. The secret is returned in plaintext ONLY
 // here; callers must hash it before persisting and return the plaintext to
 // the user exactly once at creation time.
-func GenerateAPIKeySecret() (secret, prefix string) {
+//
+// Returns an error if the crypto/rand source fails, in which case callers
+// MUST abort the operation rather than fall back to a weak RNG — a predictable
+// API key is a critical security failure.
+func GenerateAPIKeySecret() (secret, prefix string, err error) {
 	var b [16]byte
-	_, _ = rand.Read(b[:])
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", "", fmt.Errorf("generate API key secret: crypto/rand failed: %w", err)
+	}
 	secret = "sk_" + hex.EncodeToString(b[:])
 	prefix = secret
 	if len(prefix) > apiKeyPrefixLen {
 		prefix = prefix[:apiKeyPrefixLen]
 	}
-	return secret, prefix
+	return secret, prefix, nil
 }
 
 // GenerateAPIKeyID mints a new opaque key ID ("ak_" + 32 hex chars). The ID
 // is the public handle persisted in api_keys.id and shown in listings; it
 // carries no secret material, so unlike the plaintext secret it is safe to
 // return on every read.
-func GenerateAPIKeyID() string {
+func GenerateAPIKeyID() (string, error) {
 	var b [16]byte
-	_, _ = rand.Read(b[:])
-	return "ak_" + hex.EncodeToString(b[:])
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", fmt.Errorf("generate API key ID: crypto/rand failed: %w", err)
+	}
+	return "ak_" + hex.EncodeToString(b[:]), nil
 }
 
 // GenerateArtifactID mints a new opaque generated-artifact ID ("art_" + 32
 // hex chars). Used as the primary key for generated_artifacts rows; carries
 // no secret material and is safe to expose in listings and download links.
-func GenerateArtifactID() string {
+func GenerateArtifactID() (string, error) {
 	var b [16]byte
-	_, _ = rand.Read(b[:])
-	return "art_" + hex.EncodeToString(b[:])
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", fmt.Errorf("generate artifact ID: crypto/rand failed: %w", err)
+	}
+	return "art_" + hex.EncodeToString(b[:]), nil
 }

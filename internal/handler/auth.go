@@ -300,9 +300,23 @@ func (h *AuthHandler) OIDCRedirectCallback(c *gin.Context) {
 	}
 
 	state := strings.TrimSpace(c.Query("state"))
-	decodedState, err := decodeOIDCState(state)
+	// Validate state against the server-side store FIRST — this is the CSRF
+	// protection. We must NOT proceed to code exchange or trust any field
+	// inside the state blob (including redirectURI) until the nonce has been
+	// verified and consumed. The redirect URI returned by ConsumeOIDCState
+	// is the one the server stored at GetOIDCAuthorizationURL time, not the
+	// one replayed by the client.
+	serverRedirectURI, err := h.userService.ConsumeOIDCState(ctx, state)
 	if err != nil {
-		logger.Errorf(ctx, "Failed to decode OIDC state: %v", err)
+		logger.Errorf(ctx, "OIDC state validation failed (possible CSRF): %v", err)
+		c.Redirect(http.StatusFound, frontendRedirectURI+"#oidc_error="+urlQueryEscape("invalid_state"))
+		return
+	}
+	// Decode the state only for completeness / logging; we intentionally do
+	// NOT use decodedState.RedirectURI for the code exchange because that
+	// value is client-controlled and could be tampered with.
+	if _, derr := decodeOIDCState(state); derr != nil {
+		logger.Errorf(ctx, "Failed to decode OIDC state after nonce verification: %v", derr)
 		c.Redirect(http.StatusFound, frontendRedirectURI+"#oidc_error="+urlQueryEscape("invalid_state"))
 		return
 	}
@@ -313,7 +327,7 @@ func (h *AuthHandler) OIDCRedirectCallback(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.userService.LoginWithOIDC(ctx, code, strings.TrimSpace(decodedState.RedirectURI))
+	resp, err := h.userService.LoginWithOIDC(ctx, code, strings.TrimSpace(serverRedirectURI))
 	if err != nil {
 		logger.Errorf(ctx, "Failed to complete OIDC login via redirect callback: %v", err)
 		c.Redirect(http.StatusFound, frontendRedirectURI+"#oidc_error="+urlQueryEscape("login_failed")+"&oidc_error_description="+urlQueryEscape(err.Error()))

@@ -2,8 +2,11 @@ package chat
 
 import (
 	"context"
+	"fmt"
+	"runtime/debug"
 	"time"
 
+	"github.com/Tencent/XinWiki/internal/logger"
 	"github.com/Tencent/XinWiki/internal/tracing/langfuse"
 	"github.com/Tencent/XinWiki/internal/types"
 )
@@ -81,7 +84,13 @@ func (l *langfuseChat) ChatStream(ctx context.Context, messages []Message, opts 
 
 	wrapped := make(chan types.StreamResponse)
 	go func() {
-		defer close(wrapped)
+		defer func() {
+			if r := recover(); r != nil {
+				logger.ErrorWithFields(genCtx, fmt.Errorf("langfuse_wrapper stream copier panicked: %v", r),
+					logger.Fields{"stacktrace": string(debug.Stack()), "model": l.inner.GetModelName()})
+			}
+			close(wrapped)
+		}()
 		var contentBuf []byte
 		var reasoningBuf []byte
 		var usage *types.TokenUsage

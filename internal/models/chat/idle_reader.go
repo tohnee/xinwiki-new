@@ -3,8 +3,12 @@ package chat
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"runtime/debug"
 	"time"
+
+	"github.com/Tencent/XinWiki/internal/logger"
 )
 
 // ErrIdleTimeout is returned by an IdleReader when no data arrives within the
@@ -73,6 +77,14 @@ func (r *IdleReader) Read(p []byte) (int, error) {
 	resCh := make(chan result, 1)
 
 	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				logger.ErrorWithFields(context.Background(),
+					fmt.Errorf("idle_reader read goroutine panicked: %v", rec),
+					logger.Fields{"stacktrace": string(debug.Stack())})
+				resCh <- result{0, fmt.Errorf("idle_reader panic: %v", rec)}
+			}
+		}()
 		n, err := r.src.Read(p)
 		resCh <- result{n, err}
 	}()

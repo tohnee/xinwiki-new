@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -114,12 +115,15 @@ var _ MCPApproval = (*Gate)(nil)
 // (issue #1173 cross-instance support). Without redis, the gate degrades to
 // single-process behavior (deployments must use sticky sessions).
 type Gate struct {
-	mu        sync.Mutex
-	pending   map[string]*waiter
-	checker   Checker
-	timeout   time.Duration
-	rdb       *redis.Client // optional; nil disables cross-instance fan-out
-	failClose bool          // when true, NeedsApproval errors block (require approval) instead of skip
+	mu         sync.Mutex
+	pending    map[string]*waiter
+	checker    Checker
+	timeout    time.Duration
+	rdb        *redis.Client // optional; nil disables cross-instance fan-out
+	failClose  bool          // when true, NeedsApproval errors block (require approval) instead of skip
+	shutdown   chan struct{} // closed when Shutdown is called; stops the subscriber goroutine
+	done       chan struct{} // closed when the subscriber goroutine exits
+	shutdownOnce sync.Once
 }
 
 type waiter struct {
@@ -181,82 +185,139 @@ func NewGate(cfg *config.Config, checker Checker, rdb *redis.Client) *Gate {
 		timeout:   timeout,
 		rdb:       rdb,
 		failClose: failClose,
+		shutdown:  make(chan struct{}),
+		done:      make(chan struct{}),
 	}
 	if rdb != nil {
 		go g.runSubscriber()
+	} else {
+		close(g.done)
 	}
 	return g
 }
 
+// Shutdown stops the background Redis pub/sub subscriber goroutine and
+// releases associated resources. It is safe to call Shutdown multiple
+// times; subsequent calls are no-ops. Callers should invoke Shutdown
+// during application shutdown to avoid goroutine leaks. Shutdown blocks
+// until the subscriber goroutine has exited (when Redis is configured).
+func (g *Gate) Shutdown() {
+	if g == nil {
+		return
+	}
+	g.shutdownOnce.Do(func() {
+		close(g.shutdown)
+	})
+	// Wait for the subscriber goroutine to exit (if Redis is configured).
+	// When rdb is nil, done was closed in NewGate so this returns immediately.
+	<-g.done
+}
+
 // runSubscriber listens for cross-instance Resolve fan-outs and delivers
-// decisions to local waiters. Runs for the lifetime of the process.
+// decisions to local waiters. It exits when g.shutdown is closed (via
+// Shutdown) and always closes g.done before returning.
 func (g *Gate) runSubscriber() {
+	defer close(g.done)
+	defer func() {
+		if r := recover(); r != nil {
+			logger.ErrorWithFields(context.Background(),
+				fmt.Errorf("approval gate subscriber panicked: %v", r),
+				logger.Fields{"goroutine": "approval.runSubscriber", "stacktrace": string(debug.Stack())})
+		}
+	}()
 	ctx := context.Background()
 	channel := pubsubChannel()
 	backoff := time.Second
 	const maxBackoff = 30 * time.Second
 	for {
+		// Check for shutdown before (re)subscribing so we don't race with
+		// a Shutdown call that arrives while we're between reconnects.
+		select {
+		case <-g.shutdown:
+			return
+		default:
+		}
+
 		sub := g.rdb.Subscribe(ctx, channel)
 		ch := sub.Channel()
 		// Reset backoff once we have an active subscription.
 		backoff = time.Second
-		for msg := range ch {
-			var m resolveMessage
-			if err := json.Unmarshal([]byte(msg.Payload), &m); err != nil {
-				logger.GetLogger(ctx).Warnf("mcp approval pubsub: bad payload: %v", err)
-				continue
-			}
-			// Skip messages we published ourselves; they would always miss
-			// locally and produce noisy ErrPendingNotFound.
-			if m.OriginID == instanceID {
-				continue
-			}
-			err := g.deliverLocal(m.TenantID, m.UserID, m.PendingID, Decision{
-				Approved:        m.Approved,
-				ModifiedArgs:    m.ModifiedArgs,
-				Reason:          m.Reason,
-				TimedOut:        m.TimedOut,
-				ContextCanceled: m.Canceled,
-			})
-			// Reply to the originating instance so it can return accurate HTTP
-			// status codes. Only the owning instance (or one that detects a
-			// real conflict) replies; other replicas stay silent on NotFound.
-			if m.ReplyChannel != "" {
-				status := ""
-				switch {
-				case err == nil:
-					status = "ok"
-				case errors.Is(err, ErrTenantMismatch):
-					status = "tenant_mismatch"
-				case errors.Is(err, ErrUserMismatch):
-					status = "user_mismatch"
-				case errors.Is(err, ErrAlreadyResolved):
-					status = "already_resolved"
+
+		// Read messages until the channel closes (Redis error) or shutdown.
+		SubscriberLoop:
+		for {
+			select {
+			case <-g.shutdown:
+				_ = sub.Close()
+				return
+			case msg, ok := <-ch:
+				if !ok {
+					break SubscriberLoop
 				}
-				if status != "" {
-					ackPayload, _ := json.Marshal(resolveAck{
-						PendingID:    m.PendingID,
-						Status:       status,
-						OriginID:     instanceID,
-						RequestNonce: m.RequestNonce,
-					})
-					pubCtx, pubCancel := context.WithTimeout(ctx, 2*time.Second)
-					if pErr := g.rdb.Publish(pubCtx, m.ReplyChannel, ackPayload).Err(); pErr != nil {
-						logger.GetLogger(ctx).Warnf("mcp approval pubsub reply: %v", pErr)
+				var m resolveMessage
+				if err := json.Unmarshal([]byte(msg.Payload), &m); err != nil {
+					logger.GetLogger(ctx).Warnf("mcp approval pubsub: bad payload: %v", err)
+					continue
+				}
+				// Skip messages we published ourselves; they would always miss
+				// locally and produce noisy ErrPendingNotFound.
+				if m.OriginID == instanceID {
+					continue
+				}
+				err := g.deliverLocal(m.TenantID, m.UserID, m.PendingID, Decision{
+					Approved:        m.Approved,
+					ModifiedArgs:    m.ModifiedArgs,
+					Reason:          m.Reason,
+					TimedOut:        m.TimedOut,
+					ContextCanceled: m.Canceled,
+				})
+				// Reply to the originating instance so it can return accurate HTTP
+				// status codes. Only the owning instance (or one that detects a
+				// real conflict) replies; other replicas stay silent on NotFound.
+				if m.ReplyChannel != "" {
+					status := ""
+					switch {
+					case err == nil:
+						status = "ok"
+					case errors.Is(err, ErrTenantMismatch):
+						status = "tenant_mismatch"
+					case errors.Is(err, ErrUserMismatch):
+						status = "user_mismatch"
+					case errors.Is(err, ErrAlreadyResolved):
+						status = "already_resolved"
 					}
-					pubCancel()
+					if status != "" {
+						ackPayload, _ := json.Marshal(resolveAck{
+							PendingID:    m.PendingID,
+							Status:       status,
+							OriginID:     instanceID,
+							RequestNonce: m.RequestNonce,
+						})
+						pubCtx, pubCancel := context.WithTimeout(ctx, 2*time.Second)
+						if pErr := g.rdb.Publish(pubCtx, m.ReplyChannel, ackPayload).Err(); pErr != nil {
+							logger.GetLogger(ctx).Warnf("mcp approval pubsub reply: %v", pErr)
+						}
+						pubCancel()
+					}
 				}
-			}
-			switch {
-			case err == nil, errors.Is(err, ErrPendingNotFound):
-				// Either delivered or this isn't the owning replica — quiet.
-			default:
-				logger.GetLogger(ctx).Warnf("mcp approval pubsub deliver: %v", err)
+				switch {
+				case err == nil, errors.Is(err, ErrPendingNotFound):
+					// Either delivered or this isn't the owning replica — quiet.
+				default:
+					logger.GetLogger(ctx).Warnf("mcp approval pubsub deliver: %v", err)
+				}
 			}
 		}
 		_ = sub.Close()
 		// Reconnect with capped exponential backoff if Redis hiccups.
-		time.Sleep(backoff)
+		// Use a select so shutdown can interrupt the sleep.
+		backoffTimer := time.NewTimer(backoff)
+		select {
+		case <-g.shutdown:
+			backoffTimer.Stop()
+			return
+		case <-backoffTimer.C:
+		}
 		if backoff < maxBackoff {
 			backoff *= 2
 			if backoff > maxBackoff {

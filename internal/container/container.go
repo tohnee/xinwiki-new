@@ -120,6 +120,10 @@ func BuildContainer(container *dig.Container) *dig.Container {
 	// Register goroutine pool cleanup handler
 	must(container.Invoke(registerPoolCleanup))
 
+	// Register approval gate shutdown so the Redis pub/sub subscriber
+	// goroutine does not leak on process exit.
+	must(container.Invoke(registerApprovalGateCleanup))
+
 	// Initialize retrieval engine registry for search capabilities
 	logger.Debugf(ctx, "[Container] Registering retrieval engine registry...")
 	must(container.Provide(initRetrieveEngineRegistry))
@@ -1274,6 +1278,18 @@ func initAntsPool(cfg *config.Config) (*ants.Pool, error) {
 func registerPoolCleanup(pool *ants.Pool, cleaner interfaces.ResourceCleaner) {
 	cleaner.RegisterWithName("AntsPool", func() error {
 		pool.Release()
+		return nil
+	})
+}
+
+// registerApprovalGateCleanup ensures the approval Gate's Redis pub/sub
+// subscriber goroutine is stopped on shutdown.
+func registerApprovalGateCleanup(gate *approval.Gate, cleaner interfaces.ResourceCleaner) {
+	if gate == nil {
+		return
+	}
+	cleaner.RegisterWithName("ApprovalGate", func() error {
+		gate.Shutdown()
 		return nil
 	})
 }
