@@ -621,17 +621,29 @@ func (h *AgentStreamHandler) handleComplete(ctx context.Context, evt event.Event
 		}
 	}
 
-	// Send completion event to stream manager so SSE can detect completion
+	// Send completion event to stream manager so SSE can detect completion.
+	// finalize.go:189-202 already populated data.ThinkingSteps and
+	// data.TokenUsage when thinking-tracing is enabled; preserve them here
+	// instead of dropping them on the floor — the frontend ThinkingChainViewer
+	// / TokenUsageBreakdown depend on these fields being present so users can
+	// inspect the agent's reasoning chain and per-step cost.
+	completeData := map[string]interface{}{
+		"total_steps":       data.TotalSteps,
+		"total_duration_ms": data.TotalDurationMs,
+	}
+	if data.ThinkingSteps != nil {
+		completeData["thinking_steps"] = data.ThinkingSteps
+	}
+	if data.TokenUsage != nil {
+		completeData["token_usage"] = data.TokenUsage
+	}
 	if err := h.streamManager.AppendEvent(h.ctx, h.sessionID, h.assistantMessageID, interfaces.StreamEvent{
 		ID:        evt.ID,
 		Type:      types.ResponseTypeComplete,
 		Content:   "",
 		Done:      true,
 		Timestamp: time.Now(),
-		Data: map[string]interface{}{
-			"total_steps":       data.TotalSteps,
-			"total_duration_ms": data.TotalDurationMs,
-		},
+		Data:      completeData,
 	}); err != nil {
 		logger.GetLogger(h.ctx).Errorf("Append complete event to stream failed: %v", err)
 	}

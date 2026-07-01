@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Tencent/XinWiki/internal/event"
 	"github.com/Tencent/XinWiki/internal/types"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -35,7 +36,7 @@ func makeChunk(kbID, knowledgeID string, chunkType string) *types.Chunk {
 
 func TestCreateChunks_SQLite_SeqIDAutoAssigned(t *testing.T) {
 	db := setupChunkTestDB(t)
-	repo := NewChunkRepository(db)
+	repo := NewChunkRepository(db, event.NewEventBus())
 	ctx := context.Background()
 
 	kbID := uuid.New().String()
@@ -65,7 +66,7 @@ func TestCreateChunks_SQLite_SeqIDAutoAssigned(t *testing.T) {
 
 func TestCreateChunks_SQLite_ACLMetadataRoundTripAndDefaults(t *testing.T) {
 	db := setupChunkTestDB(t)
-	repo := NewChunkRepository(db)
+	repo := NewChunkRepository(db, event.NewEventBus())
 	ctx := context.Background()
 
 	kbID := uuid.New().String()
@@ -105,7 +106,7 @@ func TestCreateChunks_SQLite_ACLDefaultsDoNotMeanPublic(t *testing.T) {
 
 func TestCreateChunks_SQLite_SeqIDContinuesFromExisting(t *testing.T) {
 	db := setupChunkTestDB(t)
-	repo := NewChunkRepository(db)
+	repo := NewChunkRepository(db, event.NewEventBus())
 	ctx := context.Background()
 
 	kbID := uuid.New().String()
@@ -137,7 +138,7 @@ func TestCreateChunks_SQLite_SeqIDContinuesFromExisting(t *testing.T) {
 
 func TestCreateChunks_SQLite_SeqIDUniqueAcrossKBs(t *testing.T) {
 	db := setupChunkTestDB(t)
-	repo := NewChunkRepository(db)
+	repo := NewChunkRepository(db, event.NewEventBus())
 	ctx := context.Background()
 
 	kb1 := uuid.New().String()
@@ -199,7 +200,7 @@ func TestKnowledgeTag_SQLite_SeqIDAutoAssigned(t *testing.T) {
 
 func TestCreateChunks_SQLite_SeqIDAfterSoftDelete(t *testing.T) {
 	db := setupChunkTestDB(t)
-	repo := NewChunkRepository(db)
+	repo := NewChunkRepository(db, event.NewEventBus())
 	ctx := context.Background()
 
 	kbID := uuid.New().String()

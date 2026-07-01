@@ -16,6 +16,7 @@ import (
 	"github.com/Tencent/XinWiki/internal/tracing/langfuse"
 	"github.com/Tencent/XinWiki/internal/types"
 	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/utils"
 	"github.com/hibiken/asynq"
 	"go.uber.org/dig"
 )
@@ -47,7 +48,7 @@ const defaultRedisOpTimeoutMs = 500
 // defaultRedisOpTimeoutMs on missing/invalid input. Kept as a separate helper
 // so both ReadTimeout and WriteTimeout share the same source of truth.
 func readRedisOpTimeoutMs() int {
-	if v := strings.TrimSpace(os.Getenv("WEKNORA_REDIS_OP_TIMEOUT_MS")); v != "" {
+	if v := strings.TrimSpace(utils.ResolveEnv("REDIS_OP_TIMEOUT_MS")); v != "" {
 		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
 			return parsed
 		}

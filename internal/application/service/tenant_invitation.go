@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +14,7 @@ import (
 	"github.com/Tencent/XinWiki/internal/logger"
 	"github.com/Tencent/XinWiki/internal/types"
 	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/utils"
 )
 
 // Sentinel errors returned by tenantInvitationService. Callers compare
@@ -68,7 +68,7 @@ const defaultInvitationTTL = 7 * 24 * time.Hour
 // once per call; cost is negligible and beats a goroutine watching the
 // environment.
 func invitationTTL() time.Duration {
-	raw := os.Getenv("WEKNORA_INVITATION_TTL")
+	raw := utils.ResolveEnv("INVITATION_TTL")
 	if raw == "" {
 		return defaultInvitationTTL
 	}

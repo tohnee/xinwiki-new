@@ -10,6 +10,7 @@ import (
 	"github.com/Tencent/XinWiki/internal/agent/skills"
 	"github.com/Tencent/XinWiki/internal/logger"
 	"github.com/Tencent/XinWiki/internal/types/interfaces"
+	"github.com/Tencent/XinWiki/internal/utils"
 )
 
 // DefaultPreloadedSkillsDir is the default directory for preloaded skills
@@ -37,7 +38,7 @@ func NewSkillService() interfaces.SkillService {
 // getPreloadedSkillsDir returns the path to the preloaded skills directory
 func getPreloadedSkillsDir() string {
 	// Check if SKILLS_DIR environment variable is set
-	if dir := os.Getenv("WEKNORA_SKILLS_DIR"); dir != "" {
+	if dir := utils.ResolveEnv("SKILLS_DIR"); dir != "" {
 		return dir
 	}
 

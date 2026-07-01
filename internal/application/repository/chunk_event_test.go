@@ -15,8 +15,8 @@ import (
 	"github.com/Tencent/XinWiki/internal/types"
 )
 
-// setupTestDB 初始化测试数据库
-func setupTestDB(t *testing.T) *gorm.DB {
+// setupChunkEventTestDB 初始化测试数据库
+func setupChunkEventTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
 
@@ -30,7 +30,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 // TestChunkRepository_UpdateChunk_PermissionEvent 验证权限变更事件正确发布
 func TestChunkRepository_UpdateChunk_PermissionEvent(t *testing.T) {
 	ctx := context.Background()
-	db := setupTestDB(t)
+	db := setupChunkEventTestDB(t)
 	bus := event.NewEventBus()
 
 	repo := NewChunkRepository(db, bus)
@@ -123,7 +123,7 @@ func TestChunkRepository_UpdateChunk_PermissionEvent(t *testing.T) {
 // TestChunkRepository_UpdateChunk_NoEventBus 验证 EventBus 为 nil 时安全跳过事件发布
 func TestChunkRepository_UpdateChunk_NoEventBus(t *testing.T) {
 	ctx := context.Background()
-	db := setupTestDB(t)
+	db := setupChunkEventTestDB(t)
 
 	// EventBus = nil，测试不会 panic
 	repo := NewChunkRepository(db, nil)
@@ -153,7 +153,7 @@ func TestChunkRepository_UpdateChunk_NoEventBus(t *testing.T) {
 // TestChunkRepository_UpdateChunk_DataSerialization 验证事件数据可正确 JSON 序列化
 func TestChunkRepository_UpdateChunk_DataSerialization(t *testing.T) {
 	ctx := context.Background()
-	db := setupTestDB(t)
+	db := setupChunkEventTestDB(t)
 	bus := event.NewEventBus()
 	repo := NewChunkRepository(db, bus)
 
@@ -195,7 +195,7 @@ func TestChunkRepository_UpdateChunk_DataSerialization(t *testing.T) {
 // TestChunkRepository_UpdateChunks_Batch_NoEvent 验证批量更新方法不触发事件（按规范只更新非ACL字段）
 func TestChunkRepository_UpdateChunks_Batch_NoEvent(t *testing.T) {
 	ctx := context.Background()
-	db := setupTestDB(t)
+	db := setupChunkEventTestDB(t)
 	bus := event.NewEventBus()
 	repo := NewChunkRepository(db, bus)
 

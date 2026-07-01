@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/Tencent/XinWiki/internal/agent"
@@ -271,21 +270,22 @@ func (s *agentService) initializeSkillsManager(
 	toolRegistry *tools.ToolRegistry,
 ) (*skills.Manager, error) {
 	// Initialize sandbox manager based on environment variables
-	// WEKNORA_SANDBOX_MODE: "docker", "local", "disabled" (default: "disabled")
-	// WEKNORA_SANDBOX_TIMEOUT: timeout in seconds (default: 60)
-	// WEKNORA_SANDBOX_DOCKER_IMAGE: custom Docker image (default: wechatopenai/xinwiki-sandbox:latest)
+	// (XINWIKI_* preferred, WEKNORA_* legacy aliases)
+	// SANDBOX_MODE: "docker", "local", "disabled" (default: "disabled")
+	// SANDBOX_TIMEOUT: timeout in seconds (default: 60)
+	// SANDBOX_DOCKER_IMAGE: custom Docker image (default: wechatopenai/xinwiki-sandbox:latest)
 	var sandboxMgr sandbox.Manager
 	var err error
 
-	sandboxMode := os.Getenv("WEKNORA_SANDBOX_MODE")
+	sandboxMode := secutils.ResolveEnv("SANDBOX_MODE")
 	if sandboxMode == "" {
 		sandboxMode = "disabled"
 	}
-	dockerImage := os.Getenv("WEKNORA_SANDBOX_DOCKER_IMAGE")
+	dockerImage := secutils.ResolveEnv("SANDBOX_DOCKER_IMAGE")
 	if dockerImage == "" {
 		dockerImage = sandbox.DefaultDockerImage
 	}
-	sandboxTimeoutStr := os.Getenv("WEKNORA_SANDBOX_TIMEOUT")
+	sandboxTimeoutStr := secutils.ResolveEnv("SANDBOX_TIMEOUT")
 	sandboxTimeout := 60
 	if sandboxTimeoutStr != "" {
 		if v, err := strconv.Atoi(sandboxTimeoutStr); err == nil && v > 0 {

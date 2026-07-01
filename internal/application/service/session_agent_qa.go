@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/Tencent/XinWiki/internal/agent/tools"
 	"github.com/Tencent/XinWiki/internal/event"
@@ -13,6 +12,7 @@ import (
 	"github.com/Tencent/XinWiki/internal/models/chat"
 	"github.com/Tencent/XinWiki/internal/models/rerank"
 	"github.com/Tencent/XinWiki/internal/types"
+	"github.com/Tencent/XinWiki/internal/utils"
 )
 
 // AgentQA performs agent-based question answering with conversation history and streaming support
@@ -315,7 +315,7 @@ func (s *sessionService) configureSkillsFromAgent(
 		return
 	}
 	// When sandbox is disabled, skills cannot be enabled (no script execution environment)
-	sandboxMode := os.Getenv("WEKNORA_SANDBOX_MODE")
+	sandboxMode := utils.ResolveEnv("SANDBOX_MODE")
 	if sandboxMode == "" || sandboxMode == "disabled" {
 		agentConfig.SkillsEnabled = false
 		agentConfig.SkillDirs = nil

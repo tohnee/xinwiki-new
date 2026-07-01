@@ -34,7 +34,7 @@ const pubsubChannelBase = "xinwiki:system_settings:changed"
 // namespace suffix). Called both at publish time and inside the
 // subscriber loop — keep it pure.
 func pubsubChannel() string {
-	if ns := strings.TrimSpace(os.Getenv("WEKNORA_REDIS_NAMESPACE")); ns != "" {
+	if ns := strings.TrimSpace(utils.ResolveEnv("REDIS_NAMESPACE")); ns != "" {
 		return pubsubChannelBase + ":" + ns
 	}
 	return pubsubChannelBase
@@ -501,7 +501,7 @@ func (s *systemSettingService) GetInt(ctx context.Context, key string, envName s
 		logger.Warnf(ctx, "[system_settings] %q: cannot parse %s as int, falling back", key, string(raw))
 	}
 	if envName != "" {
-		if v := os.Getenv(envName); v != "" {
+		if v := utils.ResolveEnvName(envName); v != "" {
 			if n, err := strconv.ParseInt(v, 10, 64); err == nil {
 				return n
 			}
@@ -520,7 +520,7 @@ func (s *systemSettingService) GetString(ctx context.Context, key string, envNam
 		logger.Warnf(ctx, "[system_settings] %q: cannot parse %s as string, falling back", key, string(raw))
 	}
 	if envName != "" {
-		if v := os.Getenv(envName); v != "" {
+		if v := utils.ResolveEnvName(envName); v != "" {
 			return v
 		}
 	}
@@ -538,7 +538,7 @@ func (s *systemSettingService) GetBool(ctx context.Context, key string, envName 
 		logger.Warnf(ctx, "[system_settings] %q: cannot parse %s as bool, falling back", key, string(raw))
 	}
 	if envName != "" {
-		if v := os.Getenv(envName); v != "" {
+		if v := utils.ResolveEnvName(envName); v != "" {
 			if b, err := strconv.ParseBool(v); err == nil {
 				return b
 			}
@@ -570,7 +570,7 @@ func (s *systemSettingService) GetStringList(ctx context.Context, key string, en
 		logger.Warnf(ctx, "[system_settings] %q: cannot parse %s as string_list, falling back", key, string(raw))
 	}
 	if envName != "" {
-		if raw := os.Getenv(envName); raw != "" {
+		if raw := utils.ResolveEnvName(envName); raw != "" {
 			out := make([]string, 0, 4)
 			for _, entry := range strings.Split(raw, ",") {
 				entry = strings.TrimSpace(entry)
@@ -681,7 +681,7 @@ func (s *systemSettingService) virtualSetting(key string, spec settingSpec) *typ
 
 func (s *systemSettingService) fallbackJSONForSpec(key string, spec settingSpec) types.JSON {
 	if spec.EnvName != "" {
-		if raw := strings.TrimSpace(os.Getenv(spec.EnvName)); raw != "" {
+		if raw := strings.TrimSpace(utils.ResolveEnvName(spec.EnvName)); raw != "" {
 			switch spec.Type {
 			case "int":
 				if n, err := strconv.ParseInt(raw, 10, 64); err == nil {

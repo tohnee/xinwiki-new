@@ -207,11 +207,33 @@ func (s *knowledgeBaseService) HybridSearch(ctx context.Context,
 		return nil, err
 	}
 	if len(groups) == 0 || allBaseParamsEmpty(groups) {
-		// Wiki-only / graph-only fan-out: every KB is non-retrievable.
-		// Preserve the existing "return empty rather than error" contract
-		// so agent tools that combine multiple KB scopes degrade gracefully.
-		logger.Infof(ctx, "No retrievable indexing pipelines across %d KBs", len(kbs))
-		return nil, nil
+		// Wiki-only / graph-only fan-out (review 5.3.2): every KB in scope
+		// lacks vector/keyword indexing, so the store-group path would
+		// return nil. Fall back to knowledge-graph retrieval so wiki/graph-
+		// only KBs are searchable from the main QA path. Graph retrieval
+		// matches query tokens against node names (CONTAINS) — no LLM entity
+		// extraction, which the synchronous search endpoint does not run.
+		// Preserves the existing "return empty rather than error" contract
+		// when the graph yields nothing, so agent tools that combine
+		// multiple KB scopes still degrade gracefully.
+		graphChunks, graphErr := s.retrieveFromGraph(ctx, kbs, params.QueryText, params.MatchCount, requestTenantID)
+		if graphErr != nil {
+			logger.Errorf(ctx, "retrieveFromGraph failed across %d KBs: %v", len(kbs), graphErr)
+			return nil, graphErr
+		}
+		if len(graphChunks) == 0 {
+			logger.Infof(ctx, "No retrievable indexing pipelines across %d KBs (graph yielded no chunks)", len(kbs))
+			return nil, nil
+		}
+		logger.Infof(ctx, "Graph fan-out recovered %d chunks across %d wiki/graph-only KBs", len(graphChunks), len(kbs))
+		searchResults, chunkMap, err := s.processSearchResults(ctx, graphChunks, params.SkipContextEnrichment)
+		if err != nil {
+			return nil, err
+		}
+		if len(searchResults) > params.MatchCount {
+			searchResults = searchResults[:params.MatchCount]
+		}
+		return s.applyACLFilter(ctx, searchResults, chunkMap), nil
 	}
 
 	// Execute retrieval with fan-out + score normalization (multi-store
@@ -232,9 +254,9 @@ func (s *knowledgeBaseService) HybridSearch(ctx context.Context,
 			"group_count":            len(groups),
 		},
 		Metadata: map[string]interface{}{
-			"primary_kb_id":      kb.ID,
-			"primary_kb_type":    string(kb.Type),
-			"embedding_model_id": kb.EmbeddingModelID,
+			"primary_kb_id":       kb.ID,
+			"primary_kb_type":     string(kb.Type),
+			"embedding_model_id":  kb.EmbeddingModelID,
 			"has_query_embedding": len(params.QueryEmbedding) > 0,
 		},
 	})
