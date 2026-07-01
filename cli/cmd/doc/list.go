@@ -72,7 +72,7 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 		Short: "List documents in a knowledge base",
 		Long: `Lists documents (uploaded files / web pages / inline text) in the
 resolved knowledge base. KB resolution follows the standard 4-level chain:
---kb flag > WEKNORA_KB_ID env > .xinwiki/project.yaml > error. The --kb
+--kb flag > XINWIKI_KB_ID env > .xinwiki/project.yaml > error. The --kb
 flag accepts either a KB UUID (passed through) or a name (resolved via list).
 
 Default sort is updated_at desc so the most recent uploads surface first;

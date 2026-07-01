@@ -91,7 +91,7 @@ def _ping_hybrid(
             time.sleep(retry_delay_sec)
     hint = (
         "；若刚执行 make dev-start --odl-hybrid，请等待镜像构建/服务就绪"
-        "（docker logs WeKnora-odl-hybrid）"
+        "（docker logs XinWiki-odl-hybrid）"
     )
     return False, last_err + hint
 

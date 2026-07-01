@@ -124,7 +124,7 @@ func buildClient(f *Factory) (*sdk.Client, error) {
 	prof, ok := cfg.Profiles[profileName]
 	if !ok {
 		// If the user explicitly overrode the profile (via --profile flag or
-		// WEKNORA_PROFILE env), it's a bad argument - not a corrupt config file.
+		// XINWIKI_PROFILE env), it's a bad argument - not a corrupt config file.
 		// The destructive "remove config.yaml" hint would be catastrophic for a typo.
 		if f.ProfileOverride != "" {
 			return nil, NewError(CodeInputInvalidArgument,
@@ -198,7 +198,7 @@ func AddKBFlag(cmd *cobra.Command) {
 // 4-level fallback chain (highest to lowest):
 //  1. --kb flag (kb_<...> id passed through; anything else resolved via
 //     ListKnowledgeBases as a name → id lookup)
-//  2. WEKNORA_KB_ID env (always an explicit id)
+//  2. XINWIKI_KB_ID env (always an explicit id)
 //  3. .xinwiki/project.yaml (walk-up from cwd)
 //  4. error: kb required
 func (f *Factory) ResolveKB(cmd *cobra.Command) (string, error) {
@@ -212,7 +212,7 @@ func (f *Factory) ResolveKB(cmd *cobra.Command) (string, error) {
 		}
 		return ResolveKBNameToID(cmd.Context(), c, v)
 	}
-	if v := os.Getenv("WEKNORA_KB_ID"); v != "" {
+	if v := os.Getenv("XINWIKI_KB_ID"); v != "" {
 		return v, nil
 	}
 	cwd, err := os.Getwd()
@@ -239,7 +239,7 @@ func (f *Factory) ResolveKBLocal(cmd *cobra.Command) (string, error) {
 	if v, _ := cmd.Flags().GetString("kb"); v != "" {
 		return v, nil
 	}
-	if v := os.Getenv("WEKNORA_KB_ID"); v != "" {
+	if v := os.Getenv("XINWIKI_KB_ID"); v != "" {
 		return v, nil
 	}
 	cwd, err := os.Getwd()
@@ -257,7 +257,7 @@ func (f *Factory) ResolveKBLocal(cmd *cobra.Command) (string, error) {
 	return "", NewError(CodeKBIDRequired, "kb is required")
 }
 
-// ApplyLogLevel resolves --log-level / WEKNORA_LOG_LEVEL (in priority order)
+// ApplyLogLevel resolves --log-level / XINWIKI_LOG_LEVEL (in priority order)
 // and applies the result to the SDK's debug logger. Intended to be called
 // from the root command's PersistentPreRunE so the resolved level is in
 // effect before any SDK call.
@@ -306,14 +306,14 @@ func refreshAccessToken(ctx context.Context, store secrets.Store, host, profileN
 
 // ActiveProfile returns the resolved profile name for this invocation:
 //  1. ProfileOverride (set by --profile flag in root PersistentPreRunE)
-//  2. WEKNORA_PROFILE env var
+//  2. XINWIKI_PROFILE env var
 //  3. Config's CurrentProfile (the persisted active profile name)
 //  4. Empty string when nothing is configured (envelope omits the field).
 func (f *Factory) ActiveProfile() string {
 	if f.ProfileOverride != "" {
 		return f.ProfileOverride
 	}
-	if v := os.Getenv("WEKNORA_PROFILE"); v != "" {
+	if v := os.Getenv("XINWIKI_PROFILE"); v != "" {
 		return v
 	}
 	if f.Config == nil {

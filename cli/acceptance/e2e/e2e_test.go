@@ -8,11 +8,11 @@
 // requested. To run:
 //
 //	cd cli
-//	WEKNORA_E2E_HOST=https://kb.example.com \
-//	WEKNORA_E2E_TOKEN=eyJhbGc... \
+//	XINWIKI_E2E_HOST=https://kb.example.com \
+//	XINWIKI_E2E_TOKEN=eyJhbGc... \
 //	go test -tags=acceptance_e2e -v ./acceptance/e2e/...
 //
-// Optional WEKNORA_E2E_KB_NAME_PREFIX customizes the throwaway KB name (default
+// Optional XINWIKI_E2E_KB_NAME_PREFIX customizes the throwaway KB name (default
 // "cli-e2e-"). Cleanup runs even on test failure via t.Cleanup so the server
 // doesn't accumulate test debris.
 package e2e_test
@@ -34,9 +34,9 @@ import (
 // step parses the CLI's bare JSON to extract IDs for the next step -
 // validating both functional behavior and wire-contract stability.
 func TestRAGFullLoop(t *testing.T) {
-	host := mustEnv(t, "WEKNORA_E2E_HOST")
-	token := mustEnv(t, "WEKNORA_E2E_TOKEN")
-	prefix := envOr("WEKNORA_E2E_KB_NAME_PREFIX", "cli-e2e-")
+	host := mustEnv(t, "XINWIKI_E2E_HOST")
+	token := mustEnv(t, "XINWIKI_E2E_TOKEN")
+	prefix := envOr("XINWIKI_E2E_KB_NAME_PREFIX", "cli-e2e-")
 
 	bin := buildBinary(t)
 	xdg := t.TempDir()
@@ -46,7 +46,7 @@ func TestRAGFullLoop(t *testing.T) {
 		"XDG_CONFIG_HOME="+xdg,
 		"XDG_CACHE_HOME="+filepath.Join(xdg, "cache"),
 		// SDK debug off - explicit so the CI run isn't noisy.
-		"WEKNORA_LOG_LEVEL=error",
+		"XINWIKI_LOG_LEVEL=error",
 	)
 
 	// 1. kb create → bare KnowledgeBase object

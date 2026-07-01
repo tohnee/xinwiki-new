@@ -5,7 +5,7 @@ storage:
 web:
   http: 0.0.0.0:5556
 staticClients:
-  - id: weknora
+  - id: xinwiki
     redirectURIs:
       - 'http://127.0.0.1:5173/api/v1/auth/oidc/callback'
       - 'http://127.0.0.1/api/v1/auth/oidc/callback'

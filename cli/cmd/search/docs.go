@@ -98,7 +98,7 @@ reached or the KB is exhausted. Pass --all-pages=false to stop after one page.`,
 			}
 			fopts.ResolveDefault(iostreams.IO.IsStdoutTTY())
 			// Resolve KB via the shared flag→env→project-link chain (same as
-			// `doc list` / `chat`), so a linked directory or WEKNORA_KB_ID
+			// `doc list` / `chat`), so a linked directory or XINWIKI_KB_ID
 			// works without an explicit --kb. Resolve before building the
 			// client so an unresolved KB short-circuits to local.kb_id_required
 			// without a client round-trip.
@@ -120,8 +120,8 @@ reached or the KB is exhausted. Pass --all-pages=false to stop after one page.`,
 	cmd.Flags().BoolVar(&opts.AllPages, "all-pages", true, "Walk every server page until exhausted or --limit hit")
 	cmdutil.AddFormatFlag(cmd, docsFields...)
 	cmdutil.SetAgentHelp(cmd, cmdutil.AgentHelp{
-		UsedFor:       "Find documents in a knowledge base by keyword (server-side LIKE filter on title/file_name). The KB comes from --kb (id or name), else WEKNORA_KB_ID, else the linked directory. Results come with meta.count; use --limit to cap and --all-pages=false to stop after one page.",
-		RequiredFlags: []string{"<query> (positional)", "--kb (or WEKNORA_KB_ID / linked directory)"},
+		UsedFor:       "Find documents in a knowledge base by keyword (server-side LIKE filter on title/file_name). The KB comes from --kb (id or name), else XINWIKI_KB_ID, else the linked directory. Results come with meta.count; use --limit to cap and --all-pages=false to stop after one page.",
+		RequiredFlags: []string{"<query> (positional)", "--kb (or XINWIKI_KB_ID / linked directory)"},
 		Examples:      []string{`xinwiki search docs "spec" --kb engineering --format json`},
 		Output:        "envelope.data is an array of Knowledge objects with id, title, file_name, parse_status; meta.count is the returned count; meta.has_more=true if more matched than --limit",
 	})

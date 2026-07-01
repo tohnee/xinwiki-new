@@ -16,7 +16,7 @@ import (
 )
 
 // AgentHelp is the structured help blob emitted when an agent invokes
-// `xinwiki <command> --help` with WEKNORA_AGENT_HELP=1. Distinct from
+// `xinwiki <command> --help` with XINWIKI_AGENT_HELP=1. Distinct from
 // cobra's human help text — agent-readable JSON keyed by stable fields
 // so an LLM doesn't need to scrape the human help table.
 //
@@ -34,7 +34,7 @@ type AgentHelp struct {
 // SetAgentHelp attaches agent-targeted help metadata to a command.
 //
 // Routing:
-//   - WEKNORA_AGENT_HELP=1: emit the AgentHelp JSON blob to stdout and
+//   - XINWIKI_AGENT_HELP=1: emit the AgentHelp JSON blob to stdout and
 //     return — agents get clean parseable JSON, no trailing prose.
 //   - Otherwise (human help path): if cmd has risk annotations from SetRisk,
 //     prepend "Risk: <action> (<level>)" line; then render the normal human
@@ -42,7 +42,7 @@ type AgentHelp struct {
 func SetAgentHelp(cmd *cobra.Command, ah AgentHelp) {
 	origHelp := cmd.HelpFunc()
 	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
-		if os.Getenv("WEKNORA_AGENT_HELP") == "1" {
+		if os.Getenv("XINWIKI_AGENT_HELP") == "1" {
 			emitAgentHelp(c.OutOrStdout(), ah)
 			return
 		}

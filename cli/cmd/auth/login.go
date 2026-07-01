@@ -103,7 +103,7 @@ Credentials are persisted to the OS keyring when available; otherwise to a
 	cmdutil.AddFormatFlag(cmd, authLoginFields...)
 	cmdutil.SetAgentHelp(cmd, cmdutil.AgentHelp{
 		UsedFor:  "authenticate the active profile; --with-token reads an API key from stdin (non-interactive)",
-		Examples: []string{`echo "$WEKNORA_API_KEY" | xinwiki auth login --with-token`},
+		Examples: []string{`echo "$XINWIKI_API_KEY" | xinwiki auth login --with-token`},
 		Output:   "envelope.data is {profile, host, mode, user, tenant_id} on success",
 		Warnings: []string{
 			"a profile must exist and be active first (`xinwiki profile add <n> --host <url> --use`)",
@@ -119,7 +119,7 @@ Credentials are persisted to the OS keyring when available; otherwise to a
 // add`'s job. Returns typed errors when no active profile is configured or
 // the profile lacks a host.
 func resolveActiveProfile(f *cmdutil.Factory) (name, host string, err error) {
-	// f.Config() already folds the global --profile / WEKNORA_PROFILE override
+	// f.Config() already folds the global --profile / XINWIKI_PROFILE override
 	// into cfg.CurrentProfile (same source f.ActiveProfile reads), so one load
 	// resolves the active profile — matches logout/refresh.
 	cfg, err := f.Config()

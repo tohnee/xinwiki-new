@@ -45,7 +45,7 @@ func NewCmd(f *cmdutil.Factory) *cobra.Command {
 		Long: `Writes .xinwiki/project.yaml in the current working directory pointing
 at the supplied knowledge base. Subsequent commands run from this directory
 (or any subdirectory) automatically resolve --kb from the link unless
-overridden by the --kb flag or WEKNORA_KB_ID env var.
+overridden by the --kb flag or XINWIKI_KB_ID env var.
 
 Pass --kb <id-or-name> for non-interactive use (scripts, CI). Run on a TTY
 without --kb to be prompted from the list of available KBs. Always overwrites

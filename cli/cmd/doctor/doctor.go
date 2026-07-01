@@ -400,8 +400,8 @@ func buildServices(f *cmdutil.Factory) (Services, error) {
 	if ctx, ok := cfg.Profiles[cfg.CurrentProfile]; ok {
 		host = ctx.Host
 	}
-	// WEKNORA_BASE_URL still wins as a test/dev override; production reads host.
-	if v := os.Getenv("WEKNORA_BASE_URL"); v != "" {
+	// XINWIKI_BASE_URL still wins as a test/dev override; production reads host.
+	if v := os.Getenv("XINWIKI_BASE_URL"); v != "" {
 		host = v
 	}
 	return &realServices{f: f, host: host}, nil

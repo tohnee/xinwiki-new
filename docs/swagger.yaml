@@ -522,7 +522,7 @@ definitions:
     type: object
   github_com_Tencent_XinWiki_internal_types.CredentialsConfig:
     properties:
-      weknoracloud:
+      xinwikicloud:
         $ref: '#/definitions/github_com_Tencent_XinWiki_internal_types.XinWikiCloudCredentials'
     type: object
   github_com_Tencent_XinWiki_internal_types.CustomAgentConfig:
@@ -10361,7 +10361,7 @@ paths:
       summary: 获取模型厂商列表
       tags:
       - 模型管理
-  /models/weknoracloud/status:
+  /models/xinwikicloud/status:
     get:
       description: 检查当前租户的 XinWikiCloud 凭证是否完好；needs_reinit=true 表示需要重新保存
       produces:
@@ -13240,7 +13240,7 @@ paths:
       summary: 轮询微信二维码状态
       tags:
       - IM 渠道
-  /weknoracloud/credentials:
+  /xinwikicloud/credentials:
     post:
       consumes:
       - application/json

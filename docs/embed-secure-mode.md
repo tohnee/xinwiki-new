@@ -38,7 +38,7 @@
 
 对应管理端「嵌入渠道 → 安全模式」里的两段代码：
 
-1. **页面脚本**：`data-token-endpoint="https://你的域名/weknora/embed-token"`（没有 `data-token`）
+1. **页面脚本**：`data-token-endpoint="https://你的域名/xinwiki/embed-token"`（没有 `data-token`）
 2. **服务端接口**：用发布 Token 调 exchange，把 `ems_…` 返回给前端
 
 ## 集成步骤
@@ -64,7 +64,7 @@
 **调 exchange 的约定**：
 
 ```http
-POST https://<weknora-host>/api/v1/embed/<channel_id>/exchange
+POST https://<xinwiki-host>/api/v1/embed/<channel_id>/exchange
 Authorization: Embed <发布 Token em_…>
 Origin: https://<你的业务站点>    ← 须与渠道白名单一致，否则 403
 ```
@@ -77,26 +77,26 @@ Origin: https://<你的业务站点>    ← 须与渠道白名单一致，否则
 
 ## 服务端示例
 
-以下 `<WEKNORA_HOST>`、`<CHANNEL_ID>` 替换为实际值；发布 Token 放环境变量 `WEKNORA_PUBLISH_TOKEN`，**不要**写进前端。
+以下 `<XINWIKI_HOST>`、`<CHANNEL_ID>` 替换为实际值；发布 Token 放环境变量 `XINWIKI_PUBLISH_TOKEN`，**不要**写进前端。
 
 ### Node.js（Express）
 
 ```javascript
-const WEKNORA_BASE = 'https://<WEKNORA_HOST>';
+const XINWIKI_BASE = 'https://<XINWIKI_HOST>';
 const CHANNEL_ID = '<CHANNEL_ID>';
 const ALLOWED_ORIGIN = 'https://shop.example.com'; // 与渠道白名单一致
 
-app.get('/weknora/embed-token', async (req, res) => {
+app.get('/xinwiki/embed-token', async (req, res) => {
   const hasSession = Boolean(req.cookies?.session_id);
   const auth = req.headers.authorization || '';
   if (!hasSession && !auth.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'unauthorized' });
   }
 
-  const r = await fetch(`${WEKNORA_BASE}/api/v1/embed/${CHANNEL_ID}/exchange`, {
+  const r = await fetch(`${XINWIKI_BASE}/api/v1/embed/${CHANNEL_ID}/exchange`, {
     method: 'POST',
     headers: {
-      Authorization: 'Embed ' + process.env.WEKNORA_PUBLISH_TOKEN,
+      Authorization: 'Embed ' + process.env.XINWIKI_PUBLISH_TOKEN,
       Origin: ALLOWED_ORIGIN,
     },
   });
@@ -117,8 +117,8 @@ func embedTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req, _ := http.NewRequest(http.MethodPost,
-		"https://<WEKNORA_HOST>/api/v1/embed/<CHANNEL_ID>/exchange", nil)
-	req.Header.Set("Authorization", "Embed "+os.Getenv("WEKNORA_PUBLISH_TOKEN"))
+		"https://<XINWIKI_HOST>/api/v1/embed/<CHANNEL_ID>/exchange", nil)
+	req.Header.Set("Authorization", "Embed "+os.Getenv("XINWIKI_PUBLISH_TOKEN"))
 	req.Header.Set("Origin", "https://shop.example.com") // 与渠道白名单一致
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode >= 300 {
@@ -178,5 +178,5 @@ func embedTokenHandler(w http.ResponseWriter, r *http.Request) {
 ## 相关
 
 - 可选：embed 独立子域 → [embed-subdomain.md](./embed-subdomain.md)
-- Widget SDK 注释：`frontend/public/weknora-widget.js`
+- Widget SDK 注释：`frontend/public/xinwiki-widget.js`
 - 代码生成：`frontend/src/api/embed/index.ts`

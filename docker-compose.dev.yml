@@ -62,9 +62,9 @@ services:
       - searxng_config_dev:/etc/searxng
     environment:
       - SEARXNG_BASE_URL=http://localhost:${SEARXNG_PORT:-8888}/
-      - INSTANCE_NAME=weknora-searxng-dev
+      - INSTANCE_NAME=xinwiki-searxng-dev
       # See docker-compose.yml for rationale on the default secret.
-      - SEARXNG_SECRET=${SEARXNG_SECRET:-weknora-default-searxng-secret-rotate-before-exposing-publicly}
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-xinwiki-default-searxng-secret-rotate-before-exposing-publicly}
     cap_drop:
       - ALL
     cap_add:
@@ -226,7 +226,7 @@ services:
 
   # Sandbox 镜像：仅用于 build/pull，非常驻服务；本地 app 执行 Skills 时按需 docker run 该镜像，用毕即释
   sandbox:
-    image: wechatopenai/weknora-sandbox:${WEKNORA_VERSION:-latest}
+    image: wechatopenai/xinwiki-sandbox:${XINWIKI_VERSION:-latest}
     container_name: XinWiki-sandbox-dev
     build:
       context: .
@@ -240,7 +240,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.docreader
-    image: wechatopenai/weknora-docreader:${WEKNORA_VERSION:-latest}
+    image: wechatopenai/xinwiki-docreader:${XINWIKI_VERSION:-latest}
     container_name: XinWiki-docreader-dev
     ports:
       - "${DOCREADER_PORT:-50051}:50051"
@@ -285,7 +285,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.odl-hybrid
-    image: weknora-odl-hybrid:local
+    image: xinwiki-odl-hybrid:local
     container_name: XinWiki-odl-hybrid
     profiles:
       - odl-hybrid
@@ -442,10 +442,10 @@ services:
       _LF_DB_NAME: ${LANGFUSE_DB_NAME:-langfuse}
       _LF_REDIS_PASSWORD: ${REDIS_PASSWORD}
       _LF_REDIS_DB: ${LANGFUSE_REDIS_DB:-1}
-      SALT: ${LANGFUSE_SALT:-weknora-langfuse-dev-salt-change-me}
+      SALT: ${LANGFUSE_SALT:-xinwiki-langfuse-dev-salt-change-me}
       ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
       NEXTAUTH_URL: ${LANGFUSE_NEXTAUTH_URL:-http://localhost:3000}
-      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-weknora-langfuse-dev-nextauth-secret-change-me}
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-xinwiki-langfuse-dev-nextauth-secret-change-me}
       TELEMETRY_ENABLED: ${LANGFUSE_TELEMETRY_ENABLED:-false}
       LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
       CLICKHOUSE_URL: http://langfuse-clickhouse:8123

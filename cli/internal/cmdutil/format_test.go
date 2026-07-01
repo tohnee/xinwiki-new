@@ -210,8 +210,8 @@ func TestCheckFormatFlag_TextAccepted(t *testing.T) {
 	}
 }
 
-func TestFromEnv_AppliesWEKNORA_FORMAT(t *testing.T) {
-	t.Setenv("WEKNORA_FORMAT", "ndjson")
+func TestFromEnv_AppliesXINWIKI_FORMAT(t *testing.T) {
+	t.Setenv("XINWIKI_FORMAT", "ndjson")
 	o := &FormatOptions{}
 	o.FromEnv()
 	if o.Mode != FormatNDJSON {
@@ -220,7 +220,7 @@ func TestFromEnv_AppliesWEKNORA_FORMAT(t *testing.T) {
 }
 
 func TestFromEnv_PrecedenceFlagOverridesEnv(t *testing.T) {
-	t.Setenv("WEKNORA_FORMAT", "ndjson")
+	t.Setenv("XINWIKI_FORMAT", "ndjson")
 	o := &FormatOptions{Mode: FormatJSON}
 	o.FromEnv()
 	if o.Mode != FormatJSON {
@@ -229,7 +229,7 @@ func TestFromEnv_PrecedenceFlagOverridesEnv(t *testing.T) {
 }
 
 func TestFromEnv_InvalidValueIgnored(t *testing.T) {
-	t.Setenv("WEKNORA_FORMAT", "yaml")
+	t.Setenv("XINWIKI_FORMAT", "yaml")
 	o := &FormatOptions{}
 	o.FromEnv()
 	if o.Mode != "" {

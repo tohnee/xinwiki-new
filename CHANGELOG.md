@@ -39,10 +39,10 @@ All notable changes to this project will be documented in this file.
 
 ### New Features
 
-- **NEW**: **Per-Upload Process Configuration & Upload Confirm Dialog** — the headline of this release. Every file / URL / folder upload can now carry a `process_config` (`KnowledgeProcessOverrides`) that overrides KB defaults for that batch only: parser engine rules, chunking, multimodal (VLM / ASR), question generation, graph extraction, and related flags. The Web UI adds an upload-confirm step so operators can review and tweak settings before enqueueing; the Go client and `weknora doc upload` accept the same JSON payload.
+- **NEW**: **Per-Upload Process Configuration & Upload Confirm Dialog** — the headline of this release. Every file / URL / folder upload can now carry a `process_config` (`KnowledgeProcessOverrides`) that overrides KB defaults for that batch only: parser engine rules, chunking, multimodal (VLM / ASR), question generation, graph extraction, and related flags. The Web UI adds an upload-confirm step so operators can review and tweak settings before enqueueing; the Go client and `xinwiki doc upload` accept the same JSON payload.
 - **NEW**: **Document Reparse with Process Config** — `POST /knowledge/:id/reparse` accepts an optional `process_config` body to re-run parsing with new settings while preserving the knowledge record; overrides are persisted on the knowledge metadata and merged with KB defaults via `ResolveProcessConfig`.
-- **NEW**: **`weknora` CLI v0.9** (BREAKING) — auth/profile model harmonization, resource-command cleanup, and bundled Agent Skills:
-  - **Bundled skills**: `weknora-rag-search` and `weknora-shared` skills ship in-tree with drift-guard parity tests.
+- **NEW**: **`xinwiki` CLI v0.9** (BREAKING) — auth/profile model harmonization, resource-command cleanup, and bundled Agent Skills:
+  - **Bundled skills**: `xinwiki-rag-search` and `xinwiki-shared` skills ship in-tree with drift-guard parity tests.
   - **`session stop`**: abort an in-flight agent run from the terminal.
   - **`--kb` resolver**: accepts KB name or id on `doc delete --all` and `search chunks` / `search docs` (required; no silent project-link fallback).
   - **Auth/profile**: `auth login` authenticates the active profile (use `profile add --use` first); `auth logout` / `auth refresh` drop `--name` — target another profile with global `--profile`.
@@ -98,7 +98,7 @@ All notable changes to this project will be documented in this file.
 - **NEW**: **System Admin & Platform Settings** — system-admin bootstrap/promotion with revocation safeguards, a consolidated single Settings panel merging system admin and settings, a platform audit log with polished audit drawers, and server-side system settings management.
 - **NEW**: **New-User Onboarding Guide** — an interactive spotlight/tour (`NewUserGuide`) with contextual guides for agent and knowledge-base creation, tenant-model-readiness hints, login hints for new users, and an improved backdrop/hole calculation, integrated into the user menu.
 - **NEW**: **Settings UI redesign** — model cards with type badges, redesigned vector-store / parser / storage-engine cards, redesigned web-search / MCP provider cards, brand logos replacing monogram badges, regrouped sidebar nav with a header pinned on scroll, and vector-store test moved into the card menu with a toast result.
-- **NEW**: **`weknora` CLI v0.7 / v0.8** (BREAKING) — agent-first wire contract and command-surface cleanup:
+- **NEW**: **`xinwiki` CLI v0.7 / v0.8** (BREAKING) — agent-first wire contract and command-surface cleanup:
   - **Command-surface rename**: `session ask`, `session continue-stream`, `doc fetch`, `doc create`, `doc delete --all`; `context` CRUD replaced by a `profile` cascade (`context` → `profile`); `agent invoke` / `kb empty` removed.
   - **`--format json` is now the default** with an NDJSON event stream (one JSON event per line) and symmetric envelope infrastructure.
   - **Agent safety nets**: `--dry-run` with risk metadata and validation parity across 19 mutations; `MCP Tool.Annotations` added to 10 tools (spec 2025-06-18).
@@ -180,10 +180,10 @@ All notable changes to this project will be documented in this file.
   - **Per-KB resource ownership**: `chunk → knowledge → kb → creator_id`; same chain applies to FAQ entries, generated questions, KB tags and wiki pages. `custom_agents.creator_id` + `custom_agents.runnable_by_viewer` (default true) control agent ownership and viewer-callability.
   - **Two guard families**: role guards (`Viewer()` / `Contributor()` / `Admin()` / `Owner()`) for tenant-level infra (models, vector stores, IM channels, …) and ownership guards (`OwnedKBOrAdmin()`, `OwnedAgentOrAdmin()`, `OwnedChunkKBOrAdmin()`, …) for resource writes. KB-access guard wired at the route layer for chunk / knowledge / knowledgebase routes (no per-handler helpers).
   - **Tenant members**: invite / remove / role-change endpoints; new `/leave` endpoint; per-tenant audit log with daily retention sweep (default 90 days, `audit_logs.created_at` indexed); `tenant_members` table now drives membership (lifted from per-user to per-tenant in Plan 3); cross-tenant share managed by source-tenant Admin+.
-  - **Configurable**: `tenant.enable_rbac` (default `true`); `false` enters an "audit-only" grace window. New env knobs `WEKNORA_TENANT_ENABLE_RBAC`, `WEKNORA_TENANT_MAX_PER_USER`. RBAC state logged at startup. See [`docs/RBAC说明.md`](./docs/RBAC说明.md).
+  - **Configurable**: `tenant.enable_rbac` (default `true`); `false` enters an "audit-only" grace window. New env knobs `XINWIKI_TENANT_ENABLE_RBAC`, `XINWIKI_TENANT_MAX_PER_USER`. RBAC state logged at startup. See [`docs/RBAC说明.md`](./docs/RBAC说明.md).
 - **NEW**: **Tenant Member Management & Multi-Workspace UX** — invite-only gate, member listing UI with role chips, tenant identity surfaces reworked; tenant switcher in the user menu; tenant switch always redirects to KB list and clears tenant-scoped client state; last-active workspace persisted across logins; pending invitations dialog with polling + global invitation bell; rich workspace-aware notifications on login / tenant switch (raw-message handling, styled chips, survives page reload); QuickNav entry for members; "leave workspace" surfaced in i18n.
 - **NEW**: **Self-Service Workspaces** — any user can create their own tenant (capped per user via env knob); creation dialog with i18n; tenant name + description editable inline; cross-tenant superuser mirrored as Admin role chip in the UI.
-- **NEW**: **`weknora` CLI v0.3 / v0.4 (GA)** — graduates from preview to GA with comprehensive verb-noun subtree coverage:
+- **NEW**: **`xinwiki` CLI v0.3 / v0.4 (GA)** — graduates from preview to GA with comprehensive verb-noun subtree coverage:
   - `agent` subtree: list / view / invoke / check / status / edit / delete / create (full agent CRUD with config rendering).
   - `chunk` subtree: list / view / delete (with curation rationale).
   - `session` subtree: list / view / delete.
@@ -230,7 +230,7 @@ All notable changes to this project will be documented in this file.
 - **IMPROVED**: `agent` exclude processing docs from prompt.
 - **IMPROVED**: LLM response — guard against empty `choices` and `message=None`.
 - **IMPROVED**: Configurable API proxy target for frontend dev environment.
-- **IMPROVED**: `DISABLE_REGISTRATION` now drives `registration_mode` too; removed redundant `WEKNORA_AUTH_REGISTRATION_MODE` env override.
+- **IMPROVED**: `DISABLE_REGISTRATION` now drives `registration_mode` too; removed redundant `XINWIKI_AUTH_REGISTRATION_MODE` env override.
 - **IMPROVED**: Tenant RBAC + per-user tenant cap exposed as env knobs.
 - **IMPROVED**: Auth — JWT `tenant_id` claim honored in middleware; tenant-scoped client state cleared on tenant change.
 - **IMPROVED**: gin per-route logs silenced; env config banner emitted at startup.
@@ -283,13 +283,13 @@ All notable changes to this project will be documented in this file.
 ## [0.5.2] - 2026-05-13
 
 ### 🚀 New Features
-- **NEW**: `weknora` CLI v0.2 — the official command-line client lives under `cli/`. Mirrors the `gh` CLI `<noun> <verb>` convention with 10 top-level commands (`api`, `auth`, `chat`, `context`, `doc`, `doctor`, `kb`, `link`, `search`, `version`). Highlights:
+- **NEW**: `xinwiki` CLI v0.2 — the official command-line client lives under `cli/`. Mirrors the `gh` CLI `<noun> <verb>` convention with 10 top-level commands (`api`, `auth`, `chat`, `context`, `doc`, `doctor`, `kb`, `link`, `search`, `version`). Highlights:
   - Hybrid search and streaming RAG chat against any knowledge base.
-  - Project-level binding via `weknora link` writing `.weknora/project.yaml` (vercel/netlify pattern); subcommands auto-resolve `--kb` from the link.
+  - Project-level binding via `xinwiki link` writing `.xinwiki/project.yaml` (vercel/netlify pattern); subcommands auto-resolve `--kb` from the link.
   - Stable JSON envelope (`{ok, data, error, _meta, dry_run, risk}`) on every `--json` invocation; closed error-code registry enforced by an AST scanner test.
   - Agent affordance: `--dry-run` for write commands, exit-code 10 + `input.confirmation_required` for non-interactive destructive writes, per-command "AI agents:" guidance auto-shown when CLAUDECODE / CURSOR_AGENT is set. Operational contract in `cli/AGENTS.md`.
   - Multi-context auth (`login` / `logout` / `list` / `status`), OS keyring + 0600 file fallback for credentials, both API-key and password (JWT) modes.
-  - Health check via `weknora doctor` (4 statuses: ok / warn / fail / skip).
+  - Health check via `xinwiki doctor` (4 statuses: ok / warn / fail / skip).
   - See `cli/README.md` for install + 5-minute quickstart.
 - **NEW**: Adaptive 3-tier chunking — documents are now profiled before splitting and routed to one of three strategies: heading-aware (Markdown structure), heuristic (form-feeds, multilingual chapter markers DE/EN/ZH, all-caps titles, visual separators), or recursive (the modernized legacy splitter as a fallback). Auto-strategy is the new default for fresh KBs; existing KBs keep their previous behavior until the user opts in. See `docs/CHUNKING.md`.
 - **NEW**: Human-in-the-loop approval for MCP tool calls (#1173) — when an MCP tool is marked sensitive, the agent now pauses and surfaces a `ToolApprovalCard` in the chat UI. Approval state is persisted (so refreshing the page does not lose context), enforced per user, and hardened for concurrent multi-instance deployments. See `docs/zh/mcp-approval.md`.
@@ -448,7 +448,7 @@ All notable changes to this project will be documented in this file.
 ## [0.4.0] - 2026-04-14
 
 ### 🚀 New Features
-- **NEW**: Cloud Knowledge Assistant — [XinWiki Platform](https://weknora.weixin.qq.com/platform), a cloud-hosted knowledge assistant service for quick onboarding without local deployment
+- **NEW**: Cloud Knowledge Assistant — [XinWiki Platform](https://xinwiki.weixin.qq.com/platform), a cloud-hosted knowledge assistant service for quick onboarding without local deployment
 - **NEW**: XinWiki Cloud — XinWiki Cloud provider integration, providing hosted LLM models and document parsing capabilities, with credential management, status checks, and UI feedback
 - **NEW**: Chrome Extension — browser extension support with menu entry and quick access integration for seamless knowledge capture from web pages
 - **NEW**: WeChat IM Integration — WeChat channel adapter with QR code login and long-polling message support
@@ -513,7 +513,7 @@ All notable changes to this project will be documented in this file.
 - Refined parent-child chunk replacement logic to only apply to text chunks whose parent is a parent_text chunk
 - Optimized login page rendering performance: removed all backdrop-filter blur, reduced animated elements, added GPU compositing hints and prefers-reduced-motion support
 - Unified NVIDIA API for both chat and VLM model types
-- Prompt language fallback now uses WEKNORA_LANGUAGE environment variable instead of hardcoded zh-CN, with language propagated through document and image processing pipelines
+- Prompt language fallback now uses XINWIKI_LANGUAGE environment variable instead of hardcoded zh-CN, with language propagated through document and image processing pipelines
 - Fixed enable_thinking for Aliyun Qwen models in streaming mode
 - Enhanced document processing with metadata extraction and handling
 - Added header tracking for Markdown tables during chunking to preserve table context
@@ -852,7 +852,7 @@ All notable changes to this project will be documented in this file.
   - Enhanced KnowledgeQAStream parameters
   - Support for streaming response types and tool calls
 - **NEW**: System & Configuration
-  - Added `WEKNORA_VERSION` environment variable support
+  - Added `XINWIKI_VERSION` environment variable support
   - APK mirror configuration support in Docker
   - Enhanced chunking separator options
   - FAQ two-level priority tag filtering
@@ -1063,7 +1063,7 @@ All notable changes to this project will be documented in this file.
 - **NEW**: Qdrant Vector Database Support
   - Full integration with Qdrant as retriever engine
   - Support for both vector similarity search and full-text keyword search
-  - Dynamic collection creation based on embedding dimensions (e.g., `weknora_embeddings_768`)
+  - Dynamic collection creation based on embedding dimensions (e.g., `xinwiki_embeddings_768`)
   - Multilingual tokenizer support for Chinese/Japanese/Korean text search
   - Professional Chinese word segmentation using jieba for keyword queries
 

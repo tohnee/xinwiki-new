@@ -473,31 +473,31 @@ Observability service：成本、trace、audit、evaluation 聚合。
 是否能支撑继续演进	可以
 是否需要继续封装	需要
 是否应立即大拆微服务	不建议，先领域边界治理
-7. WeKnora 去品牌化是否完成，是否有残留
+7. XinWiki 去品牌化是否完成，是否有残留
 严格结论
 去品牌化没有完成，残留很多，而且不只是 README。
 这项结论非常明确。
 
 7.1 明显残留
-搜索结果显示大量 WeKnora / weknora / WEKNORA / wechatopenai 残留，包括：
+搜索结果显示大量 XinWiki / xinwiki / XINWIKI / wechatopenai 残留，包括：
 Homebrew Formula
-Formula/xinwiki-lite.rb 仍是 class WeknoraLite，homepage 指向 Tencent/WeKnora，release 包名也是 WeKnora-lite，bin 也是 weknora-lite。
+Formula/xinwiki-lite.rb 仍是 class WeknoraLite，homepage 指向 Tencent/XinWiki，release 包名也是 XinWiki-lite，bin 也是 xinwiki-lite。
 DocReader proto
-docreader/proto/docreader.proto 的 go_package 仍指向 github.com/Tencent/WeKnora/internal/docreader/proto。
+docreader/proto/docreader.proto 的 go_package 仍指向 github.com/Tencent/XinWiki/internal/docreader/proto。
 DocReader README / image
-DocReader README 中仍使用 wechatopenai/weknora-docreader 镜像。
+DocReader README 中仍使用 wechatopenai/xinwiki-docreader 镜像。
 文档环境变量
-RBAC 文档仍使用 WEKNORA_TENANT_ENABLE_RBAC、WEKNORA_AUDIT_RETENTION_DAYS 等。
-Agent skills 文档仍使用 WEKNORA_SANDBOX_MODE、WEKNORA_SANDBOX_DOCKER_IMAGE，默认镜像为 wechatopenai/weknora-sandbox:latest。
+RBAC 文档仍使用 XINWIKI_TENANT_ENABLE_RBAC、XINWIKI_AUDIT_RETENTION_DAYS 等。
+Agent skills 文档仍使用 XINWIKI_SANDBOX_MODE、XINWIKI_SANDBOX_DOCKER_IMAGE，默认镜像为 wechatopenai/xinwiki-sandbox:latest。
 
 Embed 文档
-embed 文档仍有 /weknora-widget.js。
+embed 文档仍有 /xinwiki-widget.js。
 CLI 和 Skills
-CLI 仍大量使用 weknora 命令、skills 路径、Claude skills 名称。
+CLI 仍大量使用 xinwiki 命令、skills 路径、Claude skills 名称。
 小程序
-miniprogram 包名是 weknora-miniprogram，storage key 是 weknora_settings，页面文案也有 WeKnora。
+miniprogram 包名是 xinwiki-miniprogram，storage key 是 xinwiki_settings，页面文案也有 XinWiki。
 systemd service
-deploy/xinwiki-lite.service 描述仍是 WeKnora Lite，执行文件仍是 WeKnora-lite。
+deploy/xinwiki-lite.service 描述仍是 XinWiki Lite，执行文件仍是 XinWiki-lite。
 7.2 为什么这很严重
 去品牌化残留不只是观感问题，会影响：
 用户认知。
@@ -512,7 +512,7 @@ Homebrew Formula。
 容器日志。
 安全扫描和 SBOM。
 企业采购审查。
-企业客户看到 WeKnora / XinWiki 混用，会认为项目迁移不完整、工程治理不严谨。
+企业客户看到 XinWiki / XinWiki 混用，会认为项目迁移不完整、工程治理不严谨。
 这一项最终判断
 子项	判断
 README 去品牌化	部分完成
@@ -550,7 +550,7 @@ Wiki 生命周期、质量评分、hybrid retrieval、RRF、QA、batch ingest �
 
 7. 去品牌化
 明确未完成。
-WeKnora 残留非常多，覆盖 Formula、文档、CLI、环境变量、镜像、小程序、systemd、proto 等，不符合企业交付标准。
+XinWiki 残留非常多，覆盖 Formula、文档、CLI、环境变量、镜像、小程序、systemd、proto 等，不符合企业交付标准。
 
 企业级落地准入 Gate
 如果你要把它作为企业级知识库平台推进，我建议设置下面这些“必须通过”的 Gate。
@@ -589,11 +589,11 @@ self-healing lint。
 benchmark 证明精度增益。
 去品牌化：
 统一 XinWiki 命名。
-兼容旧 WEKNORA env 但文档主推 XINWIKI。
+兼容旧 XINWIKI env 但文档主推 XINWIKI。
 镜像、CLI、service、proto、包名、小程序全部清理。
 Testing / Checks
 ✅ rg -n "Claude|Anthropic|anthropic|message API|messages API|opencode|OpenCode|agent sdk|Claude Code|claude" . -g '!frontend/node_modules/**' -g '!docreader/.venv/**' -g '!**/*.sum' | head -300
-✅ rg -n "weknora|Weknora|WEKNORA|wechatopenai|WeKnora|XinWiki|xinwiki" . -g '!frontend/node_modules/**' -g '!docreader/.venv/**' -g '!**/*.sum' | head -400
+✅ rg -n "xinwiki|Weknora|XINWIKI|wechatopenai|XinWiki|XinWiki|xinwiki" . -g '!frontend/node_modules/**' -g '!docreader/.venv/**' -g '!**/*.sum' | head -400
 ✅ find frontend/src -maxdepth 3 -type f | sort | sed -n '1,260p'
 ✅ rg -n "Workspace|workspace|three|right|panel|PPT|ppt|pdf|chart|diagram|report|生成|右侧|三栏|canvas|artifact|Markdown|download" frontend/src internal -g '*.vue' -g '*.ts' -g '*.go' | head -300
 ✅ nl -ba frontend/src/components/XinWikiWorkspace.vue | sed -n '1,260p'

@@ -10,16 +10,16 @@ pip install -r requirements.txt
 ### 2. 设置环境变量
 ```bash
 # Linux/macOS
-export WEKNORA_BASE_URL="http://localhost:8080/api/v1"
-export WEKNORA_API_KEY="your_api_key_here"
+export XINWIKI_BASE_URL="http://localhost:8080/api/v1"
+export XINWIKI_API_KEY="your_api_key_here"
 
 # Windows PowerShell
-$env:WEKNORA_BASE_URL="http://localhost:8080/api/v1"
-$env:WEKNORA_API_KEY="your_api_key_here"
+$env:XINWIKI_BASE_URL="http://localhost:8080/api/v1"
+$env:XINWIKI_API_KEY="your_api_key_here"
 
 # Windows CMD
-set WEKNORA_BASE_URL=http://localhost:8080/api/v1
-set WEKNORA_API_KEY=your_api_key_here
+set XINWIKI_BASE_URL=http://localhost:8080/api/v1
+set XINWIKI_API_KEY=your_api_key_here
 ```
 
 ### 3. 运行服务器
@@ -38,12 +38,12 @@ python run_server.py
 
 #### 方式 3: 直接运行服务器模块
 ```bash
-python weknora_mcp_server.py
+python xinwiki_mcp_server.py
 ```
 
 #### 方式 4: 作为 Python 模块运行
 ```bash
-python -m weknora_mcp_server
+python -m xinwiki_mcp_server
 ```
 
 ## 作为 Python 包安装
@@ -55,9 +55,9 @@ pip install -e .
 
 安装后可以使用命令行工具：
 ```bash
-weknora-mcp-server
+xinwiki-mcp-server
 # 或
-weknora-server
+xinwiki-server
 ```
 
 ### 生产模式安装
@@ -108,13 +108,13 @@ python main.py --check-only
 
 ### 2. 连接错误
 如果无法连接到 XinWiki API：
-- 检查 `WEKNORA_BASE_URL` 是否正确
+- 检查 `XINWIKI_BASE_URL` 是否正确
 - 确认 XinWiki 服务正在运行
 - 验证网络连接
 
 ### 3. 认证错误
 如果遇到认证问题：
-- 检查 `WEKNORA_API_KEY` 是否设置
+- 检查 `XINWIKI_API_KEY` 是否设置
 - 确认 API 密钥有效
 - 验证权限设置
 
@@ -126,7 +126,7 @@ XinWikiMCP/
 ├── __init__.py              # 包初始化文件
 ├── main.py                  # 主入口点
 ├── run_server.py           # 原始启动脚本
-├── weknora_mcp_server.py   # MCP 服务器实现
+├── xinwiki_mcp_server.py   # MCP 服务器实现
 ├── requirements.txt        # 依赖列表
 ├── setup.py               # 安装脚本
 ├── MANIFEST.in            # 包含文件清单
@@ -167,14 +167,14 @@ RUN pip install -r requirements.txt
 COPY . .
 RUN pip install -e .
 
-ENV WEKNORA_BASE_URL=http://localhost:8080/api/v1
+ENV XINWIKI_BASE_URL=http://localhost:8080/api/v1
 EXPOSE 8000
 
-CMD ["weknora-mcp-server"]
+CMD ["xinwiki-mcp-server"]
 ```
 
 ### 系统服务
-创建 systemd 服务文件 `/etc/systemd/system/weknora-mcp.service`：
+创建 systemd 服务文件 `/etc/systemd/system/xinwiki-mcp.service`：
 ```ini
 [Unit]
 Description=XinWiki MCP Server
@@ -182,11 +182,11 @@ After=network.target
 
 [Service]
 Type=simple
-User=weknora
-WorkingDirectory=/opt/weknora-mcp
-Environment=WEKNORA_BASE_URL=http://localhost:8080/api/v1
-Environment=WEKNORA_API_KEY=your_api_key
-ExecStart=/usr/local/bin/weknora-mcp-server
+User=xinwiki
+WorkingDirectory=/opt/xinwiki-mcp
+Environment=XINWIKI_BASE_URL=http://localhost:8080/api/v1
+Environment=XINWIKI_API_KEY=your_api_key
+ExecStart=/usr/local/bin/xinwiki-mcp-server
 Restart=always
 
 [Install]
@@ -195,8 +195,8 @@ WantedBy=multi-user.target
 
 启用服务：
 ```bash
-sudo systemctl enable weknora-mcp
-sudo systemctl start weknora-mcp
+sudo systemctl enable xinwiki-mcp
+sudo systemctl start xinwiki-mcp
 ```
 
 ## 支持

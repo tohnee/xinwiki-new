@@ -23,7 +23,7 @@ const (
 	FormatNDJSON FormatMode = "ndjson"
 )
 
-// DefaultFormatMode is the mode used when neither --format nor WEKNORA_FORMAT
+// DefaultFormatMode is the mode used when neither --format nor XINWIKI_FORMAT
 // is set. Single source of truth shared by FormatOptions.ResolveDefault and
 // cmd.resolveFormatEarly (the early cobra-parse-error path) so the two cannot
 // drift on what "no flag" defaults to.
@@ -154,7 +154,7 @@ func (o *FormatOptions) ResolveDefault(tty bool) {
 	}
 }
 
-// FromEnv reads WEKNORA_FORMAT and applies it when Mode hasn't been set
+// FromEnv reads XINWIKI_FORMAT and applies it when Mode hasn't been set
 // by --format. Call between CheckFormatFlag and ResolveDefault.
 //
 // Invalid env values are silently ignored (the user's --format on a
@@ -163,7 +163,7 @@ func (o *FormatOptions) FromEnv() {
 	if o.Mode != "" {
 		return
 	}
-	v := os.Getenv("WEKNORA_FORMAT")
+	v := os.Getenv("XINWIKI_FORMAT")
 	switch v {
 	case "text", "json", "ndjson":
 		o.Mode = FormatMode(v)

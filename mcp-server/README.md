@@ -14,16 +14,16 @@ pip install -r requirements.txt
 ### 2. 配置环境变量
 ```bash
 # Linux/macOS
-export WEKNORA_BASE_URL="http://localhost:8080/api/v1"
-export WEKNORA_API_KEY="your_api_key_here"
+export XINWIKI_BASE_URL="http://localhost:8080/api/v1"
+export XINWIKI_API_KEY="your_api_key_here"
 
 # Windows PowerShell
-$env:WEKNORA_BASE_URL="http://localhost:8080/api/v1"
-$env:WEKNORA_API_KEY="your_api_key_here"
+$env:XINWIKI_BASE_URL="http://localhost:8080/api/v1"
+$env:XINWIKI_API_KEY="your_api_key_here"
 
 # Windows CMD
-set WEKNORA_BASE_URL=http://localhost:8080/api/v1
-set WEKNORA_API_KEY=your_api_key_here
+set XINWIKI_BASE_URL=http://localhost:8080/api/v1
+set XINWIKI_API_KEY=your_api_key_here
 ```
 
 ### 3. 运行服务器
@@ -42,10 +42,10 @@ python run_server.py
 python run.py
 
 # 直接运行服务器模块
-python weknora_mcp_server.py
+python xinwiki_mcp_server.py
 
 # 作为 Python 模块运行
-python -m weknora_mcp_server
+python -m xinwiki_mcp_server
 ```
 
 ### 4. 命令行选项
@@ -65,9 +65,9 @@ pip install -e .
 
 安装后可以使用命令行工具：
 ```bash
-weknora-mcp-server
+xinwiki-mcp-server
 # 或
-weknora-server
+xinwiki-server
 ```
 
 ### 生产模式安装

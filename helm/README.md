@@ -1,6 +1,6 @@
 # XinWiki Helm Chart
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/weknora)](https://artifacthub.io/packages/helm/weknora/weknora)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/xinwiki)](https://artifacthub.io/packages/helm/xinwiki/xinwiki)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 Helm chart for deploying [XinWiki](https://github.com/Tencent/XinWiki) - an AI-powered Knowledge RAG Platform.
@@ -24,8 +24,8 @@ XinWiki is an intelligent knowledge base platform that combines:
 
 ```bash
 # Add required secrets
-helm install weknora ./helm \
-  --namespace weknora \
+helm install xinwiki ./helm \
+  --namespace xinwiki \
   --create-namespace \
   --set secrets.dbPassword=<your-db-password> \
   --set secrets.redisPassword=<your-redis-password> \
@@ -61,8 +61,8 @@ helm install weknora ./helm \
 ### Basic Installation
 
 ```bash
-helm install weknora ./helm \
-  --namespace weknora \
+helm install xinwiki ./helm \
+  --namespace xinwiki \
   --create-namespace \
   --set secrets.dbPassword=secure-password \
   --set secrets.redisPassword=secure-password \
@@ -72,13 +72,13 @@ helm install weknora ./helm \
 ### With Ingress
 
 ```bash
-helm install weknora ./helm \
-  --namespace weknora \
+helm install xinwiki ./helm \
+  --namespace xinwiki \
   --create-namespace \
   --set ingress.enabled=true \
-  --set ingress.host=weknora.example.com \
+  --set ingress.host=xinwiki.example.com \
   --set ingress.tls.enabled=true \
-  --set ingress.tls.secretName=weknora-tls \
+  --set ingress.tls.secretName=xinwiki-tls \
   --set secrets.dbPassword=secure-password \
   --set secrets.redisPassword=secure-password \
   --set secrets.jwtSecret=$(openssl rand -base64 32)
@@ -87,8 +87,8 @@ helm install weknora ./helm \
 ### With External LLM (Ollama)
 
 ```bash
-helm install weknora ./helm \
-  --namespace weknora \
+helm install xinwiki ./helm \
+  --namespace xinwiki \
   --create-namespace \
   --set app.extraEnv[0].name=OLLAMA_BASE_URL \
   --set app.extraEnv[0].value=http://ollama.ollama:11434 \
@@ -124,18 +124,18 @@ postgresql:
 
 ingress:
   enabled: true
-  host: weknora.company.com
+  host: xinwiki.company.com
   tls:
     enabled: true
-    secretName: weknora-tls
+    secretName: xinwiki-tls
 
 secrets:
-  existingSecret: weknora-secrets  # Use pre-created secret
+  existingSecret: xinwiki-secrets  # Use pre-created secret
 ```
 
 ```bash
-helm install weknora ./helm \
-  --namespace weknora \
+helm install xinwiki ./helm \
+  --namespace xinwiki \
   --create-namespace \
   -f values-production.yaml
 ```
@@ -165,7 +165,7 @@ helm install weknora ./helm \
 |-----------|-------------|---------|
 | `app.enabled` | Enable backend | `true` |
 | `app.replicaCount` | Number of replicas | `1` |
-| `app.image.repository` | Image repository | `wechatopenai/weknora-app` |
+| `app.image.repository` | Image repository | `wechatopenai/xinwiki-app` |
 | `app.image.tag` | Image tag | `""` (uses appVersion) |
 | `app.resources` | Resource limits | See values.yaml |
 | `app.env` | Environment variables | See values.yaml |
@@ -177,7 +177,7 @@ helm install weknora ./helm \
 |-----------|-------------|---------|
 | `frontend.enabled` | Enable frontend | `true` |
 | `frontend.replicaCount` | Number of replicas | `1` |
-| `frontend.image.repository` | Image repository | `wechatopenai/weknora-ui` |
+| `frontend.image.repository` | Image repository | `wechatopenai/xinwiki-ui` |
 | `frontend.image.tag` | Image tag | `latest` |
 
 ### PostgreSQL (ParadeDB)
@@ -206,7 +206,7 @@ helm install weknora ./helm \
 |-----------|-------------|---------|
 | `ingress.enabled` | Enable ingress | `false` |
 | `ingress.className` | Ingress class | `nginx` |
-| `ingress.host` | Hostname | `weknora.example.com` |
+| `ingress.host` | Hostname | `xinwiki.example.com` |
 | `ingress.tls.enabled` | Enable TLS | `false` |
 | `ingress.tls.secretName` | TLS secret name | `""` |
 
@@ -216,7 +216,7 @@ helm install weknora ./helm \
 |-----------|-------------|---------|
 | `secrets.dbUser` | Database username | `postgres` |
 | `secrets.dbPassword` | Database password | `""` (required) |
-| `secrets.dbName` | Database name | `weknora` |
+| `secrets.dbName` | Database name | `xinwiki` |
 | `secrets.redisPassword` | Redis password | `""` (required) |
 | `secrets.jwtSecret` | JWT signing secret | `""` (required) |
 | `secrets.existingSecret` | Use existing secret | `""` |
@@ -239,13 +239,13 @@ These map to docker-compose profiles:
 
 1. **Helm --set flags** (for testing)
    ```bash
-   helm install weknora ./helm --set secrets.dbPassword=xxx
+   helm install xinwiki ./helm --set secrets.dbPassword=xxx
    ```
 
 2. **External Secrets Operator** (recommended for production)
    ```yaml
    secrets:
-     existingSecret: weknora-external-secret
+     existingSecret: xinwiki-external-secret
    ```
 
 3. **Sealed Secrets** (for GitOps)
@@ -264,49 +264,49 @@ The chart follows CNCF security best practices:
 ## Upgrading
 
 ```bash
-helm upgrade weknora ./helm \
-  --namespace weknora \
+helm upgrade xinwiki ./helm \
+  --namespace xinwiki \
   --reuse-values
 ```
 
 ## Uninstalling
 
 ```bash
-helm uninstall weknora --namespace weknora
+helm uninstall xinwiki --namespace xinwiki
 
 # Optional: Remove PVCs
-kubectl delete pvc -n weknora -l app.kubernetes.io/instance=weknora
+kubectl delete pvc -n xinwiki -l app.kubernetes.io/instance=xinwiki
 ```
 
 ## Troubleshooting
 
 ### Check Pod Status
 ```bash
-kubectl get pods -n weknora
+kubectl get pods -n xinwiki
 ```
 
 ### View Logs
 ```bash
 # Backend logs
-kubectl logs -n weknora -l app.kubernetes.io/component=app -f
+kubectl logs -n xinwiki -l app.kubernetes.io/component=app -f
 
 # Frontend logs
-kubectl logs -n weknora -l app.kubernetes.io/component=frontend -f
+kubectl logs -n xinwiki -l app.kubernetes.io/component=frontend -f
 ```
 
 ### Common Issues
 
 **Pod stuck in Pending**
-- Check if PVCs are bound: `kubectl get pvc -n weknora`
+- Check if PVCs are bound: `kubectl get pvc -n xinwiki`
 - Verify storage class exists: `kubectl get sc`
 
 **Connection refused errors**
 - Wait for all pods to be Ready
-- Check service endpoints: `kubectl get endpoints -n weknora`
+- Check service endpoints: `kubectl get endpoints -n xinwiki`
 
 **Database connection errors**
 - Verify secrets are correct
-- Check PostgreSQL logs: `kubectl logs -n weknora -l app.kubernetes.io/component=database`
+- Check PostgreSQL logs: `kubectl logs -n xinwiki -l app.kubernetes.io/component=database`
 
 ## Contributing
 

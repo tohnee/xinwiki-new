@@ -149,7 +149,7 @@ func TestRunSearch_NilService(t *testing.T) {
 // --kb rule; that safety guard is unrelated to this path.
 func TestNewCmdChunks_NoKBUsesResolver(t *testing.T) {
 	iostreams.SetForTest(t)
-	t.Setenv("WEKNORA_KB_ID", "") // no ambient KB from env
+	t.Setenv("XINWIKI_KB_ID", "") // no ambient KB from env
 	t.Chdir(t.TempDir())          // no .xinwiki project link discoverable
 	cmd := NewCmdChunks(&cmdutil.Factory{
 		// Resolution reaches local.kb_id_required before any client is built,
@@ -168,12 +168,12 @@ func TestNewCmdChunks_NoKBUsesResolver(t *testing.T) {
 }
 
 // TestNewCmdChunks_HonorsKBEnv proves the env fallback is wired: with
-// WEKNORA_KB_ID set and no --kb, KB resolution succeeds (no kb-required
+// XINWIKI_KB_ID set and no --kb, KB resolution succeeds (no kb-required
 // error) and the command proceeds to the client step — which here errors,
 // confirming we got past resolution using the env value alone.
 func TestNewCmdChunks_HonorsKBEnv(t *testing.T) {
 	iostreams.SetForTest(t)
-	t.Setenv("WEKNORA_KB_ID", "kb_from_env")
+	t.Setenv("XINWIKI_KB_ID", "kb_from_env")
 	cmd := NewCmdChunks(&cmdutil.Factory{
 		Client: func() (*sdk.Client, error) { return nil, errors.New("client boom") },
 	})

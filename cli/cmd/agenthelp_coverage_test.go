@@ -13,14 +13,14 @@ import (
 
 // TestEveryLeafCommandHasAgentHelp enforces the agent-first contract: every
 // leaf (runnable, no subcommands) command must emit a structured AgentHelp JSON
-// blob under WEKNORA_AGENT_HELP=1, so an agent never has to scrape human prose.
+// blob under XINWIKI_AGENT_HELP=1, so an agent never has to scrape human prose.
 // Drift guard in the spirit of the K6/K7 skill-parity tests: a new leaf command
 // added without SetAgentHelp fails CI here.
 //
 // Exemptions: cobra's generated `completion`/`help` subtrees carry no
 // domain semantics worth a machine blob.
 func TestEveryLeafCommandHasAgentHelp(t *testing.T) {
-	t.Setenv("WEKNORA_AGENT_HELP", "1")
+	t.Setenv("XINWIKI_AGENT_HELP", "1")
 	root := NewRootCmd(cmdutil.New())
 
 	var missing []string

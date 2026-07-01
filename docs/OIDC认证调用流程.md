@@ -560,7 +560,7 @@ OIDC 配置定义位于 `internal/config/config.go`，环境变量示例见 `.en
 
 ```yaml
 staticClients:
-  - id: weknora
+  - id: xinwiki
     redirectURIs:
       - 'http://127.0.0.1:5173/api/v1/auth/oidc/callback'
       - 'http://127.0.0.1/api/v1/auth/oidc/callback'

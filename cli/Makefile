@@ -1,17 +1,17 @@
-# Makefile for the WeKnora CLI (cli/ Go module).
+# Makefile for the XinWiki CLI (cli/ Go module).
 #
 # Usage:
-#   make build         compile to ./bin/weknora with version metadata
+#   make build         compile to ./bin/xinwiki with version metadata
 #   make test          go test ./...
 #   make test-coverage same with coverage report
 #   make lint          go vet (golangci-lint planned)
 #   make tidy          go mod tidy
 #   make clean         remove ./bin
 
-BINARY      := weknora
+BINARY      := xinwiki
 BUILD_DIR   := bin
 # The CLI Go module path. Kept in sync with cli/go.mod's `module` line.
-# The Makefile previously pointed at github.com/Tencent/WeKnora/cli (the
+# The Makefile previously pointed at github.com/Tencent/XinWiki/cli (the
 # pre-brand-migration module path), so the -ldflags -X flags injected
 # build.* var values into a package path that no longer existed - the
 # linker silently dropped them and the CLI shipped with build.Version="dev"

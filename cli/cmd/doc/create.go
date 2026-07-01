@@ -51,7 +51,7 @@ func NewCmdCreate(f *cmdutil.Factory) *cobra.Command {
 		Long: `Create a new knowledge entry by passing Markdown content directly via --text.
 Useful for short snippets, agent-generated content, or structured notes that
 don't require a file upload or remote URL. KB resolution follows the standard
-4-level chain: --kb flag > WEKNORA_KB_ID env > .xinwiki/project.yaml > error.
+4-level chain: --kb flag > XINWIKI_KB_ID env > .xinwiki/project.yaml > error.
 
   --text <content>    Document text in Markdown format (required).
   --name <title>      Display title stored with the entry.
@@ -107,7 +107,7 @@ don't require a file upload or remote URL. KB resolution follows the standard
 	cmdutil.AddFormatFlag(cmd, docCreateFields...)
 	cmdutil.AddDryRunFlag(cmd, &opts.DryRun)
 	cmdutil.SetAgentHelp(cmd, cmdutil.AgentHelp{
-		UsedFor:       "Create a knowledge entry from inline Markdown text. KB resolved via --kb flag, WEKNORA_KB_ID env, or project link. Emits the created Knowledge object with its id.",
+		UsedFor:       "Create a knowledge entry from inline Markdown text. KB resolved via --kb flag, XINWIKI_KB_ID env, or project link. Emits the created Knowledge object with its id.",
 		RequiredFlags: []string{"--text"},
 		Output:        "envelope.data is the created Knowledge object with id, knowledge_base_id, title, parse_status",
 	})

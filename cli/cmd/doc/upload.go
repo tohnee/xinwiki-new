@@ -74,7 +74,7 @@ func NewCmdUpload(f *cmdutil.Factory) *cobra.Command {
 		Short: "Upload a local file to the knowledge base",
 		Long: `Uploads a file (PDF / DOCX / Markdown / TXT / etc.) to the resolved
 knowledge base. KB resolution follows the standard 4-level chain:
---kb flag > WEKNORA_KB_ID env > .xinwiki/project.yaml > error. The --kb
+--kb flag > XINWIKI_KB_ID env > .xinwiki/project.yaml > error. The --kb
 flag accepts either a KB UUID (passed through) or a name (resolved via list).
 
 Pass --name to override the recorded file name (useful when the local file
@@ -190,7 +190,7 @@ Server-side ingestion knobs:
 	cmdutil.AddFormatFlag(cmd, docUploadFields...)
 	cmdutil.AddDryRunFlag(cmd, &opts.DryRun)
 	cmdutil.SetAgentHelp(cmd, cmdutil.AgentHelp{
-		UsedFor:       "Upload a local file to the resolved knowledge base. KB resolved via --kb flag, WEKNORA_KB_ID env, or project link. Emits the created Knowledge object with its id.",
+		UsedFor:       "Upload a local file to the resolved knowledge base. KB resolved via --kb flag, XINWIKI_KB_ID env, or project link. Emits the created Knowledge object with its id.",
 		RequiredFlags: []string{"<file> (positional)"},
 		Output:        "envelope.data is the created Knowledge object with id, knowledge_base_id, file_name, parse_status",
 	})

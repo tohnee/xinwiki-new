@@ -24,7 +24,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ```json
 {
   "mcpServers": {
-    "weknora": {
+    "xinwiki": {
       "args": [
         "--directory",
         "/path/XinWiki/mcp-server",
@@ -33,8 +33,8 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
       ],
       "command": "uv",
       "env": {
-        "WEKNORA_API_KEY": "your_api_key_here",
-        "WEKNORA_BASE_URL": "http://localhost:8080/api/v1"
+        "XINWIKI_API_KEY": "your_api_key_here",
+        "XINWIKI_BASE_URL": "http://localhost:8080/api/v1"
       }
     }
   }
@@ -48,7 +48,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ```json
 {
   "mcpServers": {
-    "weknora": {
+    "xinwiki": {
       "command": "uv",
       "args": [
         "--directory",
@@ -57,8 +57,8 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
         "run_server.py"
       ],
       "env": {
-        "WEKNORA_API_KEY": "your_api_key_here",
-        "WEKNORA_BASE_URL": "http://localhost:8080/api/v1"
+        "XINWIKI_API_KEY": "your_api_key_here",
+        "XINWIKI_BASE_URL": "http://localhost:8080/api/v1"
       }
     }
   }
@@ -72,7 +72,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ```json
 {
   "mcpServers": {
-    "weknora": {
+    "xinwiki": {
       "command": "uv",
       "args": [
         "--directory",
@@ -81,8 +81,8 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
         "run_server.py"
       ],
       "env": {
-        "WEKNORA_API_KEY": "your_api_key_here",
-        "WEKNORA_BASE_URL": "http://localhost:8080/api/v1"
+        "XINWIKI_API_KEY": "your_api_key_here",
+        "XINWIKI_BASE_URL": "http://localhost:8080/api/v1"
       }
     }
   }
@@ -96,7 +96,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ```json
 {
   "mcpServers": {
-    "weknora": {
+    "xinwiki": {
       "command": "uv",
       "args": [
         "--directory",
@@ -105,8 +105,8 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
         "run_server.py"
       ],
       "env": {
-        "WEKNORA_API_KEY": "your_api_key_here",
-        "WEKNORA_BASE_URL": "http://localhost:8080/api/v1"
+        "XINWIKI_API_KEY": "your_api_key_here",
+        "XINWIKI_BASE_URL": "http://localhost:8080/api/v1"
       }
     }
   }

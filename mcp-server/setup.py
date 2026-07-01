@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-WeKnora MCP Server 安装脚本
+XinWiki MCP Server 安装脚本
 """
 
 from setuptools import setup
@@ -12,7 +12,7 @@ def read_readme():
         with open("README.md", "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        return "WeKnora MCP Server - Model Context Protocol server for WeKnora API"
+        return "XinWiki MCP Server - Model Context Protocol server for XinWiki API"
 
 
 # 读取依赖
@@ -29,12 +29,12 @@ def read_requirements():
 setup(
     name="xinwiki-mcp-server",
     version="1.0.0",
-    author="WeKnora Team",
+    author="XinWiki Team",
     author_email="support@xinwiki.com",
-    description="WeKnora MCP Server - Model Context Protocol server for WeKnora API",
+    description="XinWiki MCP Server - Model Context Protocol server for XinWiki API",
     long_description=read_readme(),
     long_description_content_type="text/markdown",
-    url="https://github.com/NannaOlympicBroadcast/WeKnoraMCP",
+    url="https://github.com/NannaOlympicBroadcast/XinWikiMCP",
     py_modules=["xinwiki_mcp_server", "main", "run_server", "run", "test_module"],
     classifiers=[
         "Development Status :: 4 - Beta",

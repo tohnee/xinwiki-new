@@ -9,7 +9,7 @@ import (
 )
 
 func TestSetAgentHelp_EmitsJSONWhenEnvSet(t *testing.T) {
-	t.Setenv("WEKNORA_AGENT_HELP", "1")
+	t.Setenv("XINWIKI_AGENT_HELP", "1")
 	cmd := &cobra.Command{Use: "foo"}
 	ah := AgentHelp{
 		UsedFor:       "frob a bar",
@@ -35,7 +35,7 @@ func TestSetAgentHelp_EmitsJSONWhenEnvSet(t *testing.T) {
 }
 
 func TestSetAgentHelp_FallsThroughToHumanHelp(t *testing.T) {
-	t.Setenv("WEKNORA_AGENT_HELP", "")
+	t.Setenv("XINWIKI_AGENT_HELP", "")
 	cmd := &cobra.Command{
 		Use:   "foo",
 		Short: "frob a bar",
@@ -62,7 +62,7 @@ func TestSetAgentHelp_AgentJSON_NoTrailingWarningsProse(t *testing.T) {
 		UsedFor:  "Delete a knowledge base",
 		Warnings: []string{"irreversible"},
 	})
-	t.Setenv("WEKNORA_AGENT_HELP", "1")
+	t.Setenv("XINWIKI_AGENT_HELP", "1")
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
 	cmd.HelpFunc()(cmd, nil)

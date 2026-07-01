@@ -302,10 +302,10 @@ func fakeKBServer(t *testing.T, kbs []sdk.KnowledgeBase) *httptest.Server {
 	return srv
 }
 
-// TestFactory_ActiveProfile_EnvVarFallback verifies WEKNORA_PROFILE is honoured
+// TestFactory_ActiveProfile_EnvVarFallback verifies XINWIKI_PROFILE is honoured
 // when no override or config is present.
 func TestFactory_ActiveProfile_EnvVarFallback(t *testing.T) {
-	t.Setenv("WEKNORA_PROFILE", "staging")
+	t.Setenv("XINWIKI_PROFILE", "staging")
 	f := &Factory{} // no override, no config
 	if got := f.ActiveProfile(); got != "staging" {
 		t.Errorf("expected env fallback to staging; got %q", got)
@@ -313,9 +313,9 @@ func TestFactory_ActiveProfile_EnvVarFallback(t *testing.T) {
 }
 
 // TestFactory_ActiveProfile_OverrideWinsEnv verifies ProfileOverride takes
-// priority over the WEKNORA_PROFILE env var.
+// priority over the XINWIKI_PROFILE env var.
 func TestFactory_ActiveProfile_OverrideWinsEnv(t *testing.T) {
-	t.Setenv("WEKNORA_PROFILE", "staging")
+	t.Setenv("XINWIKI_PROFILE", "staging")
 	f := &Factory{ProfileOverride: "prod"}
 	if got := f.ActiveProfile(); got != "prod" {
 		t.Errorf("override should win over env; got %q", got)
@@ -327,7 +327,7 @@ func TestFactory_ActiveProfile_OverrideWinsEnv(t *testing.T) {
 func TestResolveKB_Chain(t *testing.T) {
 	t.Run("flag_kb_id_wins", func(t *testing.T) {
 		// UUID form on --kb → pass-through; no SDK call, no env, no disk.
-		t.Setenv("WEKNORA_KB_ID", "kb_env_should_lose")
+		t.Setenv("XINWIKI_KB_ID", "kb_env_should_lose")
 		dir := t.TempDir()
 		resolveKBChdir(t, dir)
 		// Drop a project link too - must be ignored.
@@ -347,7 +347,7 @@ func TestResolveKB_Chain(t *testing.T) {
 	})
 
 	t.Run("flag_kb_name_resolves", func(t *testing.T) {
-		t.Setenv("WEKNORA_KB_ID", "")
+		t.Setenv("XINWIKI_KB_ID", "")
 		srv := fakeKBServer(t, []sdk.KnowledgeBase{
 			{ID: "kb_a", Name: "foo"},
 			{ID: "kb_b", Name: "bar"},
@@ -361,7 +361,7 @@ func TestResolveKB_Chain(t *testing.T) {
 	})
 
 	t.Run("flag_kb_name_not_found", func(t *testing.T) {
-		t.Setenv("WEKNORA_KB_ID", "")
+		t.Setenv("XINWIKI_KB_ID", "")
 		srv := fakeKBServer(t, []sdk.KnowledgeBase{{ID: "kb_a", Name: "foo"}})
 		f := &Factory{
 			Client: func() (*sdk.Client, error) { return sdk.NewClient(srv.URL), nil },
@@ -375,7 +375,7 @@ func TestResolveKB_Chain(t *testing.T) {
 
 	t.Run("env_var", func(t *testing.T) {
 		// No flag, env wins over disk.
-		t.Setenv("WEKNORA_KB_ID", "kb_env")
+		t.Setenv("XINWIKI_KB_ID", "kb_env")
 		dir := t.TempDir()
 		resolveKBChdir(t, dir)
 		require.NoError(t, projectlink.Save(filepath.Join(dir, ".xinwiki", "project.yaml"), &projectlink.Project{KBID: "kb_disk_should_lose"}))
@@ -387,7 +387,7 @@ func TestResolveKB_Chain(t *testing.T) {
 	})
 
 	t.Run("project_link_walk_up", func(t *testing.T) {
-		t.Setenv("WEKNORA_KB_ID", "")
+		t.Setenv("XINWIKI_KB_ID", "")
 		root := t.TempDir()
 		require.NoError(t, projectlink.Save(filepath.Join(root, ".xinwiki", "project.yaml"), &projectlink.Project{KBID: "kb_proj"}))
 		// Run from a deep child to exercise walk-up.
@@ -403,7 +403,7 @@ func TestResolveKB_Chain(t *testing.T) {
 
 	t.Run("none", func(t *testing.T) {
 		// No flag, no env, no project link → CodeKBIDRequired.
-		t.Setenv("WEKNORA_KB_ID", "")
+		t.Setenv("XINWIKI_KB_ID", "")
 		dir := t.TempDir()
 		resolveKBChdir(t, dir)
 

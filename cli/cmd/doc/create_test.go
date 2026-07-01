@@ -140,12 +140,12 @@ func TestCreate_EmptyText_RejectsBeforeSDK(t *testing.T) {
 	assert.Nil(t, svc.got.req, "SDK must not be called when --text is empty")
 }
 
-// TestCreate_AgentHelp_EmitsUsedFor verifies that when WEKNORA_AGENT_HELP=1
+// TestCreate_AgentHelp_EmitsUsedFor verifies that when XINWIKI_AGENT_HELP=1
 // the `doc create --help` path emits a JSON blob containing "used_for".
 // This is the representative test for 3.2; the mechanism is covered by
 // internal/cmdutil/agenthelp_test.go — we test the wiring here.
 func TestCreate_AgentHelp_EmitsUsedFor(t *testing.T) {
-	t.Setenv("WEKNORA_AGENT_HELP", "1")
+	t.Setenv("XINWIKI_AGENT_HELP", "1")
 	_, _ = iostreams.SetForTest(t)
 
 	f := &cmdutil.Factory{}

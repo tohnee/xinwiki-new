@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-WeKnora MCP Server
+XinWiki MCP Server
 
-A Model Context Protocol server that provides access to the WeKnora knowledge management API.
+A Model Context Protocol server that provides access to the XinWiki knowledge management API.
 """
 
 import argparse
@@ -27,29 +27,29 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Configuration - Load from environment variables with defaults
-WEKNORA_BASE_URL = os.getenv("WEKNORA_BASE_URL", "http://localhost:8080/api/v1")
-WEKNORA_API_KEY = os.getenv("WEKNORA_API_KEY", "")
+XINWIKI_BASE_URL = os.getenv("XINWIKI_BASE_URL", "http://localhost:8080/api/v1")
+XINWIKI_API_KEY = os.getenv("XINWIKI_API_KEY", "")
 # Chat SSE read timeout in seconds. LLM responses can be slow; default 300s.
 try:
-    WEKNORA_CHAT_TIMEOUT = int(os.getenv("WEKNORA_CHAT_TIMEOUT", "300"))
+    XINWIKI_CHAT_TIMEOUT = int(os.getenv("XINWIKI_CHAT_TIMEOUT", "300"))
 except ValueError:
-    logger.warning("WEKNORA_CHAT_TIMEOUT is not a valid integer; falling back to 300s.")
-    WEKNORA_CHAT_TIMEOUT = 300
+    logger.warning("XINWIKI_CHAT_TIMEOUT is not a valid integer; falling back to 300s.")
+    XINWIKI_CHAT_TIMEOUT = 300
 
 
-class WeKnoraClient:
-    """Client for interacting with WeKnora API"""
+class XinWikiClient:
+    """Client for interacting with XinWiki API"""
 
     def __init__(self, base_url: str, api_key: str):
-        """Initialize the WeKnora API client with base URL and authentication"""
+        """Initialize the XinWiki API client with base URL and authentication"""
         self.base_url = base_url
         self.api_key = api_key
-        # SSL verification: enabled by default. Set WEKNORA_VERIFY_SSL=false to disable
+        # SSL verification: enabled by default. Set XINWIKI_VERIFY_SSL=false to disable
         # (e.g. for self-signed certs in dev environments — NOT recommended for production).
-        self.verify_ssl = os.getenv("WEKNORA_VERIFY_SSL", "true").lower() != "false"
+        self.verify_ssl = os.getenv("XINWIKI_VERIFY_SSL", "true").lower() != "false"
         if not self.verify_ssl:
             logger.warning(
-                "SSL certificate verification is DISABLED (WEKNORA_VERIFY_SSL=false). "
+                "SSL certificate verification is DISABLED (XINWIKI_VERIFY_SSL=false). "
                 "This is insecure and should not be used in production."
             )
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -65,7 +65,7 @@ class WeKnoraClient:
         )
 
     def _request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
-        """Make a request to the WeKnora API
+        """Make a request to the XinWiki API
 
         Args:
             method: HTTP method (GET, POST, PUT, DELETE)
@@ -324,7 +324,7 @@ class WeKnoraClient:
         """POST to *url* with *body*, consume the SSE stream, and return the assembled result.
 
         Centralised helper used by both chat() and agent_chat().
-        Timeout: (10s connect, WEKNORA_CHAT_TIMEOUT read) — configurable via env var.
+        Timeout: (10s connect, XINWIKI_CHAT_TIMEOUT read) — configurable via env var.
         
         Server-Sent Events (SSE) stream format:
           data: {"response_type": "answer", "content": "..."}
@@ -335,10 +335,10 @@ class WeKnoraClient:
         """
         try:
             # POST with stream=True to receive server-sent events incrementally
-            # Timeout: 10s to establish connection, WEKNORA_CHAT_TIMEOUT for reading response
+            # Timeout: 10s to establish connection, XINWIKI_CHAT_TIMEOUT for reading response
             response = self.session.post(
                 url, json=body, stream=True,
-                timeout=(10, WEKNORA_CHAT_TIMEOUT),
+                timeout=(10, XINWIKI_CHAT_TIMEOUT),
             )
             response.raise_for_status()
 
@@ -487,19 +487,19 @@ class WeKnoraClient:
 
 # Initialize MCP server instance
 app = Server("xinwiki-server")
-# Initialize WeKnora API client with configuration
-client = WeKnoraClient(WEKNORA_BASE_URL, WEKNORA_API_KEY)
+# Initialize XinWiki API client with configuration
+client = XinWikiClient(XINWIKI_BASE_URL, XINWIKI_API_KEY)
 
 
 # Tool definitions - Register all available tools for the MCP protocol
 @app.list_tools()
 async def handle_list_tools() -> list[types.Tool]:
-    """List all available WeKnora tools with their schemas"""
+    """List all available XinWiki tools with their schemas"""
     return [
         # Tenant Management
         types.Tool(
             name="create_tenant",
-            description="Create a new tenant in WeKnora",
+            description="Create a new tenant in XinWiki",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1364,7 +1364,7 @@ def main():
       2. MCP_TRANSPORT environment variable
       3. Default: stdio
     """
-    parser = argparse.ArgumentParser(description="WeKnora MCP Server")
+    parser = argparse.ArgumentParser(description="XinWiki MCP Server")
     parser.add_argument(
         "--transport",
         choices=["stdio", "sse", "http"],

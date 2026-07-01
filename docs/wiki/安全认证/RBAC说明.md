@@ -86,7 +86,7 @@ audit:
   retention_days: 90              # 0 表示不清理
 ```
 
-环境变量 `WEKNORA_TENANT_ENABLE_RBAC` / `WEKNORA_AUDIT_RETENTION_DAYS` 覆盖 YAML。`DISABLE_REGISTRATION=true` 等价于把 `registration_mode` 强制设为 `invite_only`。
+环境变量 `XINWIKI_TENANT_ENABLE_RBAC` / `XINWIKI_AUDIT_RETENTION_DAYS` 覆盖 YAML。`DISABLE_REGISTRATION=true` 等价于把 `registration_mode` 强制设为 `invite_only`。
 
 ## 审计
 

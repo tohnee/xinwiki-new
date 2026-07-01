@@ -1,15 +1,15 @@
 [Unit]
-Description=WeKnora first-boot initialization (runs once)
+Description=XinWiki first-boot initialization (runs once)
 After=docker.service network-online.target
 Requires=docker.service
 Wants=network-online.target
-Before=weknora.service
-ConditionPathExists=/usr/local/sbin/weknora-firstboot.sh
-ConditionPathExists=!/opt/WeKnora/.firstboot.done
+Before=xinwiki.service
+ConditionPathExists=/usr/local/sbin/xinwiki-firstboot.sh
+ConditionPathExists=!/opt/XinWiki/.firstboot.done
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/sbin/weknora-firstboot.sh
+ExecStart=/usr/local/sbin/xinwiki-firstboot.sh
 RemainAfterExit=no
 TimeoutStartSec=900
 

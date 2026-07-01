@@ -39,7 +39,7 @@
 | `JWT_SECRET` | 确认已设置为强随机值（非默认值） |
 | `TENANT_AES_KEY` | 确认已设置为强随机值 |
 | `SYSTEM_AES_KEY` | 确认为32字节强随机值 |
-| `WEKNORA_TENANT_ENABLE_RBAC` | 生产环境建议 `true` |
+| `XINWIKI_TENANT_ENABLE_RBAC` | 生产环境建议 `true` |
 
 ### 1.5 [必须] 文件存储
 
@@ -137,7 +137,7 @@ conversation:
 
 | 检查项 | 说明 |
 |--------|------|
-| `WEKNORA_VERSION` | 确认镜像版本标签（latest/main/具体版本号） |
+| `XINWIKI_VERSION` | 确认镜像版本标签（latest/main/具体版本号） |
 | `docker-compose.yml` | 确认使用正确的 compose 文件 |
 
 ### 4.2 [必须] 数据持久化

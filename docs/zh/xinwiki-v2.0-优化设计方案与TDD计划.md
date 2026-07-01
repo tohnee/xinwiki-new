@@ -12,7 +12,7 @@
 | D2-1 | Agent运行时升级 - Claude Message API + Agent SDK + OpenCode SDK | P0 | 2周 | 无 |
 | D2-2 | Wiki系统深度优化 - 高精度问答 + 编译/检索加速 | P0 | 3周 | 无 |
 | D2-3 | RBAC多租户 + 企业UUM认证集成 | P0 | 2周 | 无 |
-| D2-4 | 品牌统一替换 - WeKnora → XinWiki | P0 | 已完成 | ✅ |
+| D2-4 | 品牌统一替换 - XinWiki → XinWiki | P0 | 已完成 | ✅ |
 | D2-5 | 前端三栏式重构 - NotebookLM风格 + Apple明亮科技风 | P1 | 3周 | D2-1, D2-2 |
 | D2-6 | 监控增强 - 思维链展示 + Token消耗可视化 | P1 | 1周 | D2-1 |
 

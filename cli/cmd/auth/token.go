@@ -22,9 +22,9 @@ type tokenResult struct {
 // NewCmdToken builds `xinwiki auth token`. Prints the active profile's
 // credential to stdout for use in shell pipelines, e.g.
 //
-//	WEKNORA_TOKEN=$(xinwiki auth token)
-//	curl -H "Authorization: Bearer $WEKNORA_TOKEN" ...     # JWT mode
-//	curl -H "X-API-Key: $WEKNORA_TOKEN" ...                # api-key mode
+//	XINWIKI_TOKEN=$(xinwiki auth token)
+//	curl -H "Authorization: Bearer $XINWIKI_TOKEN" ...     # JWT mode
+//	curl -H "X-API-Key: $XINWIKI_TOKEN" ...                # api-key mode
 //
 // The user is responsible for constructing the appropriate header -
 // `auth list` shows which mode each profile uses.
@@ -46,7 +46,7 @@ to see which mode each profile uses, and construct the matching HTTP header:
   X-API-Key: <token>               # api-key mode
 
 ` + "`--profile <name>`" + ` (global flag) selects a non-active profile to read from.`,
-		Example: `  WEKNORA_TOKEN=$(xinwiki auth token)
+		Example: `  XINWIKI_TOKEN=$(xinwiki auth token)
   xinwiki auth token --profile staging
   xinwiki auth token --format json`,
 		Args: cobra.NoArgs,
@@ -55,10 +55,10 @@ to see which mode each profile uses, and construct the matching HTTP header:
 			if err != nil {
 				return err
 			}
-			// `auth token` is a scalar scripting helper (WEKNORA_TOKEN=$(...)),
+			// `auth token` is a scalar scripting helper (XINWIKI_TOKEN=$(...)),
 			// so it defaults to the raw token — overriding the global json
 			// default (gh auth token does the same; cf. doc download streaming
-			// raw bytes). Explicit --format json / WEKNORA_FORMAT=json still
+			// raw bytes). Explicit --format json / XINWIKI_FORMAT=json still
 			// emit the {token,mode,profile} envelope.
 			fopts.FromEnv()
 			if fopts.Mode == "" {
@@ -77,7 +77,7 @@ to see which mode each profile uses, and construct the matching HTTP header:
 	cmdutil.SetAgentHelp(cmd, cmdutil.AgentHelp{
 		UsedFor: "print the active profile's raw credential to stdout for shell capture",
 		Examples: []string{
-			"WEKNORA_TOKEN=$(xinwiki auth token)",
+			"XINWIKI_TOKEN=$(xinwiki auth token)",
 			"xinwiki auth token --profile staging",
 			"xinwiki auth token --format json",
 		},

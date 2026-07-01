@@ -28,7 +28,7 @@
 
 1. 控制台 → 轻量应用服务器 → 选中已关机的实例
 2. 「更多」→「**制作镜像**」
-3. 镜像名建议带版本号：`weknora-v0.5.0-ubuntu2204`
+3. 镜像名建议带版本号：`xinwiki-v0.5.0-ubuntu2204`
 4. 等待 5–30 分钟（取决于系统盘大小）
 
 **云服务器 CVM**：
@@ -44,8 +44,8 @@
 强烈建议用新镜像创建一台测试实例，至少验证：
 
 - [ ] 能 SSH 进去（用控制台的默认密码 / 你导入的 key）
-- [ ] `systemctl status weknora-firstboot` 显示已成功执行（或已 disable + 文件被删）
-- [ ] `cat /root/weknora-credentials.txt` 里有随机密码
+- [ ] `systemctl status xinwiki-firstboot` 显示已成功执行（或已 disable + 文件被删）
+- [ ] `cat /root/xinwiki-credentials.txt` 里有随机密码
 - [ ] 浏览器打开公网 IP 能访问 XinWiki，能注册管理员
 - [ ] `docker compose -f /opt/XinWiki/docker-compose.yml ps` 全部 healthy
 - [ ] `cat /opt/XinWiki/.cloud-image-meta` 显示正确的版本

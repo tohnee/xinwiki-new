@@ -244,7 +244,7 @@ func TestDocsSearch_HasMore(t *testing.T) {
 // to resolve it reports the typed local.kb_id_required, not a usage error.
 func TestNewCmdDocs_NoKBUsesResolver(t *testing.T) {
 	iostreams.SetForTest(t)
-	t.Setenv("WEKNORA_KB_ID", "")
+	t.Setenv("XINWIKI_KB_ID", "")
 	t.Chdir(t.TempDir())
 	cmd := NewCmdDocs(&cmdutil.Factory{
 		Client: func() (*sdk.Client, error) { return nil, errors.New("client should not be built") },
@@ -263,7 +263,7 @@ func TestNewCmdDocs_NoKBUsesResolver(t *testing.T) {
 // TestNewCmdDocs_HonorsKBEnv proves the env fallback is wired for search docs.
 func TestNewCmdDocs_HonorsKBEnv(t *testing.T) {
 	iostreams.SetForTest(t)
-	t.Setenv("WEKNORA_KB_ID", "kb_from_env")
+	t.Setenv("XINWIKI_KB_ID", "kb_from_env")
 	cmd := NewCmdDocs(&cmdutil.Factory{
 		Client: func() (*sdk.Client, error) { return nil, errors.New("client boom") },
 	})

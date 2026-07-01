@@ -40,8 +40,8 @@ curl --location 'http://localhost:8080/api/v1/tenants/all' \
         "items": [
             {
                 "id": 10001,
-                "name": "weknora-1",
-                "description": "weknora tenants 1",
+                "name": "xinwiki-1",
+                "description": "xinwiki tenants 1",
                 "status": "active",
                 "business": "wechat",
                 "created_at": "2025-08-11T20:37:28.39698+08:00",
@@ -49,8 +49,8 @@ curl --location 'http://localhost:8080/api/v1/tenants/all' \
             },
             {
                 "id": 10002,
-                "name": "weknora-2",
-                "description": "weknora tenants 2",
+                "name": "xinwiki-2",
+                "description": "xinwiki tenants 2",
                 "status": "active",
                 "business": "wechat",
                 "created_at": "2025-08-11T20:52:58.05679+08:00",
@@ -75,7 +75,7 @@ curl --location 'http://localhost:8080/api/v1/tenants/all' \
 **请求**:
 
 ```curl
-curl --location 'http://localhost:8080/api/v1/tenants/search?keyword=weknora&page=1&page_size=10' \
+curl --location 'http://localhost:8080/api/v1/tenants/search?keyword=xinwiki&page=1&page_size=10' \
 --header 'Content-Type: application/json' \
 --header 'X-API-Key: sk-An7_t_izCKFIJ4iht9Xjcjnj_MC48ILvwezEDki9ScfIa7KA'
 ```
@@ -88,8 +88,8 @@ curl --location 'http://localhost:8080/api/v1/tenants/search?keyword=weknora&pag
         "items": [
             {
                 "id": 10002,
-                "name": "weknora",
-                "description": "weknora tenants",
+                "name": "xinwiki",
+                "description": "xinwiki tenants",
                 "status": "active",
                 "business": "wechat",
                 "created_at": "2025-08-11T20:52:58.05679+08:00",
@@ -124,8 +124,8 @@ curl --location 'http://localhost:8080/api/v1/tenants/search?keyword=weknora&pag
 curl --location 'http://localhost:8080/api/v1/tenants' \
 --header 'Content-Type: application/json' \
 --data '{
-    "name": "weknora",
-    "description": "weknora tenants",
+    "name": "xinwiki",
+    "description": "xinwiki tenants",
     "business": "wechat",
     "retriever_engines": {
         "engines": [
@@ -148,8 +148,8 @@ curl --location 'http://localhost:8080/api/v1/tenants' \
 {
     "data": {
         "id": 10000,
-        "name": "weknora",
-        "description": "weknora tenants",
+        "name": "xinwiki",
+        "description": "xinwiki tenants",
         "api_key": "sk-aaLRAgvCRJcmtiL2vLMeB1FB5UV0Q-qB7DlTE1pJ9KA93XZG",
         "status": "active",
         "retriever_engines": {
@@ -199,8 +199,8 @@ curl --location 'http://localhost:8080/api/v1/tenants/10000' \
 {
     "data": {
         "id": 10000,
-        "name": "weknora",
-        "description": "weknora tenants",
+        "name": "xinwiki",
+        "description": "xinwiki tenants",
         "api_key": "sk-aaLRAgvCRJcmtiL2vLMeB1FB5UV0Q-qB7DlTE1pJ9KA93XZG",
         "status": "active",
         "retriever_engines": {
@@ -245,8 +245,8 @@ curl --location --request PUT 'http://localhost:8080/api/v1/tenants/10000' \
 --header 'X-API-Key: sk-aaLRAgvCRJcmtiL2vLMeB1FB5UV0Q-qB7DlTE1pJ9KA93XZG' \
 --header 'Content-Type: application/json' \
 --data '{
-    "name": "weknora new",
-    "description": "weknora tenants new",
+    "name": "xinwiki new",
+    "description": "xinwiki tenants new",
     "status": "active",
     "retriever_engines": {
         "engines": [
@@ -271,8 +271,8 @@ curl --location --request PUT 'http://localhost:8080/api/v1/tenants/10000' \
 {
     "data": {
         "id": 10000,
-        "name": "weknora new",
-        "description": "weknora tenants new",
+        "name": "xinwiki new",
+        "description": "xinwiki tenants new",
         "api_key": "sk-aaLRAgvCRJcmtiL2vLMeB1FB5UV0Q-qB7DlTE1pJ9KA93XZG",
         "status": "active",
         "retriever_engines": {
@@ -374,8 +374,8 @@ curl --location 'http://localhost:8080/api/v1/tenants' \
         "items": [
             {
                 "id": 10002,
-                "name": "weknora",
-                "description": "weknora tenants",
+                "name": "xinwiki",
+                "description": "xinwiki tenants",
                 "api_key": "sk-An7_t_izCKFIJ4iht9Xjcjnj_MC48ILvwezEDki9ScfIa7KA",
                 "status": "active",
                 "retriever_engines": {

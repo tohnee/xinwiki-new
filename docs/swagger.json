@@ -8375,7 +8375,7 @@
                 }
             }
         },
-        "/models/weknoracloud/status": {
+        "/models/xinwikicloud/status": {
             "get": {
                 "security": [
                     {
@@ -12987,7 +12987,7 @@
                 }
             }
         },
-        "/weknoracloud/credentials": {
+        "/xinwikicloud/credentials": {
             "post": {
                 "security": [
                     {
@@ -13688,7 +13688,7 @@
         "github_com_Tencent_XinWiki_internal_types.CredentialsConfig": {
             "type": "object",
             "properties": {
-                "weknoracloud": {
+                "xinwikicloud": {
                     "$ref": "#/definitions/github_com_Tencent_XinWiki_internal_types.XinWikiCloudCredentials"
                 }
             }

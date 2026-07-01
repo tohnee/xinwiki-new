@@ -48,7 +48,7 @@ func resolveFormatEarly(args []string) {
 		}
 	}
 	if mode == "" {
-		if v := os.Getenv("WEKNORA_FORMAT"); v != "" {
+		if v := os.Getenv("XINWIKI_FORMAT"); v != "" {
 			mode = strings.ToLower(v)
 		}
 	}
@@ -148,12 +148,12 @@ a curated read-only MCP tool surface for AI agents.`,
 		// (build commit + date).
 		Version: fmt.Sprintf("%s (commit %s, built %s)", v, commit, date),
 		PersistentPreRunE: func(c *cobra.Command, args []string) error {
-			// Propagate the global --profile flag (or WEKNORA_PROFILE env) into
+			// Propagate the global --profile flag (or XINWIKI_PROFILE env) into
 			// the Factory for this invocation only - single-shot override, no disk write.
 			// Flag takes precedence over env; env takes precedence over config file.
 			if v, _ := c.Flags().GetString("profile"); v != "" {
 				f.ProfileOverride = v
-			} else if v := os.Getenv("WEKNORA_PROFILE"); v != "" {
+			} else if v := os.Getenv("XINWIKI_PROFILE"); v != "" {
 				f.ProfileOverride = v
 			}
 			// Pin --format mode for cmdutil.PrintError envelope vs prose decision.
@@ -166,7 +166,7 @@ a curated read-only MCP tool surface for AI agents.`,
 			}
 			// Record the resolved profile for envelope.profile and NDJSON init.profile.
 			cmdutil.SetProfile(f.ActiveProfile())
-			// Resolve --log-level / WEKNORA_LOG_LEVEL and apply to the SDK
+			// Resolve --log-level / XINWIKI_LOG_LEVEL and apply to the SDK
 			// debug logger before any SDK call is made. Returns a typed error
 			// when --log-level was passed explicitly with an invalid value
 			// (matches --format validation strictness).

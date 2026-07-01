@@ -74,9 +74,9 @@ for _, originalIdxs := range textToIdx {  // map 迭代顺序随机!
 
 ### 1.7 .env.example 硬编码加密密钥泄露
 **文件**: `.env.example`
-- `TENANT_AES_KEY=weknorarag-api-key-secret-secret`
-- `SYSTEM_AES_KEY=weknora-system-aes-key-32bytes!!`（实际 33 字符，违反 AES-256 严格要求 32 字节）
-- `JWT_SECRET=weknora-jwt-secret`（仅 19 字符）
+- `TENANT_AES_KEY=xinwikirag-api-key-secret-secret`
+- `SYSTEM_AES_KEY=xinwiki-system-aes-key-32bytes!!`（实际 33 字符，违反 AES-256 严格要求 32 字节）
+- `JWT_SECRET=xinwiki-jwt-secret`（仅 19 字符）
 - `DB_PASSWORD=postgres123!@#`
 
 **影响**: 用户直接 `cp .env.example .env` 后不修改即上线，所有加密字段可被任何人解密。
@@ -85,7 +85,7 @@ for _, originalIdxs := range textToIdx {  // map 迭代顺序随机!
 ### 1.8 docker-compose 默认密钥严重泄露
 **文件**: `docker-compose.yml`, `docker-compose.dev.yml`
 - `LANGFUSE_ENCRYPTION_KEY: 0000...0000`（全 0 密钥，加密形同虚设）
-- `LANGFUSE_NEXTAUTH_SECRET: weknora-langfuse-dev-nextauth-secret-change-me`
+- `LANGFUSE_NEXTAUTH_SECRET: xinwiki-langfuse-dev-nextauth-secret-change-me`
 - `CLICKHOUSE_USER/PASSWORD: clickhouse/clickhouse`
 - `MINIO_ROOT_USER/PASSWORD: langfuseminio/langfuseminiosecret`
 
@@ -298,7 +298,7 @@ add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsaf
 **文件**: `helm/values.yaml` vs `docker-compose.yml`
 | 组件 | helm | docker-compose |
 |---|---|---|
-| app/frontend/docreader | `wechatopenai/xinwiki-*` | `wechatopenai/weknora-*` |
+| app/frontend/docreader | `wechatopenai/xinwiki-*` | `wechatopenai/xinwiki-*` |
 | postgresql | `paradedb/paradedb:v0.18.9-pg17` | `v0.22.2-pg17` |
 | redis | `redis:7-alpine` | `redis:7.0-alpine` |
 
@@ -413,10 +413,10 @@ add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsaf
 - **4.9** `README_CN.md:20` HTML 标签语法错误（多余 `</a>` 闭合标签）
 - **4.10** `README_CN.md:271` 声称不存在的 `internal/infrastructure/` 目录
 - **4.11** `SECURITY.md` 内容不完整（缺少加密策略、RBAC 角色矩阵链接）
-- **4.12** `cli/AGENTS.md` 标题与正文不一致（XinWiki vs weknora）
+- **4.12** `cli/AGENTS.md` 标题与正文不一致（XinWiki vs xinwiki）
 - **4.13** `index.html:14-15` favicon 路径错误 + type 不匹配
 - **4.14** `streame.ts:180-182` SSE 重连缺退避策略
-- **4.15** 品牌名混用：XinWiki / WeKnora / weknora 跨多文件残留（Makefile、CHANGELOG、docker-compose、cli/AGENTS.md）
+- **4.15** 品牌名混用：XinWiki / XinWiki / xinwiki 跨多文件残留（Makefile、CHANGELOG、docker-compose、cli/AGENTS.md）
 - **4.16** `chromedp/cdproto` 使用伪版本，上游 breaking change 会破坏构建
 - **4.17** `go.mod` 同时存在废弃 JWT 库 `form3tech-oss/jwt-go` 与新版本 `golang-jwt/jwt/v5`
 - **4.18** Dependabot 配置遗漏 docker / gitsubmodule ecosystem

@@ -53,7 +53,7 @@ ERROR: function ... does not exist
 
 ```sql
 -- Connect as a superuser (typically `postgres`):
-\c your_weknora_database
+\c your_xinwiki_database
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS vector;       -- if RETRIEVE_DRIVER includes pgvector
 CREATE EXTENSION IF NOT EXISTS pg_search;    -- only on ParadeDB

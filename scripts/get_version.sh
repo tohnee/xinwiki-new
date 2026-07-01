@@ -68,7 +68,7 @@ EOF
         ;;
     "ldflags")
         # 输出Go ldflags格式
-        # The module path was renamed from github.com/Tencent/WeKnora to
+        # The module path was renamed from github.com/Tencent/XinWiki to
         # github.com/Tencent/XinWiki during the brand migration. The old
         # ldflag paths silently no-op'd (the `-X` flag points at a package
         # that no longer exists, so the linker just drops it), which left

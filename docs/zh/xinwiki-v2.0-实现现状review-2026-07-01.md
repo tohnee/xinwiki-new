@@ -162,25 +162,25 @@ XinWiki/
 
 ---
 
-### D2-4: 品牌统一 WeKnora→XinWiki（P0）— 完成度 ~70%
+### D2-4: 品牌统一 XinWiki→XinWiki（P0）— 完成度 ~70%
 
 | 区域 | 状态 | 残留数量 | 说明 |
 |------|------|----------|------|
 | Go核心代码(internal/) | ✅ 完成 | 0 | import path已改为`github.com/Tencent/XinWiki`，所有XinWikiService/XinWikiServer命名统一 |
-| CLI skills | ✅ 完成 | 0 | weknora-* → xinwiki-* 全部重命名 |
+| CLI skills | ✅ 完成 | 0 | xinwiki-* → xinwiki-* 全部重命名 |
 | cmd/入口 | ✅ 完成 | 0 | 二进制名为xinwiki-server |
 | 前端Vue代码 | ✅ 基本完成 | 少量 | 品牌名基本替换，仍有零星注释残留 |
 | client/Go SDK | ✅ 完成 | 0 | 包名已统一 |
-| mcp-server/(Python) | ❌ 未替换 | ~16处 | Python MCP服务描述和配置中仍有WeKnora |
-| docreader/(Python) | ❌ 未替换 | ~5处 | Python文档解析服务中仍有WeKnora |
+| mcp-server/(Python) | ❌ 未替换 | ~16处 | Python MCP服务描述和配置中仍有XinWiki |
+| docreader/(Python) | ❌ 未替换 | ~5处 | Python文档解析服务中仍有XinWiki |
 | helm/(K8s模板) | ❌ 未替换 | ~37处 | Chart名称/标签/镜像名/注释中大量残留 |
 | scripts/(Shell脚本) | ❌ 未替换 | ~80+处 | 镜像构建/部署脚本中镜像名/目录名残留 |
 | .github/workflows/ | ❌ 未替换 | ~12处 | CI工作流中镜像名/二进制名残留 |
-| docs/(文档) | ⚠️ 部分 | ~100+处 | 历史文档和参考记录中保留WeKnora（合理，不应修改历史） |
+| docs/(文档) | ⚠️ 部分 | ~100+处 | 历史文档和参考记录中保留XinWiki（合理，不应修改历史） |
 | migrations/(SQL) | ⚠️ 不修改 | — | 历史迁移文件中的引用不可修改（会破坏迁移哈希） |
 | docker/ | ❌ 部分残留 | ~10处 | Dockerfile和脚本中有少量残留 |
 
-**评估**: Go核心代码和CLI品牌替换完成，应用运行时品牌已统一为XinWiki。但Python服务、部署脚本、Helm图表、CI配置中仍有大量WeKnora残留，需要系统性批量替换。
+**评估**: Go核心代码和CLI品牌替换完成，应用运行时品牌已统一为XinWiki。但Python服务、部署脚本、Helm图表、CI配置中仍有大量XinWiki残留，需要系统性批量替换。
 
 ---
 

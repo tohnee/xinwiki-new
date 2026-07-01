@@ -71,7 +71,7 @@ func NewCmdChunks(f *cmdutil.Factory) *cobra.Command {
 			}
 			fopts.ResolveDefault(iostreams.IO.IsStdoutTTY())
 			// Resolve KB via the shared flag→env→project-link chain (same as
-			// `doc list` / `chat`), so a linked directory or WEKNORA_KB_ID
+			// `doc list` / `chat`), so a linked directory or XINWIKI_KB_ID
 			// works without an explicit --kb. Resolve before building the
 			// client so an unresolved KB short-circuits to local.kb_id_required
 			// without a client round-trip.
@@ -89,8 +89,8 @@ func NewCmdChunks(f *cmdutil.Factory) *cobra.Command {
 	}
 	bindChunksFlags(cmd, opts)
 	cmdutil.SetAgentHelp(cmd, cmdutil.AgentHelp{
-		UsedFor:       "Hybrid (vector + keyword) chunk retrieval against a knowledge base. The KB comes from --kb (id or name), else WEKNORA_KB_ID, else the linked directory. Results come with meta.count; use --limit to cap (default 8, tuned for RAG context). Pass --no-vector or --no-keyword to disable one channel.",
-		RequiredFlags: []string{"<query> (positional)", "--kb (or WEKNORA_KB_ID / linked directory)"},
+		UsedFor:       "Hybrid (vector + keyword) chunk retrieval against a knowledge base. The KB comes from --kb (id or name), else XINWIKI_KB_ID, else the linked directory. Results come with meta.count; use --limit to cap (default 8, tuned for RAG context). Pass --no-vector or --no-keyword to disable one channel.",
+		RequiredFlags: []string{"<query> (positional)", "--kb (or XINWIKI_KB_ID / linked directory)"},
 		Examples:      []string{`xinwiki search chunks "what is RAG?" --kb engineering --format json`},
 		Output:        "envelope.data is an array of SearchResult objects with id, content, score, knowledge_id; meta.count is the returned count; meta.has_more=true if more matched than --limit",
 	})
@@ -99,7 +99,7 @@ func NewCmdChunks(f *cmdutil.Factory) *cobra.Command {
 
 // bindChunksFlags registers the chunks flag surface in one place to keep
 // the constructor readable. --kb is optional: when omitted it falls back to
-// WEKNORA_KB_ID / the linked directory via Factory.ResolveKB.
+// XINWIKI_KB_ID / the linked directory via Factory.ResolveKB.
 func bindChunksFlags(cmd *cobra.Command, opts *ChunksOptions) {
 	cmd.Flags().StringVar(&opts.KB, "kb", "", "Knowledge base UUID or name (overrides env / project link)")
 	cmd.Flags().IntVarP(&opts.Limit, "limit", "L", 8, "Maximum results to return (default 8 - tuned for RAG context window; list commands default to 30)")
