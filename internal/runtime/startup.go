@@ -121,12 +121,13 @@ func ValidateStartupEnv() error {
 	}
 
 	// TENANT_AES_KEY must be 16, 24, or 32 bytes (valid AES key sizes).
-	if k := os.Getenv("TENANT_AES_KEY"); k != "" {
-		kl := len(k)
-		if kl != 16 && kl != 24 && kl != 32 {
-			errs = append(errs, fmt.Sprintf(
-				"TENANT_AES_KEY is %d bytes; must be 16, 24, or 32 bytes for AES", kl))
-		}
+	// Empty key is rejected in production to prevent unencrypted API keys.
+	k := os.Getenv("TENANT_AES_KEY")
+	if k == "" {
+		errs = append(errs, "TENANT_AES_KEY is not set; generate one with: openssl rand -hex 16")
+	} else if kl := len(k); kl != 16 && kl != 24 && kl != 32 {
+		errs = append(errs, fmt.Sprintf(
+			"TENANT_AES_KEY is %d bytes; must be 16, 24, or 32 bytes for AES", kl))
 	}
 
 	if len(errs) > 0 {

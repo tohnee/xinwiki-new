@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 	"sync"
 
@@ -761,14 +760,18 @@ func extractSnippet(content string, query string) string {
 	if content == "" || query == "" {
 		return ""
 	}
-	re, err := regexp.Compile("(?i)" + query)
-	if err != nil {
+	// Use case-insensitive substring search instead of regexp.Compiling user
+	// input as a regex is both a ReDoS risk (catastrophic backtracking on
+	// adversarial patterns like "(a+)+$") and a correctness bug because
+	// regex metacharacters in query (. * + ? () [] {} | ^ $) would be
+	// interpreted as syntax rather than literals.
+	lowerContent := strings.ToLower(content)
+	lowerQuery := strings.ToLower(query)
+	loc0 := strings.Index(lowerContent, lowerQuery)
+	if loc0 < 0 {
 		return ""
 	}
-	loc := re.FindStringIndex(content)
-	if loc == nil {
-		return ""
-	}
+	loc := [2]int{loc0, loc0 + len(query)}
 
 	matchStr := content[loc[0]:loc[1]]
 	before := content[:loc[0]]

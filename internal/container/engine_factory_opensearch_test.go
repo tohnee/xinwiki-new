@@ -9,6 +9,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
+	"github.com/Tencent/XinWiki/internal/application/service"
 	"github.com/Tencent/XinWiki/internal/config"
 	"github.com/Tencent/XinWiki/internal/types"
 )
@@ -66,10 +67,12 @@ func TestCreateOpenSearchEngine_RejectsBadCluster(t *testing.T) {
 func TestCreateEngineServiceFromStore_OpenSearchCaseReached(t *testing.T) {
 	ts := httptest.NewServer(osClusterHandler("opensearch", "2.11.0", true))
 	defer ts.Close()
+	router := service.NewVectorStoreRouter(types.DefaultReadWriteSeparationConfig())
+	defer func() { _ = router.Shutdown(context.Background()) }()
 	svc, err := createEngineServiceFromStore(context.Background(),
 		types.VectorStore{EngineType: types.OpenSearchRetrieverEngineType,
 			ConnectionConfig: types.ConnectionConfig{Addr: ts.URL}},
-		nil, &config.Config{}, nil)
+		nil, &config.Config{}, nil, router)
 	if err != nil {
 		t.Fatalf("createEngineServiceFromStore (opensearch case): %v", err)
 	}
@@ -94,7 +97,9 @@ func TestInitRetrieveEngineRegistry_OpenSearchEnvPath(t *testing.T) {
 	t.Setenv("RETRIEVE_DRIVER", "opensearch")
 	t.Setenv("OPENSEARCH_ADDR", ts.URL)
 
-	registry, err := initRetrieveEngineRegistry(db, &config.Config{}, &fakeAuditSvc{})
+	router := service.NewVectorStoreRouter(types.DefaultReadWriteSeparationConfig())
+	defer func() { _ = router.Shutdown(context.Background()) }()
+	registry, err := initRetrieveEngineRegistry(db, &config.Config{}, &fakeAuditSvc{}, router)
 	if err != nil {
 		t.Fatalf("initRetrieveEngineRegistry: %v", err)
 	}

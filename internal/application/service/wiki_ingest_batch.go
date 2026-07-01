@@ -156,12 +156,25 @@ func (s *wikiIngestService) ProcessWikiIngest(ctx context.Context, t *asynq.Task
 		lockAcquired = acquired
 
 		lockCtx, cancelLock := context.WithCancel(context.Background())
+		// WaitGroup ensures the renewal goroutine has fully exited (and
+		// stopped calling Expire) before we delete the lock key in defer.
+		// Without this, a renewal in-flight could race with the Del and
+		// leave the lock re-created after we thought we released it — a
+		// classic "use after free" for distributed locks.
+		var renewWg sync.WaitGroup
+		renewWg.Add(1)
 		defer func() {
 			cancelLock()
-			s.redisClient.Del(context.Background(), activeKey)
+			renewWg.Wait()
+			// Use a fresh context for Del: lockCtx is already cancelled and
+			// would short-circuit the Redis call.
+			delCtx, delCancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer delCancel()
+			s.redisClient.Del(delCtx, activeKey)
 		}()
 
 		go func() {
+			defer renewWg.Done()
 			ticker := time.NewTicker(wikiActiveLockRenew)
 			defer ticker.Stop()
 			for {
@@ -169,7 +182,18 @@ func (s *wikiIngestService) ProcessWikiIngest(ctx context.Context, t *asynq.Task
 				case <-lockCtx.Done():
 					return
 				case <-ticker.C:
-					s.redisClient.Expire(context.Background(), activeKey, wikiActiveLockTTL)
+					// Use lockCtx so renewal stops promptly on cancel and
+					// respects the caller's deadline; a short timeout guards
+					// against a stuck Redis blocking the shutdown path.
+					renewCtx, renewCancel := context.WithTimeout(lockCtx, 2*time.Second)
+					if ok, err := s.redisClient.Expire(renewCtx, activeKey, wikiActiveLockTTL).Result(); err != nil {
+						logger.Warnf(renewCtx, "wiki ingest: failed to renew active lock for KB %s: %v", payload.KnowledgeBaseID, err)
+					} else if !ok {
+						logger.Warnf(renewCtx, "wiki ingest: active lock for KB %s no longer exists; stopping renewal", payload.KnowledgeBaseID)
+						renewCancel()
+						return
+					}
+					renewCancel()
 				}
 			}
 		}()

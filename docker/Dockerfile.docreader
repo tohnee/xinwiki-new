@@ -111,6 +111,9 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user for runtime security
+RUN useradd -m -u 1000 -s /bin/bash docreader
+
 # 安装 grpc_health_probe
 ARG TARGETARCH
 # 兼容 BuildKit 和传统构建：如果 TARGETARCH 为空，使用 uname 检测
@@ -149,11 +152,14 @@ RUN python -m playwright install-deps webkit
 COPY docreader/pyproject.toml docreader/uv.lock ./
 COPY --from=builder /app/docreader docreader
 
-# 创建共享临时图片目录
-RUN mkdir -p /tmp/docreader
+# 创建共享临时图片目录并设置权限
+RUN mkdir -p /tmp/docreader && \
+    chown -R docreader:docreader /app /tmp/docreader
 
 # 暴露 gRPC 端口
 EXPOSE 50051
+
+USER docreader
 
 # 直接运行 Python 服务（日志输出到 stdout/stderr）
 CMD ["uv", "run", "-m", "docreader.main"]

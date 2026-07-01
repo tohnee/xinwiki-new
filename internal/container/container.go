@@ -21,6 +21,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 	esv7 "github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql" // 给 Doris (database/sql) 注册 MySQL 协议驱动
 	"github.com/milvus-io/milvus/client/v2/milvusclient"
 	"github.com/neo4j/neo4j-go-driver/v6/neo4j"
@@ -623,7 +624,17 @@ func initDatabase(cfg *config.Config) (*gorm.DB, error) {
 	if os.Getenv("AUTO_MIGRATE") != "false" {
 		logger.Infof(context.Background(), "Running database migrations...")
 
-		autoRecover := os.Getenv("AUTO_RECOVER_DIRTY") != "false"
+		// AUTO_RECOVER_DIRTY: default false for production safety. When true,
+		// a dirty migration version is force-reset before retrying; this can
+		// mask partially-applied DDL and leave the schema inconsistent.
+		// Explicitly opt-in with AUTO_RECOVER_DIRTY=true (suitable for dev/
+		// single-node sqlite where crash-recovery is acceptable).
+		autoRecover := os.Getenv("AUTO_RECOVER_DIRTY") == "true"
+		// Preserve backward compatibility for legacy GIN_MODE=debug dev setups
+		// where users expect auto-recovery without setting the new flag:
+		if !autoRecover && os.Getenv("AUTO_RECOVER_DIRTY") == "" && gin.Mode() == gin.DebugMode {
+			autoRecover = true
+		}
 		migrationOpts := database.MigrationOptions{
 			AutoRecoverDirty: autoRecover,
 			SQLiteDBPath:     sqliteDBPath,

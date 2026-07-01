@@ -111,6 +111,17 @@ func (t *GrepChunksTool) Execute(ctx context.Context, args json.RawMessage) (*ty
 
 	// Compile with (?i) prefix for case-insensitive Go-side matching.
 	// Compilation also validates the regex syntax before we send it to the DB.
+	// Guard against ReDoS: cap pattern length so an adversarial agent/user
+	// cannot submit a multi-kilobyte pathological regex (e.g. nested quantifiers)
+	// that stalls the Go regex engine on large chunks.
+	const maxRegexLen = 500
+	if len(query) > maxRegexLen {
+		logger.Errorf(ctx, "[Tool][GrepChunks] Regex too long (%d chars, max %d)", len(query), maxRegexLen)
+		return &types.ToolResult{
+			Success: false,
+			Error:   fmt.Sprintf("regex query exceeds %d character limit", maxRegexLen),
+		}, fmt.Errorf("regex too long: %d chars", len(query))
+	}
 	re, err := regexp.Compile("(?i)" + query)
 	if err != nil {
 		logger.Errorf(ctx, "[Tool][GrepChunks] Invalid regex %q: %v", query, err)

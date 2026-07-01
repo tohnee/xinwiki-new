@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/Tencent/XinWiki/internal/searchutil"
@@ -140,7 +139,12 @@ func (t *wikiReadSourceDocTool) Execute(ctx context.Context, args json.RawMessag
 	sb.WriteString(fmt.Sprintf("<knowledge_id>%s</knowledge_id>\n", knowledgeID))
 
 	hasRange := params.StartChunkIndex > 0
-	var re *regexp.Regexp
+	// matcher is a case-insensitive substring matcher. We avoid regexp.Compile
+	// on user input because: (1) adversarial patterns like "(a+)+$" cause ReDoS
+	// via catastrophic backtracking, and (2) the tool semantics are keyword
+	// search, not full regex — agents send natural-language queries where
+	// metacharacters should be treated as literals.
+	var matcher func(string) bool
 
 	if hasRange {
 		if params.EndChunkIndex < params.StartChunkIndex {
@@ -151,11 +155,8 @@ func (t *wikiReadSourceDocTool) Execute(ctx context.Context, args json.RawMessag
 		}
 		sb.WriteString(fmt.Sprintf("<chunk_range start=\"%d\" end=\"%d\"/>\n", params.StartChunkIndex, params.EndChunkIndex))
 	} else if params.Query != "" {
-		compiled, err := regexp.Compile("(?i)" + params.Query)
-		if err != nil {
-			return &types.ToolResult{Success: false, Error: fmt.Sprintf("Invalid regex query '%s': %v", params.Query, err)}, nil
-		}
-		re = compiled
+		q := strings.ToLower(params.Query)
+		matcher = func(s string) bool { return strings.Contains(strings.ToLower(s), q) }
 		sb.WriteString(fmt.Sprintf("<query>%s</query>\n", params.Query))
 	}
 
@@ -224,8 +225,8 @@ func (t *wikiReadSourceDocTool) Execute(ctx context.Context, args json.RawMessag
 			}
 
 			isMatch := false
-			if re != nil {
-				isMatch = re.MatchString(chunkContent)
+			if matcher != nil {
+				isMatch = matcher(chunkContent)
 			} else {
 				isMatch = true
 			}
@@ -233,7 +234,7 @@ func (t *wikiReadSourceDocTool) Execute(ctx context.Context, args json.RawMessag
 			if isMatch {
 				matchCount++
 
-				if re != nil {
+				if matcher != nil {
 					// Output previous chunk for context
 					if prevChunk != nil && !outputtedIndices[prevChunk.ChunkIndex] {
 						prevContent := enrichChunkContent(prevChunk)
@@ -244,14 +245,14 @@ func (t *wikiReadSourceDocTool) Execute(ctx context.Context, args json.RawMessag
 
 				if !outputtedIndices[c.ChunkIndex] {
 					matchAttr := ""
-					if re != nil {
+					if matcher != nil {
 						matchAttr = ` type="match"`
 					}
 					fmt.Fprintf(&chunksOutput, "<chunk index=\"%d\"%s>\n%s\n</chunk>\n", c.ChunkIndex+1, matchAttr, chunkContent)
 					outputtedIndices[c.ChunkIndex] = true
 				}
 
-				if re != nil {
+				if matcher != nil {
 					forceOutputNext = true
 				}
 			} else if forceOutputNext {
@@ -264,10 +265,10 @@ func (t *wikiReadSourceDocTool) Execute(ctx context.Context, args json.RawMessag
 
 			prevChunk = c
 
-			if re == nil && matchCount >= 10 {
+			if matcher == nil && matchCount >= 10 {
 				break
 			}
-			if re != nil && matchCount >= 20 {
+			if matcher != nil && matchCount >= 20 {
 				break
 			}
 		}
@@ -277,10 +278,10 @@ func (t *wikiReadSourceDocTool) Execute(ctx context.Context, args json.RawMessag
 		}
 
 		if !hasRange {
-			if re == nil && matchCount >= 10 {
+			if matcher == nil && matchCount >= 10 {
 				break
 			}
-			if re != nil && matchCount >= 20 {
+			if matcher != nil && matchCount >= 20 {
 				reachedMax = true
 				break
 			}
@@ -307,12 +308,12 @@ func (t *wikiReadSourceDocTool) Execute(ctx context.Context, args json.RawMessag
 	} else if matchCount == 0 {
 		if hasRange {
 			sb.WriteString("<message>No chunks found in the specified range.</message>\n")
-		} else if re != nil {
+		} else if matcher != nil {
 			sb.WriteString("<message>No chunks matched your query in this document.</message>\n")
 		} else {
 			sb.WriteString("<message>Document has no text chunks available.</message>\n")
 		}
-	} else if !hasRange && re == nil {
+	} else if !hasRange && matcher == nil {
 		sb.WriteString("<message>No query or range provided. Showing the first 10 chunks as a preview.</message>\n")
 	}
 
