@@ -145,6 +145,8 @@ func BuildContainer(container *dig.Container) *dig.Container {
 	must(container.Provide(repository.NewKnowledgeSpanRepository))
 	must(container.Provide(repository.NewChunkRepository)) // 自动注入 EventBus 参数（dig 按类型匹配）
 	must(container.Provide(repository.NewKnowledgeTagRepository))
+	must(container.Provide(repository.NewAPIKeyRepository))   // scoped API keys (review 4.5)
+	must(container.Provide(repository.NewArtifactRepository)) // generated artifacts (review 4.2)
 	must(container.Provide(repository.NewSessionRepository))
 	must(container.Provide(repository.NewMessageRepository))
 	must(container.Provide(repository.NewModelRepository))
@@ -184,6 +186,8 @@ func BuildContainer(container *dig.Container) *dig.Container {
 	must(container.Provide(service.NewTenantService))
 	must(container.Provide(service.NewTenantMemberService))
 	must(container.Provide(service.NewTenantInvitationService))
+	must(container.Provide(service.NewAPIKeyService))   // scoped API key CRUD (review 4.5)
+	must(container.Provide(service.NewArtifactService)) // generated-artifact CRUD + ACL (review 4.2)
 	must(container.Provide(service.NewAuditLogService))
 	must(container.Provide(service.NewAuditLogRetentionRunner))
 	must(container.Provide(service.NewWikiScoreRefreshRunner))
@@ -200,6 +204,13 @@ func BuildContainer(container *dig.Container) *dig.Container {
 	must(container.Provide(service.NewCostTrackingService, dig.As(new(interfaces.CostTrackingService))))
 	must(container.Provide(service.NewModelRouterService, dig.As(new(interfaces.ModelRouterService))))
 	must(container.Provide(service.NewPromptTemplateService, dig.As(new(interfaces.PromptTemplateService))))
+	// DB-backed prompt-template persistence. Replaces the in-memory
+	// process singleton that previously held templates in RAM only (so any
+	// edit via the UI/API was lost on restart and was invisible to other
+	// replicas). When NewPromptTemplateService receives a non-nil repository
+	// every CRUD method flows through the DB; the in-memory fallback stays
+	// available only for unit tests / Lite no-DB boot (see service.go).
+	must(container.Provide(repository.NewPromptTemplateRepository, dig.As(new(interfaces.PromptTemplateRepository))))
 	must(container.Provide(service.NewConflictDetectionService, dig.As(new(interfaces.ConflictDetectionService))))
 	must(container.Provide(service.NewRAGEvaluationService, dig.As(new(interfaces.RAGEvaluationService))))
 	must(container.Provide(initSemanticCacheService, dig.As(new(interfaces.SemanticCacheService))))
@@ -354,6 +365,8 @@ func BuildContainer(container *dig.Container) *dig.Container {
 	must(container.Provide(handler.NewTenantHandler))
 	must(container.Provide(handler.NewTenantMemberHandler))
 	must(container.Provide(handler.NewTenantInvitationHandler))
+	must(container.Provide(handler.NewAPIKeyHandler))   // scoped API key CRUD (review 4.5)
+	must(container.Provide(handler.NewArtifactHandler)) // generated-artifact CRUD (review 4.2)
 	must(container.Provide(handler.NewAuditLogHandler))
 	must(container.Provide(handler.NewKnowledgeBaseHandler))
 	must(container.Provide(handler.NewKnowledgeHandler))

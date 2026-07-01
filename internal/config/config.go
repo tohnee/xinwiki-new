@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Tencent/XinWiki/internal/types"
+	secutils "github.com/Tencent/XinWiki/internal/utils"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
@@ -155,11 +156,11 @@ type SummaryConfig struct {
 
 // ServerConfig 服务器配置
 type ServerConfig struct {
-	Port             int           `yaml:"port"             json:"port"`
-	Host             string        `yaml:"host"             json:"host"`
-	LogPath          string        `yaml:"log_path"         json:"log_path"`
-	ShutdownTimeout  time.Duration `yaml:"shutdown_timeout" json:"shutdown_timeout" default:"30s"`
-	CORSAllowedOrigins []string   `yaml:"cors_allowed_origins" json:"cors_allowed_origins"`
+	Port               int           `yaml:"port"             json:"port"`
+	Host               string        `yaml:"host"             json:"host"`
+	LogPath            string        `yaml:"log_path"         json:"log_path"`
+	ShutdownTimeout    time.Duration `yaml:"shutdown_timeout" json:"shutdown_timeout" default:"30s"`
+	CORSAllowedOrigins []string      `yaml:"cors_allowed_origins" json:"cors_allowed_origins"`
 }
 
 // KnowledgeBaseConfig 知识库配置
@@ -583,11 +584,21 @@ func LoadConfig() (*Config, error) {
 	xtAccess := cfg.Tenant != nil && cfg.Tenant.EnableCrossTenantAccess
 	fmt.Printf(
 		"[config] tenant RBAC enforcement: enable_rbac=%v cross_tenant_access=%v "+
-			"(env: WEKNORA_TENANT_ENABLE_RBAC=%q WEKNORA_TENANT_ENABLE_CROSS_TENANT_ACCESS=%q)\n",
+			"(env: TENANT_ENABLE_RBAC=%q TENANT_ENABLE_CROSS_TENANT_ACCESS=%q "+
+			"XINWIKI_* preferred, WEKNORA_* legacy)\n",
 		rbacOn, xtAccess,
-		os.Getenv("WEKNORA_TENANT_ENABLE_RBAC"),
-		os.Getenv("WEKNORA_TENANT_ENABLE_CROSS_TENANT_ACCESS"),
+		secutils.ResolveEnv("TENANT_ENABLE_RBAC"),
+		secutils.ResolveEnv("TENANT_ENABLE_CROSS_TENANT_ACCESS"),
 	)
+
+	// One-shot deprecation notice: list legacy WEKNORA_* vars that are still
+	// the active source because their XINWIKI_* preferred alias is unset.
+	// Operators should rename these to XINWIKI_* (the WEKNORA_* fallback is
+	// kept for backward compatibility and will eventually be removed).
+	if legacy := secutils.ActiveLegacyEnvSuffixes(); len(legacy) > 0 {
+		fmt.Printf("[config] deprecation: %d env var(s) still using legacy WEKNORA_* "+
+			"name; rename to XINWIKI_* preferred alias: %v\n", len(legacy), legacy)
+	}
 
 	return &cfg, nil
 }
@@ -731,7 +742,7 @@ func applyKnowledgeBaseEnvOverrides(cfg *Config) {
 	if cfg.KnowledgeBase.DocumentProcessTimeout <= 0 {
 		cfg.KnowledgeBase.DocumentProcessTimeout = DefaultDocumentProcessTimeout
 	}
-	if value := strings.TrimSpace(os.Getenv("WEKNORA_DOCUMENT_PROCESS_TIMEOUT")); value != "" {
+	if value := strings.TrimSpace(secutils.ResolveEnv("DOCUMENT_PROCESS_TIMEOUT")); value != "" {
 		if d, err := time.ParseDuration(value); err == nil {
 			cfg.KnowledgeBase.DocumentProcessTimeout = d
 		}
@@ -739,7 +750,7 @@ func applyKnowledgeBaseEnvOverrides(cfg *Config) {
 	if cfg.KnowledgeBase.DocReaderCallTimeout <= 0 {
 		cfg.KnowledgeBase.DocReaderCallTimeout = 30 * time.Minute
 	}
-	if value := strings.TrimSpace(os.Getenv("WEKNORA_DOCREADER_CALL_TIMEOUT")); value != "" {
+	if value := strings.TrimSpace(secutils.ResolveEnv("DOCREADER_CALL_TIMEOUT")); value != "" {
 		if d, err := time.ParseDuration(value); err == nil && d > 0 {
 			cfg.KnowledgeBase.DocReaderCallTimeout = d
 		}
@@ -750,7 +761,7 @@ func applyAgentEnvOverrides(cfg *Config) {
 	if cfg.Agent == nil {
 		cfg.Agent = &AgentConfig{}
 	}
-	if value := strings.TrimSpace(os.Getenv("WEKNORA_AGENT_LLM_TIMEOUT")); value != "" {
+	if value := strings.TrimSpace(secutils.ResolveEnv("AGENT_LLM_TIMEOUT")); value != "" {
 		if timeout, err := time.ParseDuration(value); err == nil {
 			cfg.Agent.LLMCallTimeout = int(timeout.Seconds())
 		} else if sec, err := time.ParseDuration(value + "s"); err == nil {
@@ -760,7 +771,7 @@ func applyAgentEnvOverrides(cfg *Config) {
 	}
 	// MCP tool human-approval wait timeout (issue #1173). Accepts Go duration
 	// (e.g. "10m", "30s") or a bare number interpreted as seconds.
-	if value := strings.TrimSpace(os.Getenv("WEKNORA_AGENT_TOOL_APPROVAL_TIMEOUT")); value != "" {
+	if value := strings.TrimSpace(secutils.ResolveEnv("AGENT_TOOL_APPROVAL_TIMEOUT")); value != "" {
 		if d, err := time.ParseDuration(value); err == nil {
 			cfg.Agent.ToolApprovalTimeoutSeconds = int(d.Seconds())
 		} else if d, err := time.ParseDuration(value + "s"); err == nil {
@@ -815,7 +826,7 @@ func applyAuthAndTenantDefaults(cfg *Config) {
 		cfg.Auth.RegistrationMode = AuthRegistrationModeSelfServe
 	}
 
-	if value := strings.TrimSpace(os.Getenv("WEKNORA_TENANT_ENABLE_RBAC")); value != "" {
+	if value := strings.TrimSpace(secutils.ResolveEnv("TENANT_ENABLE_RBAC")); value != "" {
 		v := strings.EqualFold(value, "true")
 		cfg.Tenant.EnableRBAC = &v
 	}
@@ -826,12 +837,12 @@ func applyAuthAndTenantDefaults(cfg *Config) {
 		cfg.Tenant.EnableRBAC = &on
 	}
 
-	if value := strings.TrimSpace(os.Getenv("WEKNORA_TENANT_MAX_OWNED_PER_USER")); value != "" {
+	if value := strings.TrimSpace(secutils.ResolveEnv("TENANT_MAX_OWNED_PER_USER")); value != "" {
 		if n, err := strconv.Atoi(value); err == nil {
 			cfg.Tenant.MaxOwnedPerUser = n
 		} else {
 			fmt.Printf(
-				"[config] WEKNORA_TENANT_MAX_OWNED_PER_USER=%q is not an integer, ignoring\n",
+				"[config] TENANT_MAX_OWNED_PER_USER=%q is not an integer, ignoring\n",
 				value,
 			)
 		}
@@ -863,7 +874,7 @@ func applyAuditDefaults(cfg *Config) {
 	// Env override always wins, but only when explicitly set so a
 	// stale shell variable doesn't suddenly disable the purge for a
 	// future deployment that committed a real value.
-	if value := strings.TrimSpace(os.Getenv("WEKNORA_AUDIT_RETENTION_DAYS")); value != "" {
+	if value := strings.TrimSpace(secutils.ResolveEnv("AUDIT_RETENTION_DAYS")); value != "" {
 		if n, err := strconv.Atoi(value); err == nil && n >= 0 {
 			cfg.Audit.RetentionDays = n
 		}
