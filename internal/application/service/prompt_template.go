@@ -15,6 +15,12 @@ import (
 	"github.com/google/uuid"
 )
 
+// errDBRepoNotConfigured is the sentinel returned by the constructor helpers
+// below when a DB-backed path is invoked without a DB repo wired in. This
+// never happens in production (dig wires the repo) but keeps the failure
+// mode unambiguous if a future refactor forgets the wiring.
+var errDBRepoNotConfigured = fmt.Errorf("prompt template: DB repo not configured")
+
 type promptTemplateRepo struct {
 	mu        sync.RWMutex
 	templates map[string]map[uint64]map[string]*types.PromptTemplate
@@ -33,10 +39,44 @@ func getPromptTemplateRepo() *promptTemplateRepo {
 	return promptRepoInstance
 }
 
-type PromptTemplateServiceImpl struct{}
+// PromptTemplateServiceImpl implements interfaces.PromptTemplateService.
+//
+// Two storage backends are supported via the (mutually-exclusive) `dbRepo`
+// vs `getPromptTemplateRepo()` paths:
+//
+//   - DB-backed (production): when NewPromptTemplateService is called with
+//     a non-nil `interfaces.PromptTemplateRepository`, every method flows
+//     through the DB repo. Templates survive process restarts and are
+//     visible to every replica, which unblocks multi-replica HA.
+//   - In-memory (tests / no-DB Lite): when called with `nil`, every method
+//     falls back to the pre-existing package-level singleton.
+//
+// The dual path keeps the Lite single-binary / unit-test bootpaths that
+// never built the DB repo working without changing test fakes.
+type PromptTemplateServiceImpl struct {
+	// dbRepo is nil when running against the in-memory fallback.
+	dbRepo interfaces.PromptTemplateRepository
+}
 
-func NewPromptTemplateService() interfaces.PromptTemplateService {
-	return &PromptTemplateServiceImpl{}
+// NewPromptTemplateService constructs a prompt template service. The first
+// optional argument is the DB-backed repository; when nil the service
+// transparently uses the in-memory fallback (unit tests, Lite no-DB boot).
+func NewPromptTemplateService(dbRepo interfaces.PromptTemplateRepository) interfaces.PromptTemplateService {
+	svc := &PromptTemplateServiceImpl{dbRepo: dbRepo}
+	if dbRepo != nil {
+		// Idempotently seed the DB with the built-in default prompts so the
+		// service has something useful even on a freshly migrated database
+		// before the operator edits anything. InitDefaults is a no-op when
+		// the rows already exist. We use context.Background() here because
+		// this runs at dig-graph construction time, not under a request
+		// context; failure is logged at WARN and ignored (best-effort)
+		// because blocking boot on prompt-seeding would be a poor trade.
+		ctx := context.Background()
+		if err := dbRepo.InitDefaults(ctx); err != nil {
+			logger.Warnf(ctx, "[PromptTemplate] InitDefaults on startup failed: %v (continuing with empty DB)", err)
+		}
+	}
+	return svc
 }
 
 func (r *promptTemplateRepo) initDefaultTemplates() {
@@ -87,6 +127,9 @@ func (s *PromptTemplateServiceImpl) CreateTemplate(ctx context.Context, tpl *typ
 	if tpl.Content == "" {
 		return fmt.Errorf("content cannot be empty")
 	}
+	if s.dbRepo != nil {
+		return s.dbRepo.Create(ctx, tpl)
+	}
 
 	tpl.ID = uuid.New().String()
 	tpl.CreatedAt = time.Now()
@@ -121,6 +164,9 @@ func (s *PromptTemplateServiceImpl) CreateTemplate(ctx context.Context, tpl *typ
 }
 
 func (s *PromptTemplateServiceImpl) GetTemplate(ctx context.Context, tenantID uint64, templateKey, version string) (*types.PromptTemplate, error) {
+	if s.dbRepo != nil {
+		return s.dbRepo.Get(ctx, tenantID, templateKey, version)
+	}
 	repo := getPromptTemplateRepo()
 	repo.mu.RLock()
 	defer repo.mu.RUnlock()
@@ -144,6 +190,9 @@ func (s *PromptTemplateServiceImpl) GetTemplate(ctx context.Context, tenantID ui
 }
 
 func (s *PromptTemplateServiceImpl) GetActiveTemplate(ctx context.Context, tenantID uint64, templateKey string) (*types.PromptTemplate, error) {
+	if s.dbRepo != nil {
+		return s.dbRepo.GetActive(ctx, tenantID, templateKey)
+	}
 	repo := getPromptTemplateRepo()
 	repo.mu.RLock()
 	defer repo.mu.RUnlock()
@@ -184,6 +233,9 @@ func (s *PromptTemplateServiceImpl) GetActiveTemplate(ctx context.Context, tenan
 }
 
 func (s *PromptTemplateServiceImpl) ListTemplateVersions(ctx context.Context, tenantID uint64, templateKey string) ([]*types.PromptTemplate, error) {
+	if s.dbRepo != nil {
+		return s.dbRepo.ListVersions(ctx, tenantID, templateKey)
+	}
 	repo := getPromptTemplateRepo()
 	repo.mu.RLock()
 	defer repo.mu.RUnlock()
@@ -226,6 +278,9 @@ func (s *PromptTemplateServiceImpl) ListTemplateVersions(ctx context.Context, te
 }
 
 func (s *PromptTemplateServiceImpl) ActivateVersion(ctx context.Context, tenantID uint64, templateKey, version string) error {
+	if s.dbRepo != nil {
+		return s.dbRepo.SetActive(ctx, tenantID, templateKey, version)
+	}
 	repo := getPromptTemplateRepo()
 	repo.mu.Lock()
 	defer repo.mu.Unlock()

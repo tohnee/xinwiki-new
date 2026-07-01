@@ -37,6 +37,20 @@ const (
 	UserSecurityLevelContextKey ContextKey = "UserSecurityLevel"
 	// UserGroupIDsContextKey is the context key for the user's group membership IDs
 	UserGroupIDsContextKey ContextKey = "UserGroupIDs"
+	// AuthMethodContextKey records how the caller authenticated: "jwt"
+	// (interactive user) or "apikey" (scoped API key). Scope enforcement
+	// (RequireScope) applies only to "apikey" requests; "jwt" requests are
+	// authorized by role/ownership guards instead.
+	AuthMethodContextKey ContextKey = "AuthMethod"
+	// APIKeyScopesContextKey carries the granted scopes of the API key used
+	// to authenticate the request. Set only on "apikey" requests.
+	APIKeyScopesContextKey ContextKey = "APIKeyScopes"
+)
+
+// Authentication methods (values for AuthMethodContextKey).
+const (
+	AuthMethodJWT    = "jwt"
+	AuthMethodAPIKey = "apikey"
 )
 
 // String returns the string representation of the context key
