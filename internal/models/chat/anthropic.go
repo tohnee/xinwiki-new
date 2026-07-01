@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/Tencent/XinWiki/internal/models/provider"
 	"github.com/Tencent/XinWiki/internal/types"
@@ -19,7 +21,14 @@ const (
 	anthropicVersion      = "2023-06-01"
 	anthropicBetaVersion  = "2024-02-29" // 支持extended thinking和tool use
 	anthropicThinkingBeta = "interleaved-thinking-2025-05-14"
-	defaultThinkingBudget = 16000         // 默认思考token预算
+	defaultThinkingBudget = 16000 // 默认思考token预算
+	// defaultStreamIdleTimeout is the per-SSE-event idle watchdog: if no event
+	// arrives within this window during a stream, the read is aborted with
+	// ErrIdleTimeout. It catches a stalled provider stream (200 + partial body
+	// + hang) that the overall stream deadline (defaultStreamTimeout) would
+	// otherwise let block a goroutine for the full window. Override via
+	// ChatConfig.StreamIdleTimeout.
+	defaultStreamIdleTimeout = 120 * time.Second
 )
 
 // needsBetaFeatures checks if the request requires beta headers
@@ -55,24 +64,31 @@ type AnthropicChat struct {
 	baseURL       string
 	apiKey        string
 	customHeaders map[string]string
+	// breaker protects against cascading provider failures; nil disables it
+	// (default) so existing construction paths keep working.
+	breaker *CircuitBreaker
+	// streamIdleTimeout bounds how long a streaming read may block waiting for
+	// the next SSE event before being declared stalled. Zero falls back to
+	// defaultStreamIdleTimeout.
+	streamIdleTimeout time.Duration
 }
 
 type anthropicContentBlock struct {
-	Type  string `json:"type"`
-	Text  string `json:"text,omitempty"`
-	ID    string `json:"id,omitempty"`
-	Name  string `json:"name,omitempty"`
-	Input any    `json:"input,omitempty"`
-	Thinking string `json:"thinking,omitempty"`
-	Signature string `json:"signature,omitempty"`
-	Data  string `json:"data,omitempty"`
-	ToolUseID string `json:"tool_use_id,omitempty"`
-	Content []anthropicContentBlock `json:"content,omitempty"`
+	Type      string                  `json:"type"`
+	Text      string                  `json:"text,omitempty"`
+	ID        string                  `json:"id,omitempty"`
+	Name      string                  `json:"name,omitempty"`
+	Input     any                     `json:"input,omitempty"`
+	Thinking  string                  `json:"thinking,omitempty"`
+	Signature string                  `json:"signature,omitempty"`
+	Data      string                  `json:"data,omitempty"`
+	ToolUseID string                  `json:"tool_use_id,omitempty"`
+	Content   []anthropicContentBlock `json:"content,omitempty"`
 }
 
 type anthropicMessage struct {
-	Role    string                   `json:"role"`
-	Content any                      `json:"content"` // string or []anthropicContentBlock
+	Role    string `json:"role"`
+	Content any    `json:"content"` // string or []anthropicContentBlock
 }
 
 type anthropicTool struct {
@@ -100,13 +116,13 @@ type anthropicRequest struct {
 }
 
 type anthropicResponse struct {
-	ID      string                 `json:"id"`
-	Type    string                 `json:"type"`
-	Role    string                 `json:"role"`
-	Content []anthropicContentBlock `json:"content"`
-	StopReason string              `json:"stop_reason"`
-	StopSequence string           `json:"stop_sequence,omitempty"`
-	Usage      struct {
+	ID           string                  `json:"id"`
+	Type         string                  `json:"type"`
+	Role         string                  `json:"role"`
+	Content      []anthropicContentBlock `json:"content"`
+	StopReason   string                  `json:"stop_reason"`
+	StopSequence string                  `json:"stop_sequence,omitempty"`
+	Usage        struct {
 		InputTokens              int `json:"input_tokens"`
 		OutputTokens             int `json:"output_tokens"`
 		CacheCreationInputTokens int `json:"cache_creation_input_tokens,omitempty"`
@@ -119,15 +135,15 @@ type anthropicResponse struct {
 }
 
 type anthropicStreamEvent struct {
-	Type  string `json:"type"`
-	Index int    `json:"index,omitempty"`
+	Type    string `json:"type"`
+	Index   int    `json:"index,omitempty"`
 	Message *struct {
-		ID    string `json:"id"`
-		Type  string `json:"type"`
-		Role  string `json:"role"`
-		Content []anthropicContentBlock `json:"content,omitempty"`
-		StopReason string `json:"stop_reason,omitempty"`
-		Usage struct {
+		ID         string                  `json:"id"`
+		Type       string                  `json:"type"`
+		Role       string                  `json:"role"`
+		Content    []anthropicContentBlock `json:"content,omitempty"`
+		StopReason string                  `json:"stop_reason,omitempty"`
+		Usage      struct {
 			InputTokens              int `json:"input_tokens"`
 			OutputTokens             int `json:"output_tokens"`
 			CacheCreationInputTokens int `json:"cache_creation_input_tokens,omitempty"`
@@ -135,16 +151,16 @@ type anthropicStreamEvent struct {
 		} `json:"usage"`
 	} `json:"message,omitempty"`
 	Delta *struct {
-		Type       string `json:"type"`
-		Text       string `json:"text,omitempty"`
-		Thinking   string `json:"thinking,omitempty"`
-		Signature  string `json:"signature,omitempty"`
-		PartialJSON string `json:"partial_json,omitempty"`
-		StopReason string `json:"stop_reason,omitempty"`
+		Type         string `json:"type"`
+		Text         string `json:"text,omitempty"`
+		Thinking     string `json:"thinking,omitempty"`
+		Signature    string `json:"signature,omitempty"`
+		PartialJSON  string `json:"partial_json,omitempty"`
+		StopReason   string `json:"stop_reason,omitempty"`
 		StopSequence string `json:"stop_sequence,omitempty"`
 	} `json:"delta,omitempty"`
 	ContentBlock *anthropicContentBlock `json:"content_block,omitempty"`
-	Usage *struct {
+	Usage        *struct {
 		InputTokens              int `json:"input_tokens"`
 		OutputTokens             int `json:"output_tokens"`
 		CacheCreationInputTokens int `json:"cache_creation_input_tokens,omitempty"`
@@ -171,13 +187,38 @@ func NewAnthropicChat(config *ChatConfig) (*AnthropicChat, error) {
 		baseURL = provider.AnthropicBaseURL
 	}
 
+	// Attach the host-shared circuit breaker so a cascade of Anthropic
+	// provider failures (5xx storm, TCP resets) trips once for the whole
+	// fleet rather than one-instance-at-a-time. WithCircuitBreaker remains
+	// as a per-instance override (e.g. tests pinning a tighter threshold)
+	// and takes effect if called after construction.
 	return &AnthropicChat{
-		modelName:     config.ModelName,
-		modelID:       config.ModelID,
-		baseURL:       baseURL,
-		apiKey:        config.APIKey,
-		customHeaders: config.CustomHeaders,
+		modelName:         config.ModelName,
+		modelID:           config.ModelID,
+		baseURL:           baseURL,
+		apiKey:            config.APIKey,
+		customHeaders:     config.CustomHeaders,
+		streamIdleTimeout: defaultStreamIdleTimeout,
+		breaker:           sharedBreakerForURL(baseURL),
 	}, nil
+}
+
+// WithCircuitBreaker attaches a circuit breaker so consecutive provider
+// failures trip the circuit and fast-fail subsequent calls (ErrCircuitOpen)
+// instead of cascading. Nil (the default) leaves the breaker disabled.
+func (c *AnthropicChat) WithCircuitBreaker(cb *CircuitBreaker) *AnthropicChat {
+	c.breaker = cb
+	return c
+}
+
+// WithStreamIdleTimeout overrides the per-SSE-event idle watchdog. A stalled
+// stream that stops emitting events for this duration is aborted with
+// ErrIdleTimeout instead of blocking until the overall stream deadline.
+func (c *AnthropicChat) WithStreamIdleTimeout(d time.Duration) *AnthropicChat {
+	if d > 0 {
+		c.streamIdleTimeout = d
+	}
+	return c
 }
 
 func (c *AnthropicChat) Chat(ctx context.Context, messages []Message, opts *ChatOptions) (*types.ChatResponse, error) {
@@ -195,48 +236,56 @@ func (c *AnthropicChat) Chat(ctx context.Context, messages []Message, opts *Chat
 		return nil, fmt.Errorf("endpoint SSRF check failed: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
-	c.anthropicHeaders(httpReq, opts)
-
-	resp, err := rawHTTPClient.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("send request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read response: %w", err)
-	}
-
-	if strings.Contains(strings.ToLower(resp.Header.Get("Content-Type")), "text/event-stream") {
-		chatResp, err := parseAnthropicSSE(bytes.NewReader(body))
+	var result *types.ChatResponse
+	callErr := c.breaker.Call(ctx, func(ctx context.Context) error {
+		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(jsonData))
 		if err != nil {
-			return nil, err
+			return fmt.Errorf("create request: %w", err)
+		}
+		c.anthropicHeaders(httpReq, opts)
+
+		resp, err := rawHTTPClient.Do(httpReq)
+		if err != nil {
+			return fmt.Errorf("send request: %w", err)
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("read response: %w", err)
+		}
+
+		if strings.Contains(strings.ToLower(resp.Header.Get("Content-Type")), "text/event-stream") {
+			chatResp, err := parseAnthropicSSE(bytes.NewReader(body))
+			if err != nil {
+				return err
+			}
+			if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+				return fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, chatResp.Content)
+			}
+			logUsage(ctx, c.modelName, &chatResp.Usage)
+			result = chatResp
+			return nil
+		}
+
+		var chatResp anthropicResponse
+		if err := json.Unmarshal(body, &chatResp); err != nil {
+			return fmt.Errorf("decode response: %w", err)
 		}
 		if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-			return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, chatResp.Content)
+			if chatResp.Error != nil && chatResp.Error.Message != "" {
+				return fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, chatResp.Error.Message)
+			}
+			return fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
 		}
-		logUsage(ctx, c.modelName, &chatResp.Usage)
-		return chatResp, nil
-	}
 
-	var chatResp anthropicResponse
-	if err := json.Unmarshal(body, &chatResp); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
+		result = c.parseResponse(&chatResp)
+		logUsage(ctx, c.modelName, &result.Usage)
+		return nil
+	})
+	if callErr != nil {
+		return nil, callErr
 	}
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		if chatResp.Error != nil && chatResp.Error.Message != "" {
-			return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, chatResp.Error.Message)
-		}
-		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
-	result := c.parseResponse(&chatResp)
-	logUsage(ctx, c.modelName, &result.Usage)
 	return result, nil
 }
 
@@ -248,30 +297,57 @@ func (c *AnthropicChat) ChatStream(ctx context.Context, messages []Message, opts
 		return nil, fmt.Errorf("marshal request: %w", err)
 	}
 
+	// Apply the overall stream deadline as a hard ceiling (only when the caller
+	// did not set one). The per-event idle watchdog (IdleReader) additionally
+	// catches a stream that connects, emits a partial body, then stalls.
+	streamCtx, cancel := withLLMTimeout(ctx, defaultStreamTimeout)
+
 	endpoint := c.endpoint()
 	if err := secutils.ValidateURLForSSRF(endpoint); err != nil {
+		cancel()
 		return nil, fmt.Errorf("endpoint SSRF check failed: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(jsonData))
+	httpReq, err := http.NewRequestWithContext(streamCtx, http.MethodPost, endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
+		cancel()
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 	httpReq.Header.Set("Accept", "text/event-stream")
 	c.anthropicHeaders(httpReq, opts)
 
-	resp, err := rawHTTPClient.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("send request: %w", err)
+	// The HTTP send itself is protected by the breaker so a down provider
+	// fast-fails. The streaming body is consumed outside the breaker (the
+	// breaker.Call contract is synchronous; the stream goroutine runs after).
+	var resp *http.Response
+	callErr := c.breaker.Call(streamCtx, func(ctx context.Context) error {
+		r, err := rawHTTPClient.Do(httpReq)
+		if err != nil {
+			return fmt.Errorf("send request: %w", err)
+		}
+		resp = r
+		return nil
+	})
+	if callErr != nil {
+		cancel()
+		return nil, callErr
 	}
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
+		cancel()
 		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
+	// Wrap the body so a stalled stream (no SSE event within the idle window)
+	// aborts instead of blocking the stream goroutine for the full deadline.
+	bodyReader := NewIdleReaderContext(streamCtx, resp.Body, c.streamIdleTimeout)
+
 	streamChan := make(chan types.StreamResponse)
-	go processAnthropicStream(ctx, c.modelName, resp, streamChan)
+	go func() {
+		defer cancel()
+		processAnthropicStream(streamCtx, c.modelName, resp, bodyReader, streamChan)
+	}()
 	return streamChan, nil
 }
 
@@ -550,13 +626,20 @@ func (c *AnthropicChat) parseResponse(resp *anthropicResponse) *types.ChatRespon
 func parseAnthropicSSE(reader io.Reader) (*types.ChatResponse, error) {
 	sseReader := NewSSEReader(reader)
 	var (
-		contentParts     []string
-		thinkingParts    []string
-		toolCalls        []types.LLMToolCall
-		finishReason     string
-		inputTokens      int
-		outputTokens     int
-		cachedTokens     int
+		contentParts  []string
+		thinkingParts []string
+		toolCalls     []types.LLMToolCall
+		finishReason  string
+		inputTokens   int
+		outputTokens  int
+		// cacheRead / cacheCreation are tracked separately (not collapsed into
+		// a single cachedTokens) because Anthropic bills them at DIFFERENT
+		// per-million rates (cache_read ≈ 0.1×, cache_creation ≈ 1.25×
+		// input price). The combined `CachedTokens` is still emitted as
+		// cache_read+cache_creation for compatibility with code paths that
+		// only inspect that field (e.g. logs).
+		cacheRead     int
+		cacheCreation int
 	)
 
 	for {
@@ -584,7 +667,8 @@ func parseAnthropicSSE(reader io.Reader) (*types.ChatResponse, error) {
 		if streamEvent.Message != nil {
 			inputTokens = max(inputTokens, streamEvent.Message.Usage.InputTokens)
 			outputTokens = max(outputTokens, streamEvent.Message.Usage.OutputTokens)
-			cachedTokens = max(cachedTokens, streamEvent.Message.Usage.CacheReadInputTokens+streamEvent.Message.Usage.CacheCreationInputTokens)
+			cacheRead = max(cacheRead, streamEvent.Message.Usage.CacheReadInputTokens)
+			cacheCreation = max(cacheCreation, streamEvent.Message.Usage.CacheCreationInputTokens)
 			// 解析message_start中的tool_use块
 			for _, block := range streamEvent.Message.Content {
 				if block.Type == "tool_use" {
@@ -636,7 +720,8 @@ func parseAnthropicSSE(reader io.Reader) (*types.ChatResponse, error) {
 		if streamEvent.Usage != nil {
 			inputTokens = max(inputTokens, streamEvent.Usage.InputTokens)
 			outputTokens = max(outputTokens, streamEvent.Usage.OutputTokens)
-			cachedTokens = max(cachedTokens, streamEvent.Usage.CacheReadInputTokens+streamEvent.Usage.CacheCreationInputTokens)
+			cacheRead = max(cacheRead, streamEvent.Usage.CacheReadInputTokens)
+			cacheCreation = max(cacheCreation, streamEvent.Usage.CacheCreationInputTokens)
 		}
 	}
 
@@ -646,23 +731,30 @@ func parseAnthropicSSE(reader io.Reader) (*types.ChatResponse, error) {
 		ToolCalls:        toolCalls,
 		FinishReason:     finishReason,
 		Usage: types.TokenUsage{
-			PromptTokens:     inputTokens,
-			CompletionTokens: outputTokens,
-			TotalTokens:      inputTokens + outputTokens,
-			CachedTokens:     cachedTokens,
+			PromptTokens:        inputTokens,
+			CompletionTokens:    outputTokens,
+			TotalTokens:         inputTokens + outputTokens,
+			CacheReadTokens:     cacheRead,
+			CacheCreationTokens: cacheCreation,
+			CachedTokens:        cacheRead + cacheCreation,
 		},
 	}, nil
 }
 
-func processAnthropicStream(ctx context.Context, model string, resp *http.Response, streamChan chan types.StreamResponse) {
+// processAnthropicStream reads SSE events from body and pushes StreamResponse
+// values onto streamChan. body is the (idle-wrapped) HTTP response body; the
+// caller owns closing the underlying http.Response.Body. An idle timeout
+// surfaces as ErrIdleTimeout on the error channel; a cancelled context
+// surfaces as the context error.
+func processAnthropicStream(ctx context.Context, model string, resp *http.Response, body io.Reader, streamChan chan types.StreamResponse) {
 	defer close(streamChan)
 	defer resp.Body.Close()
 
-	sseReader := NewSSEReader(resp.Body)
+	sseReader := NewSSEReader(body)
 	var (
-		usage       *types.TokenUsage
+		usage        *types.TokenUsage
 		finishReason string
-		toolCalls   []types.LLMToolCall
+		toolCalls    []types.LLMToolCall
 	)
 
 	for {
@@ -679,9 +771,18 @@ func processAnthropicStream(ctx context.Context, model string, resp *http.Respon
 					ToolCalls:    toolCalls,
 				}
 			} else {
+				// A client cancellation or idle-timeout is a clean stop, not a
+				// provider error: surface a recognisable message but do not
+				// emit a misleading "API stream error".
+				msg := err.Error()
+				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+					msg = "stream cancelled: " + err.Error()
+				} else if errors.Is(err, ErrIdleTimeout) {
+					msg = "stream stalled (idle timeout)"
+				}
 				streamChan <- types.StreamResponse{
 					ResponseType: types.ResponseTypeError,
-					Content:      err.Error(),
+					Content:      msg,
 					Done:         true,
 				}
 			}

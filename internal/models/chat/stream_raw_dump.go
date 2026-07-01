@@ -8,16 +8,19 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Tencent/XinWiki/internal/utils"
 )
 
 // streamRawDumpDir returns the directory for per-stream raw packet dumps.
-// Enabled when WEKNORA_LLM_STREAM_RAW_DUMP_DIR is set, or when
-// WEKNORA_LLM_STREAM_RAW_DUMP=1 (defaults to ~/.xinwiki/investigate/llm-stream).
+// Enabled when LLM_STREAM_RAW_DUMP_DIR is set, or when
+// LLM_STREAM_RAW_DUMP=1 (defaults to ~/.xinwiki/investigate/llm-stream).
+// XINWIKI_-prefixed names are preferred; WEKNORA_-prefixed are legacy.
 func streamRawDumpDir() string {
-	if dir := strings.TrimSpace(os.Getenv("WEKNORA_LLM_STREAM_RAW_DUMP_DIR")); dir != "" {
+	if dir := strings.TrimSpace(utils.ResolveEnv("LLM_STREAM_RAW_DUMP_DIR")); dir != "" {
 		return dir
 	}
-	v := strings.TrimSpace(os.Getenv("WEKNORA_LLM_STREAM_RAW_DUMP"))
+	v := strings.TrimSpace(utils.ResolveEnv("LLM_STREAM_RAW_DUMP"))
 	if v == "1" || strings.EqualFold(v, "true") || strings.EqualFold(v, "yes") {
 		home, err := os.UserHomeDir()
 		if err != nil {

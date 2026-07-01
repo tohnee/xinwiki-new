@@ -63,4 +63,7 @@ type PromptTemplateRepository interface {
 	ListVersions(ctx context.Context, tenantID uint64, templateKey string) ([]*types.PromptTemplate, error)
 	// SetActive sets a specific version as active
 	SetActive(ctx context.Context, tenantID uint64, templateKey, version string) error
+	// InitDefaults idempotently seeds system-level default templates. Safe to
+	// call on every startup; existing rows are left untouched.
+	InitDefaults(ctx context.Context) error
 }

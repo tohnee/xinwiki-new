@@ -3,7 +3,6 @@ package chat
 import (
 	"context"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -13,17 +12,18 @@ import (
 
 // LLM 调用超时配置。仅作为"上层未设置 deadline 时"的兜底，避免 hung 请求
 // 永久阻塞 worker。如果上层 ctx 已经设置了 deadline（无论比默认更短还是更长），
-// 都会原样尊重，不再叠加默认超时。可通过环境变量覆盖：
-//   - WEKNORA_LLM_CHAT_TIMEOUT_SECONDS    非流式调用兜底超时（默认 600s）
-//   - WEKNORA_LLM_STREAM_TIMEOUT_SECONDS  流式调用兜底超时（默认 1800s）
+// 都会原样尊重，不再叠加默认超时。可通过环境变量覆盖（XINWIKI_* 优先，WEKNORA_* 为兼容旧名）：
+//   - LLM_CHAT_TIMEOUT_SECONDS    非流式调用兜底超时（默认 600s）
+//   - LLM_STREAM_TIMEOUT_SECONDS  流式调用兜底超时（默认 1800s）
 var (
 	defaultChatTimeout   = envDurationSeconds("WEKNORA_LLM_CHAT_TIMEOUT_SECONDS", 300*time.Second)
 	defaultStreamTimeout = envDurationSeconds("WEKNORA_LLM_STREAM_TIMEOUT_SECONDS", 600*time.Second)
 )
 
 // envDurationSeconds 读取以"秒"为单位的环境变量，解析失败或非正值时回退到 fallback。
+// key 可为 WEKNORA_-prefixed 旧名；XINWIKI_-prefixed 别名优先（见 utils.ResolveEnvName）。
 func envDurationSeconds(key string, fallback time.Duration) time.Duration {
-	v := strings.TrimSpace(os.Getenv(key))
+	v := strings.TrimSpace(secutils.ResolveEnvName(key))
 	if v == "" {
 		return fallback
 	}

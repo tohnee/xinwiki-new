@@ -149,23 +149,70 @@ type Model struct {
 }
 
 // CalculateCost estimates the cost in USD for a given token usage.
+//
+// Cache accounting is provider-specific:
+//
+//   - OpenAI / DeepSeek / Azure / etc. (subset cache): CachedTokens is a
+//     subset of PromptTokens that hit a prompt cache and is billed at a
+//     discounted rate. The non-cached remainder of PromptTokens is billed
+//     at the full input rate.
+//
+//   - Anthropic (additive cache): cache_read_input_tokens and
+//     cache_creation_input_tokens are SEPARATE billable events, ADDITIVE
+//     to input_tokens (which is itself the non-cached prompt only). They
+//     are billed at distinct rates that Anthropic publishes per model
+//     (cache_read ≈ 0.1×, cache_creation ≈ 1.25× input price).
+//
+// We dispatch on m.Parameters.Provider == "anthropic" (the canonical
+// constant is internal/models/provider.ProviderAnthropic; the literal is
+// inlined here to keep internal/types a leaf package). Anthropic is the
+// only shipped provider whose `input_tokens` excludes cache hits - the
+// prior arithmetic wrongly subtracted CacheRead+Creation from the prompt
+// tokens total, under-billing the cached portion by ~90%.
 func (m *Model) CalculateCost(usage *TokenUsage) float64 {
 	if usage == nil {
 		return 0
 	}
-	cachedPrice := m.CachedInputPricePerMillion
-	if cachedPrice <= 0 {
-		cachedPrice = m.InputPricePerMillion
+	cost := float64(usage.PromptTokens)/1_000_000*m.InputPricePerMillion +
+		float64(usage.CompletionTokens)/1_000_000*m.OutputPricePerMillion
+
+	// Anthropic: cache_read + cache_creation are additive billable events,
+	// NOT a subset of PromptTokens. Anthropic publishes two distinct rates
+	// per model (~0.1× input for read, ~1.25× input for creation). The
+	// operator-set CachedInputPricePerMillion acts as the cache_read rate
+	// when populated; we fall back to the published default ratio when it
+	// is zero. Creation is always priced at the published 1.25× ratio
+	// until/unless a dedicated Model field exposes it.
+	if m.Parameters.Provider == "anthropic" {
+		cacheReadPrice := m.CachedInputPricePerMillion
+		if cacheReadPrice <= 0 {
+			cacheReadPrice = 0.1 * m.InputPricePerMillion
+		}
+		cacheCreatePrice := 1.25 * m.InputPricePerMillion
+		cost += float64(usage.CacheReadTokens)/1_000_000*cacheReadPrice
+		cost += float64(usage.CacheCreationTokens)/1_000_000*cacheCreatePrice
+		return cost
 	}
-	cachedTokens := usage.CachedTokens
-	if cachedTokens > usage.PromptTokens {
-		cachedTokens = usage.PromptTokens
+
+	// OpenAI-style subset cache: the cached portion of PromptTokens is
+	// billed at CachedInputPricePerMillion (default to InputPricePerMillion
+	// when unset); the remainder is billed at the full input rate. We have
+	// already added PromptTokens * InputPricePerMillion above, so subtract
+	// the cached portion's "already-billed-at-full-rate" amount and add
+	// the discounted amount - net effect: cached tokens pay only the
+	// discounted rate, the rest pay full rate.
+	if usage.CachedTokens > 0 {
+		cachedPrice := m.CachedInputPricePerMillion
+		if cachedPrice <= 0 {
+			cachedPrice = m.InputPricePerMillion
+		}
+		cachedTokens := usage.CachedTokens
+		if cachedTokens > usage.PromptTokens {
+			cachedTokens = usage.PromptTokens
+		}
+		cost -= float64(cachedTokens) / 1_000_000 * m.InputPricePerMillion
+		cost += float64(cachedTokens) / 1_000_000 * cachedPrice
 	}
-	nonCachedInput := usage.PromptTokens - cachedTokens
-	cost := 0.0
-	cost += float64(nonCachedInput) / 1_000_000 * m.InputPricePerMillion
-	cost += float64(cachedTokens) / 1_000_000 * cachedPrice
-	cost += float64(usage.CompletionTokens) / 1_000_000 * m.OutputPricePerMillion
 	return cost
 }
 
