@@ -20,6 +20,7 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/dig"
+	"gorm.io/gorm"
 
 	"github.com/Tencent/XinWiki/internal/config"
 	"github.com/Tencent/XinWiki/internal/handler"
@@ -90,6 +91,7 @@ type RouterParams struct {
 	EmbedChannelHandler          *handler.EmbedChannelHandler
 	EmbedChannelService          interfaces.EmbedChannelService
 	RedisClient                  *redis.Client
+	DB                           *gorm.DB
 	DataSourceHandler            *handler.DataSourceHandler
 	DataSourceCredentialsHandler *handler.DataSourceCredentialsHandler
 	XinWikiCloudHandler          *handler.XinWikiCloudHandler
@@ -135,9 +137,43 @@ func NewRouter(params RouterParams) *gin.Engine {
 	r.Use(middleware.Recovery())
 	r.Use(middleware.ErrorHandler())
 
-	// 健康检查（不需要认证）
+	// 健康检查（不需要认证）— 检查 DB 和 Redis 连通性
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+		defer cancel()
+
+		status := gin.H{"status": "ok"}
+		httpCode := 200
+
+		// Check DB connectivity
+		if params.DB != nil {
+			sqlDB, err := params.DB.DB()
+			if err != nil {
+				status["db"] = "error"
+				status["db_error"] = "failed to get underlying sql.DB"
+				httpCode = 503
+			} else if err := sqlDB.PingContext(ctx); err != nil {
+				status["db"] = "error"
+				httpCode = 503
+			} else {
+				status["db"] = "ok"
+			}
+		}
+
+		// Check Redis connectivity
+		if params.RedisClient != nil {
+			if err := params.RedisClient.Ping(ctx).Err(); err != nil {
+				status["redis"] = "error"
+				httpCode = 503
+			} else {
+				status["redis"] = "ok"
+			}
+		}
+
+		if httpCode != 200 {
+			status["status"] = "degraded"
+		}
+		c.JSON(httpCode, status)
 	})
 
 	// Prometheus metrics scrape endpoint. The metrics themselves are
