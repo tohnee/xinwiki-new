@@ -1,26 +1,34 @@
 <script setup lang="ts">
-import { useSlots } from 'vue'
+import { onMounted } from 'vue'
 import WorkspaceHeader from './workspace/WorkspaceHeader.vue'
 import WorkspaceSidebar from './workspace/WorkspaceSidebar.vue'
 import WorkspaceContent from './workspace/WorkspaceContent.vue'
 import WorkspaceRightPanel from './workspace/WorkspaceRightPanel.vue'
 import { useWorkspaceLayout } from './workspace/useWorkspaceLayout'
 import { useGeneration } from './workspace/useGeneration'
-import { ref, computed } from 'vue'
+import { useKbStore } from './workspace/useKbStore'
+import { ref } from 'vue'
 import type { WikiPage } from '@/api/wiki'
-import { listKnowledgeBases } from '@/api/knowledge-base'
-import { useAuthStore } from '@/stores/auth'
-
-const slots = useSlots()
-const authStore = useAuthStore()
 
 const props = defineProps<{
   selectedPageId?: string
+  /**
+   * Breadcrumb trail for the content header. P1 fix: previously the
+   * outer Workspace.vue computed this but never sent it down, so
+   * WorkspaceContent always received `[]` and rendered an empty
+   * breadcrumb. Now the parent owns it and we just forward it.
+   */
+  breadcrumb?: string[]
 }>()
 
 const emit = defineEmits<{
   (e: 'select-page', page: WikiPage | null): void
   (e: 'select-search-result', result: { id: string; title: string; type: string }): void
+  /**
+   * P1 fix: bubble up the sidebar's "新建" click so the parent can
+   * route to the wiki page editor.
+   */
+  (e: 'create-page'): void
 }>()
 
 const {
@@ -49,27 +57,16 @@ const {
   resetGeneration,
 } = useGeneration()
 
-const searchQuery = ref('')
-const kbList = ref<Array<{ id: string; name: string }>>([])
-const activeKbId = ref<string>('')
-const activeKbName = computed(() => {
-  return kbList.value.find(k => k.id === activeKbId.value)?.name || '选择知识库'
-})
+// P2 fix: KB list + active KB id are owned by the shared kbStore so
+// Workspace.vue / XinWikiWorkspace.vue / WorkspaceSidebar.vue no longer
+// each fire their own listKnowledgeBases() call on mount.
+const { activeKbName, ensureLoaded } = useKbStore()
 
-const loadKBs = async () => {
-  try {
-    const res = await listKnowledgeBases({ creator: 'all' }) as any
-    const list = res?.data || res?.knowledge_bases || []
-    kbList.value = Array.isArray(list)
-      ? list.map((kb: any) => ({ id: kb.id, name: kb.name }))
-      : []
-    const current = authStore.currentKnowledgeBase?.id
-    activeKbId.value = current || (kbList.value[0]?.id || '')
-  } catch (e) {
-    console.warn('[workspace] load KBs failed', e)
-  }
-}
-loadKBs()
+const searchQuery = ref('')
+
+onMounted(() => {
+  void ensureLoaded()
+})
 
 const handlePageSelect = (page: WikiPage | null) => {
   emit('select-page', page)
@@ -77,6 +74,10 @@ const handlePageSelect = (page: WikiPage | null) => {
 
 const handleSearchResult = (result: { id: string; title: string; type: string }) => {
   emit('select-search-result', result)
+}
+
+const handleCreatePage = () => {
+  emit('create-page')
 }
 </script>
 
@@ -100,9 +101,10 @@ const handleSearchResult = (result: { id: string; title: string; type: string })
         :selected-page-id="selectedPageId"
         @toggle="toggleSidebar"
         @select-page="handlePageSelect"
+        @create-page="handleCreatePage"
       />
 
-      <WorkspaceContent :show-welcome="!slots.default" :breadcrumb="[]">
+      <WorkspaceContent :breadcrumb="props.breadcrumb ?? ['XinWiki', '智能问答']">
         <template #header-actions>
           <slot name="header-actions" />
         </template>

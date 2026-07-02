@@ -13,9 +13,9 @@ import {
   FolderIcon,
   FolderOpenIcon,
 } from 'tdesign-icons-vue-next'
-import { listKnowledgeBases } from '@/api/knowledge-base'
 import { getWikiIndex, listWikiPages, type WikiPage, type WikiIndexResponse } from '@/api/wiki'
-import { useAuthStore } from '@/stores/auth'
+import { resolveNavAction, navHasContent, type SidebarNavId } from './sidebarNav'
+import { useKbStore } from './useKbStore'
 
 const props = defineProps<{
   collapsed: boolean
@@ -26,13 +26,20 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'toggle'): void
   (e: 'select-page', page: WikiPage | null): void
+  /**
+   * P1 fix: the "新建" button used to be a dead shell. Now it emits
+   * `create-page` so the parent (Workspace.vue) can route to the
+   * wiki page editor for the active KB.
+   */
+  (e: 'create-page'): void
 }>()
 
-const authStore = useAuthStore()
+// P2 fix: KB list + active KB id are owned by the shared kbStore.
+// The sidebar used to call listKnowledgeBases() on mount; now it just
+// reads from the shared cache and reacts to activeKbId changes.
+const { kbList, activeKbId, ensureLoaded, setActiveKb } = useKbStore()
 
 const activeNav = ref<'chat' | 'knowledge' | 'favorites' | 'history'>('chat')
-const kbList = ref<Array<{ id: string; name: string }>>([])
-const activeKbId = ref<string>('')
 const pages = ref<WikiPage[]>([])
 const loadingPages = ref(false)
 const expandedFolders = ref<Set<string>>(new Set(['root', '']))
@@ -141,17 +148,32 @@ const toggleFolder = (slug: string) => {
 }
 
 const handleNavClick = (id: string) => {
-  if (id === 'chat') {
-    activeNav.value = 'chat'
+  // P1 fix: route nav clicks through the shared, unit-tested
+  // resolver. Previously favorites/history silently flipped the
+  // highlight with no content behind them; the template now uses
+  // navHasContent() to render an empty-state placeholder instead.
+  const action = resolveNavAction(id)
+  activeNav.value = action.activeNav
+  if (action.selectPage === 'clear') {
     emit('select-page', null)
-    return
   }
-  if (id === 'knowledge') {
-    activeNav.value = 'knowledge'
-    return
-  }
-  activeNav.value = id as any
 }
+
+const handleCreate = () => {
+  // P1 fix: the "新建" button had no @click. Emit `create-page` so
+  // the parent can route to the page editor for the active KB.
+  emit('create-page')
+}
+
+const onKbSelectChange = (e: Event) => {
+  // P2 fix: activeKbId is owned by the shared kbStore (readonly here).
+  // Route the select through setActiveKb so all three components see
+  // the change.
+  const id = (e.target as HTMLSelectElement).value
+  setActiveKb(id)
+}
+
+const showEmptyState = computed(() => !navHasContent(activeNav.value))
 
 const handlePageClick = (page: WikiPage) => {
   if (page.page_type === 'folder') {
@@ -160,22 +182,6 @@ const handlePageClick = (page: WikiPage) => {
   }
   activeNav.value = 'knowledge'
   emit('select-page', page)
-}
-
-const loadKBs = async () => {
-  try {
-    const res = await listKnowledgeBases({ creator: 'all' }) as any
-    const list = res?.data || res?.knowledge_bases || []
-    kbList.value = Array.isArray(list)
-      ? list.map((kb: any) => ({ id: kb.id, name: kb.name }))
-      : []
-    if (!activeKbId.value) {
-      const current = authStore.currentKnowledgeBase?.id
-      activeKbId.value = current || (kbList.value[0]?.id || '')
-    }
-  } catch (e) {
-    console.warn('[sidebar] load KBs failed', e)
-  }
 }
 
 const loadPages = async () => {
@@ -237,7 +243,7 @@ watch(activeKbId, () => {
 })
 
 onMounted(async () => {
-  await loadKBs()
+  await ensureLoaded()
   if (activeKbId.value) loadPages()
 })
 
@@ -248,7 +254,7 @@ const rootChildren = computed(() => pageTree.value.get('')?.children || [])
   <aside class="sidebar" :class="{ collapsed: props.collapsed, 'mobile-open': props.isMobile && !props.collapsed }">
     <div class="sidebar-scroll">
       <div v-if="!props.collapsed" class="sidebar-new-btn">
-        <button class="new-button">
+        <button class="new-button" @click="handleCreate" title="新建页面">
           <AddIcon />
           <span>新建</span>
         </button>
@@ -279,8 +285,17 @@ const rootChildren = computed(() => pageTree.value.get('')?.children || [])
             </button>
           </div>
 
+          <!-- P1 fix: favorites / history have no backend yet. Show an
+               empty-state placeholder instead of silently rendering the
+               page tree (which made it look like the feature was wired up). -->
+          <div v-if="showEmptyState" class="nav-empty-state">
+            <StarIcon class="empty-icon" />
+            <p class="empty-text">暂未开放，敬请期待</p>
+          </div>
+
+          <template v-else>
           <div v-if="kbList.length > 1" class="kb-selector">
-            <select v-model="activeKbId" class="kb-select">
+            <select :value="activeKbId" class="kb-select" @change="onKbSelectChange">
               <option v-for="kb in kbList" :key="kb.id" :value="kb.id">{{ kb.name }}</option>
             </select>
           </div>
@@ -418,6 +433,7 @@ const rootChildren = computed(() => pageTree.value.get('')?.children || [])
               暂无页面
             </div>
           </div>
+          </template>
         </div>
       </nav>
     </div>
@@ -665,6 +681,27 @@ const rootChildren = computed(() => pageTree.value.get('')?.children || [])
   text-align: center;
   font-size: 12px;
   color: #86868b;
+}
+
+.nav-empty-state {
+  padding: 32px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+
+  .empty-icon {
+    font-size: 28px;
+    color: #c7c7cc;
+    margin-bottom: 10px;
+  }
+
+  .empty-text {
+    font-size: 13px;
+    color: #86868b;
+    margin: 0;
+    line-height: 1.5;
+  }
 }
 
 .tree-item {

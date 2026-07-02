@@ -85,7 +85,7 @@
                         <div class="menu_item-box">
                             <div class="menu_icon">
                                 <img class="icon"
-                                    :src="getImgSrc(item.icon == 'zhishiku' ? knowledgeIcon : item.icon == 'agent' ? agentIcon : item.icon == 'integration' ? integrationIcon : item.icon == 'organization' ? organizationIcon : item.icon == 'logout' ? logoutIcon : item.icon == 'setting' ? settingIcon : prefixIcon)"
+                                    :src="getImgSrc(item.icon == 'zhishiku' ? knowledgeIcon : item.icon == 'agent' ? agentIcon : item.icon == 'integration' ? integrationIcon : item.icon == 'organization' ? organizationIcon : item.icon == 'logout' ? logoutIcon : item.icon == 'setting' ? settingIcon : item.icon == 'workspace' ? workspaceIcon : prefixIcon)"
                                     alt="">
                             </div>
                             <template v-if="!uiStore.sidebarCollapsed">
@@ -239,6 +239,7 @@ import {
 } from './sessionSidebarSourceFilter';
 import { logout as logoutApi } from '@/api/auth';
 import { useMenuStore } from '@/stores/menu';
+import { isTopMenuItem } from '@/stores/menuPaths';
 import { useAuthStore } from '@/stores/auth';
 import { useOrganizationStore } from '@/stores/organization';
 import { useUIStore } from '@/stores/ui';
@@ -396,6 +397,8 @@ const isMenuItemActive = (itemPath: string): boolean => {
             return currentRoute === 'integrations';
         case 'organizations':
             return currentRoute === 'organizationList';
+        case 'workspace':
+            return currentRoute === 'workspace' || currentRoute === 'workspacePage';
         case 'creatChat':
             return currentRoute === 'kbCreatChat' || currentRoute === 'globalCreatChat';
         case 'settings':
@@ -422,19 +425,19 @@ const getIconActiveState = (itemPath: string) => {
 };
 
 // 分离上下两部分菜单（使用 visibleMenuArr 以便 lite 模式过滤 logout）
+// The whitelist lives in stores/menuPaths.ts so it can be unit-tested.
+// Adding a new top-menu entry MUST go through isTopMenuItem() - the old
+// hard-coded filter is what hid the workspace route in the first place (P0).
 const topMenuItems = computed<MenuItem[]>(() => {
     return (visibleMenuArr.value as unknown as MenuItem[]).filter((item: MenuItem) =>
-        item.path === 'knowledge-bases' || item.path === 'agents' || item.path === 'integrations' || item.path === 'organizations' || item.path === 'creatChat'
+        isTopMenuItem(item.path)
     );
 });
 
 const bottomMenuItems = computed<MenuItem[]>(() => {
-    return (visibleMenuArr.value as unknown as MenuItem[]).filter((item: MenuItem) => {
-        if (item.path === 'knowledge-bases' || item.path === 'agents' || item.path === 'integrations' || item.path === 'organizations' || item.path === 'creatChat') {
-            return false;
-        }
-        return true;
-    });
+    return (visibleMenuArr.value as unknown as MenuItem[]).filter((item: MenuItem) =>
+        !isTopMenuItem(item.path)
+    );
 });
 
 // 当前知识库信息
@@ -1013,6 +1016,7 @@ let settingIcon = ref('setting.svg');
 let agentIcon = ref('agent.svg');
 let integrationIcon = ref('integration.svg');
 let organizationIcon = ref('organization.svg');
+let workspaceIcon = ref('workspace.svg');
 let pathPrefix = ref(route.name)
 const getIcon = (path: string) => {
     // 根据当前路由状态更新所有图标
@@ -1022,6 +1026,8 @@ const getIcon = (path: string) => {
     const agentsActiveState = route.name === 'agentList';
     const integrationsActiveState = route.name === 'integrations';
     const organizationsActiveState = route.name === 'organizationList';
+    // workspace route has two shapes: /platform/workspace and /platform/workspace/:pageId
+    const workspaceActiveState = route.name === 'workspace' || route.name === 'workspacePage';
 
     // 知识库图标：只在知识库页面显示绿色
     knowledgeIcon.value = kbActiveState.isKbActive ? 'zhishiku-green.svg' : 'zhishiku.svg';
@@ -1036,6 +1042,9 @@ const getIcon = (path: string) => {
 
     // 对话图标：只在对话创建页面显示绿色，其他情况显示默认
     prefixIcon.value = creatChatActiveState.isCreatChatActive ? 'prefixIcon-green.svg' : 'prefixIcon.svg';
+
+    // 工作空间图标：只在工作空间页面显示绿色
+    workspaceIcon.value = workspaceActiveState ? 'workspace-green.svg' : 'workspace.svg';
 
     // 设置图标：只在设置页面显示绿色
     settingIcon.value = settingsActiveState.isSettingsActive ? 'setting-green.svg' : 'setting.svg';
@@ -1055,6 +1064,9 @@ const handleMenuClick = async (path: string) => {
         }
     } else if (path === 'agents') {
         router.push('/platform/agents')
+    } else if (path === 'workspace') {
+        // 工作空间菜单项：进入 NotebookLM 风格三栏式 Workspace
+        router.push('/platform/workspace')
     } else if (path === 'integrations') {
         router.push('/platform/integrations')
     } else if (path === 'organizations') {

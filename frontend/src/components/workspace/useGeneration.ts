@@ -9,6 +9,11 @@ import {
   TipsIcon,
 } from 'tdesign-icons-vue-next'
 import { createArtifact, generateArtifact, getArtifact, downloadArtifactURL, type Artifact, type ArtifactStatus } from '@/api/artifact'
+import {
+  buildInitialProgressSteps,
+  advanceProgressSteps,
+  completeAllSteps,
+} from './thinkingSteps'
 
 export type GenerationTypeId = 'summary' | 'briefing' | 'faq' | 'timeline' | 'mindmap' | 'presentation' | 'chart'
 
@@ -60,6 +65,11 @@ export function useGeneration() {
     { id: 'chart', name: '数据图表', icon: ChartIcon, description: '提取数据生成可视化图表', artifactType: 'chart' },
   ]
 
+  // P2 fix: progress steps used to be inlined here as a hardcoded
+  // mock. They are now built by the shared, unit-tested helpers in
+  // thinkingSteps.ts so the panel is honestly labelled as a
+  // generation progress indicator (the artifact pipeline does not
+  // stream real thinking tokens yet).
   const sampleThinkingSteps = ref<ThinkingStep[]>([])
 
   const isDownloadable = computed(() => {
@@ -110,7 +120,7 @@ export function useGeneration() {
           } else if (!generatedContent.value) {
             generatedContent.value = `### ${generationTypes.find(t => t.id === generationType.value)?.name || '内容'}\n\n生成已完成，可点击下方按钮下载文件。`
           }
-          sampleThinkingSteps.value = sampleThinkingSteps.value.map(s => ({ ...s, status: 'completed' as const }))
+          sampleThinkingSteps.value = completeAllSteps(sampleThinkingSteps.value)
           MessagePlugin.success('生成完成')
           return
         }
@@ -149,28 +159,7 @@ export function useGeneration() {
     currentArtifact.value = null
     generateInput.value = ''
 
-    sampleThinkingSteps.value = [
-      {
-        id: '1', type: 'thinking', title: '理解生成需求',
-        content: '正在分析您的生成指令，提取关键要点...',
-        status: 'running', timestamp: Date.now(),
-      },
-      {
-        id: '2', type: 'search', title: '检索相关内容',
-        content: '从知识库中检索相关信息...',
-        status: 'pending', timestamp: Date.now(),
-      },
-      {
-        id: '3', type: 'retrieve', title: '整理素材',
-        content: '组织素材并构建大纲...',
-        status: 'pending', timestamp: Date.now(),
-      },
-      {
-        id: '4', type: 'reasoning', title: '生成内容',
-        content: '调用生成模型生成目标产物...',
-        status: 'pending', timestamp: Date.now(),
-      },
-    ]
+    sampleThinkingSteps.value = buildInitialProgressSteps()
 
     try {
       const res = await createArtifact({
@@ -180,10 +169,7 @@ export function useGeneration() {
       })
       if (res?.success && res.data?.id) {
         currentArtifact.value = res.data
-        sampleThinkingSteps.value = sampleThinkingSteps.value.map((s, i) => ({
-          ...s,
-          status: i < 2 ? 'completed' : 'running' as const,
-        }))
+        sampleThinkingSteps.value = advanceProgressSteps(sampleThinkingSteps.value, 2)
         await generateArtifact(res.data.id, prompt)
         pollArtifact(res.data.id)
       } else {
@@ -194,7 +180,7 @@ export function useGeneration() {
       generationStatus.value = 'failed'
       generationError.value = e?.response?.data?.error?.message || e?.message || '创建生成任务失败'
       MessagePlugin.error(generationError.value)
-      sampleThinkingSteps.value = sampleThinkingSteps.value.map(s => ({ ...s, status: 'completed' as const }))
+      sampleThinkingSteps.value = completeAllSteps(sampleThinkingSteps.value)
     }
   }
 

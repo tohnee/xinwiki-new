@@ -8,8 +8,9 @@ import { getWikiPage, type WikiPage } from '@/api/wiki'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
 import { sanitizeMarkdownHTML } from '@/utils/security'
-import { listKnowledgeBases } from '@/api/knowledge-base'
 import { useAuthStore } from '@/stores/auth'
+import { buildBreadcrumb } from '@/components/workspace/breadcrumb'
+import { useKbStore } from '@/components/workspace/useKbStore'
 
 marked.use(markedKatex({ throwOnError: false, nonStandard: true }))
 
@@ -20,9 +21,14 @@ const authStore = useAuthStore()
 const currentPage = ref<WikiPage | null>(null)
 const pageContent = ref<string>('')
 const viewMode = ref<'chat' | 'page'>('chat')
-const defaultKbId = ref<string>('')
 const pageContentRef = ref<HTMLElement | null>(null)
 let lastLoadToken = 0
+
+// P2 fix: KB list + active KB id are owned by the shared kbStore.
+// Workspace.vue used to call listKnowledgeBases() on mount; now it
+// reads the cached activeKbId and treats that as the workspace KB.
+const { activeKbId: sharedKbId, ensureLoaded } = useKbStore()
+const defaultKbId = computed(() => sharedKbId.value)
 
 const selectedPageId = computed(() => {
   if (currentPage.value) {
@@ -33,18 +39,6 @@ const selectedPageId = computed(() => {
   }
   return undefined
 })
-
-const loadKBs = async () => {
-  try {
-    const res = await listKnowledgeBases({ creator: 'all' }) as any
-    const kbs = res?.data || res?.knowledge_bases || []
-    if (Array.isArray(kbs) && kbs.length > 0) {
-      defaultKbId.value = authStore.currentKnowledgeBase?.id || kbs[0].id
-    }
-  } catch (e) {
-    console.warn('[workspace] failed to list KBs', e)
-  }
-}
 
 const loadPageById = async (pageSlugOrId: string) => {
   const kbId = authStore.currentKnowledgeBase?.id || defaultKbId.value
@@ -134,16 +128,39 @@ const formatDate = (dateStr: string) => {
 }
 
 const breadcrumb = computed(() => {
-  if (viewMode.value === 'page' && currentPage.value) {
-    return ['知识库', currentPage.value.title]
-  }
-  return ['XinWiki', '智能问答']
+  // Use the shared, unit-tested helper. P1 fix: previously the
+  // component computed a breadcrumb but never passed it down to
+  // WorkspaceContent, so the header always rendered an empty trail.
+  return buildBreadcrumb({
+    mode: viewMode.value,
+    pageTitle: currentPage.value?.title,
+    kbName: authStore.currentKnowledgeBase?.name,
+  })
 })
+
+// P1 fix: Header search results used to be a dead link - XinWikiWorkspace
+// emitted `select-search-result` but Workspace.vue never listened. Treat a
+// search result the same way as a sidebar page pick: load the wiki page.
+const handleSelectSearchResult = (result: { id: string; title: string; type: string }) => {
+  handleSelectPage({ slug: result.id, id: result.id, title: result.title } as WikiPage)
+}
+
+// P1 fix: the sidebar "新建" button used to be a dead shell. Route to the
+// knowledge base detail page where the file/upload UI lives, so the user
+// can actually create a new page instead of clicking a no-op button.
+const handleCreatePage = () => {
+  const kbId = authStore.currentKnowledgeBase?.id || defaultKbId.value
+  if (kbId) {
+    router.push(`/platform/knowledge-bases/${kbId}`)
+  } else {
+    router.push('/platform/knowledge-bases')
+  }
+}
 
 watch(() => route.params.pageId, async (pageId) => {
   if (pageId && typeof pageId === 'string') {
     if (!defaultKbId.value) {
-      await loadKBs()
+      await ensureLoaded()
     }
     await loadPageById(pageId)
   } else {
@@ -153,7 +170,7 @@ watch(() => route.params.pageId, async (pageId) => {
 }, { immediate: false })
 
 onMounted(async () => {
-  await loadKBs()
+  await ensureLoaded()
   const pageId = route.params.pageId as string | undefined
   if (pageId && defaultKbId.value) {
     await loadPageById(pageId)
@@ -162,7 +179,13 @@ onMounted(async () => {
 </script>
 
 <template>
-  <XinWikiWorkspace :selected-page-id="selectedPageId" @select-page="handleSelectPage">
+  <XinWikiWorkspace
+    :selected-page-id="selectedPageId"
+    :breadcrumb="breadcrumb"
+    @select-page="handleSelectPage"
+    @select-search-result="handleSelectSearchResult"
+    @create-page="handleCreatePage"
+  >
     <template #header-actions>
       <div class="view-toggle" v-if="currentPage">
         <button

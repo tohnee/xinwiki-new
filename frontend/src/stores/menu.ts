@@ -2,37 +2,30 @@ import { reactive, ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 import i18n from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
+import {
+  buildMenuItems,
+  LITE_HIDDEN_PATHS,
+  type MenuItem,
+} from './menuPaths'
 
 type MenuChild = Record<string, any>
 
-interface MenuItem {
-  title: string
-  titleKey?: string
-  icon: string
-  path: string
-  childrenPath?: string
-  children?: MenuChild[]
-}
+export type { MenuItem }
 
 const createMenuChildren = () => reactive<MenuChild[]>([])
 
 export const useMenuStore = defineStore('menuStore', () => {
-  const menuArr = reactive<MenuItem[]>([
-    {
-      title: '',
-      titleKey: 'menu.newChat',
-      icon: 'prefixIcon',
-      path: 'creatChat',
-      childrenPath: 'chat',
-      children: createMenuChildren()
-    },
-    { title: '', titleKey: 'menu.knowledgeBase', icon: 'zhishiku', path: 'knowledge-bases' },
-    { title: '', titleKey: 'menu.agents', icon: 'agent', path: 'agents' },
-    { title: '', titleKey: 'menu.integrations', icon: 'integration', path: 'integrations' },
-    { title: '', titleKey: 'menu.organizations', icon: 'organization', path: 'organizations' },
-    { title: '', titleKey: 'menu.settings', icon: 'setting', path: 'settings' },
-    { title: '', titleKey: 'menu.logout', icon: 'logout', path: 'logout' }
-  ])
+  // menuArr is built from the canonical, unit-tested path list in
+  // menuPaths.ts. Adding a top-level nav entry requires editing that
+  // file (and its tests) - never push raw objects here, or the nav
+  // and its tests will drift (see P0 workspace-nav bug).
+  const menuArr = reactive<MenuItem[]>(
+    buildMenuItems().map((item) =>
+      item.path === 'creatChat'
+        ? { ...item, children: createMenuChildren() }
+        : { ...item },
+    ),
+  )
 
   const isFirstSession = ref(false)
   const firstQuery = ref('')
@@ -59,15 +52,13 @@ export const useMenuStore = defineStore('menuStore', () => {
     }
   )
 
-  const liteHiddenPaths = new Set(['logout', 'organizations'])
-
   // 共享空间 (organizations) 仅对当前租户的 admin / owner 暴露入口。
   // viewer / contributor 即便在共享空间里拥有资源，也无需自行管理共享关系，
   // 入口在侧栏只会徒增噪音；后端 RBAC 才是权限的最终来源（见 middleware/rbac.go）。
   const visibleMenuArr = computed(() => {
     const authStore = useAuthStore()
     return menuArr.filter(item => {
-      if (authStore.isLiteMode && liteHiddenPaths.has(item.path)) {
+      if (authStore.isLiteMode && LITE_HIDDEN_PATHS.has(item.path)) {
         return false
       }
       if (item.path === 'organizations' && !authStore.hasRole('admin')) {

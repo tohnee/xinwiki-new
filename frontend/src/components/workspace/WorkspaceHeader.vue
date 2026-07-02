@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ViewListIcon,
   SearchIcon,
@@ -8,9 +9,17 @@ import {
   ChevronRightIcon,
   StarFilledIcon,
   FileTxtIcon,
+  SettingIcon,
 } from 'tdesign-icons-vue-next'
 import XinWikiLogo from '@/components/XinWikiLogo.vue'
 import { searchKnowledge } from '@/api/knowledge-base'
+import { useKbStore } from './useKbStore'
+import {
+  buildDropdownItems,
+  chevronClass,
+  selectorIsInteractive,
+  selectorAriaLabel,
+} from './kbSelector'
 
 const props = defineProps<{
   sidebarCollapsed: boolean
@@ -26,11 +35,54 @@ const emit = defineEmits<{
   (e: 'select-search-result', result: { id: string; title: string; type: string }): void
 }>()
 
+const router = useRouter()
+
 const results = ref<Array<{ id: string; title: string; excerpt?: string; type: string }>>([])
 const showResults = ref(false)
 const searching = ref(false)
 
 const hasQuery = computed(() => props.searchQuery.trim().length > 0)
+
+// P2 fix: KB selector used to be a dead div. Now it opens a real
+// dropdown listing every KB from the shared kbStore, and clicking a
+// row switches the active KB for the whole workspace surface.
+const { kbList, activeKbId, setActiveKb } = useKbStore()
+const kbDropdownOpen = ref(false)
+const kbDropdownItems = computed(() => buildDropdownItems(kbList.value, activeKbId.value))
+const kbInteractive = computed(() => selectorIsInteractive(kbList.value))
+const kbAriaLabel = computed(() => selectorAriaLabel(kbDropdownOpen.value, props.kbName))
+const kbChevronClass = computed(() => chevronClass(kbDropdownOpen.value))
+
+const toggleKbDropdown = () => {
+  if (!kbInteractive.value) return
+  kbDropdownOpen.value = !kbDropdownOpen.value
+}
+
+const pickKb = (id: string) => {
+  setActiveKb(id)
+  kbDropdownOpen.value = false
+}
+
+const goToKbManagement = () => {
+  kbDropdownOpen.value = false
+  router.push('/platform/knowledge-bases')
+}
+
+// Close the dropdown when clicking outside it.
+const handleDocClick = (e: MouseEvent) => {
+  if (!kbDropdownOpen.value) return
+  const target = e.target as HTMLElement
+  if (!target.closest('.kb-selector')) {
+    kbDropdownOpen.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleDocClick, true)
+})
+onUnmounted(() => {
+  document.removeEventListener('click', handleDocClick, true)
+})
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -91,10 +143,29 @@ const pickResult = (r: { id: string; title: string; type: string }) => {
         <XinWikiLogo :size="28" />
         <span v-if="!sidebarCollapsed" class="logo-text">XinWiki</span>
       </div>
-      <div class="kb-selector">
+      <div class="kb-selector" :class="{ interactive: kbInteractive }" :aria-label="kbAriaLabel" @click="toggleKbDropdown">
         <BookIcon class="kb-icon" />
         <span class="kb-name">{{ kbName || '选择知识库' }}</span>
-        <ChevronRightIcon class="chevron-icon" />
+        <ChevronRightIcon :class="kbChevronClass" />
+
+        <!-- P2 fix: the chevron finally has a dropdown behind it. -->
+        <div v-if="kbDropdownOpen" class="kb-dropdown">
+          <div
+            v-for="item in kbDropdownItems"
+            :key="item.id"
+            class="kb-dropdown-item"
+            :class="{ active: item.isActive }"
+            @click.stop="pickKb(item.id)"
+          >
+            <BookIcon class="kb-dropdown-icon" />
+            <span class="kb-dropdown-name">{{ item.name }}</span>
+          </div>
+          <div class="kb-dropdown-divider" />
+          <div class="kb-dropdown-item manage" @click.stop="goToKbManagement">
+            <SettingIcon class="kb-dropdown-icon" />
+            <span class="kb-dropdown-name">管理知识库</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -182,16 +253,20 @@ const pickResult = (r: { id: string; title: string; type: string }) => {
 }
 
 .kb-selector {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
   border-radius: 8px;
-  cursor: pointer;
+  cursor: default;
   transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
 
-  &:hover {
-    background: rgba(0, 0, 0, 0.04);
+  &.interactive {
+    cursor: pointer;
+    &:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
   }
 }
 
@@ -204,11 +279,85 @@ const pickResult = (r: { id: string; title: string; type: string }) => {
   font-size: 14px;
   font-weight: 500;
   color: #1d1d1f;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chevron-icon {
   font-size: 14px;
   color: #86868b;
+  transition: transform 0.2s ease;
+
+  &.open {
+    transform: rotate(90deg);
+  }
+}
+
+.kb-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 220px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 6px;
+  z-index: 300;
+  animation: kbDropdownIn 0.15s ease;
+}
+
+@keyframes kbDropdownIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.kb-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+
+  &:hover {
+    background: rgba(0, 122, 255, 0.06);
+  }
+
+  &.active {
+    background: rgba(0, 122, 255, 0.1);
+    .kb-dropdown-name { color: #007aff; font-weight: 500; }
+  }
+
+  &.manage {
+    color: #6c6c70;
+    .kb-dropdown-name { font-size: 13px; }
+  }
+}
+
+.kb-dropdown-icon {
+  font-size: 14px;
+  color: #86868b;
+  flex-shrink: 0;
+}
+
+.kb-dropdown-name {
+  font-size: 14px;
+  color: #1d1d1f;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kb-dropdown-divider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.06);
+  margin: 4px 0;
 }
 
 .global-search {
