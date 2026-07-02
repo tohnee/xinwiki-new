@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import XinWikiWorkspace from '@/components/XinWikiWorkspace.vue'
 import WorkspaceChat from '@/components/workspace/WorkspaceChat.vue'
 import { TimeIcon, BookIcon, ChatIcon, ArrowLeftIcon } from 'tdesign-icons-vue-next'
@@ -14,15 +14,27 @@ import { useAuthStore } from '@/stores/auth'
 marked.use(markedKatex({ throwOnError: false, nonStandard: true }))
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 
 const currentPage = ref<WikiPage | null>(null)
 const pageContent = ref<string>('')
 const viewMode = ref<'chat' | 'page'>('chat')
 const defaultKbId = ref<string>('')
+const pageContentRef = ref<HTMLElement | null>(null)
+let lastLoadToken = 0
 
-onMounted(async () => {
-  const pageId = route.params.pageId as string | undefined
+const selectedPageId = computed(() => {
+  if (currentPage.value) {
+    return currentPage.value.slug || currentPage.value.id
+  }
+  if (route.params.pageId) {
+    return route.params.pageId as string
+  }
+  return undefined
+})
+
+const loadKBs = async () => {
   try {
     const res = await listKnowledgeBases({ creator: 'all' }) as any
     const kbs = res?.data || res?.knowledge_bases || []
@@ -32,10 +44,7 @@ onMounted(async () => {
   } catch (e) {
     console.warn('[workspace] failed to list KBs', e)
   }
-  if (pageId && defaultKbId.value) {
-    await loadPageById(pageId)
-  }
-})
+}
 
 const loadPageById = async (pageSlugOrId: string) => {
   const kbId = authStore.currentKnowledgeBase?.id || defaultKbId.value
@@ -43,8 +52,11 @@ const loadPageById = async (pageSlugOrId: string) => {
     viewMode.value = 'chat'
     return
   }
+
+  const token = ++lastLoadToken
   try {
     const res = await getWikiPage(kbId, pageSlugOrId) as any
+    if (token !== lastLoadToken) return
     const page = res?.data as WikiPage | undefined
     if (page) {
       currentPage.value = page
@@ -52,25 +64,61 @@ const loadPageById = async (pageSlugOrId: string) => {
       try {
         const html = marked.parse(page.content || '') as string
         pageContent.value = sanitizeMarkdownHTML(html)
+        await nextTick()
+        setupInternalLinks()
       } catch {
         pageContent.value = page.content || ''
       }
     } else {
+      currentPage.value = null
       viewMode.value = 'chat'
     }
   } catch (e) {
+    if (token !== lastLoadToken) return
     console.warn('[workspace] load page failed', e)
     viewMode.value = 'chat'
   }
+}
+
+const setupInternalLinks = () => {
+  if (!pageContentRef.value) return
+  const links = pageContentRef.value.querySelectorAll('a[href]')
+  links.forEach(link => {
+    const href = link.getAttribute('href')
+    if (!href) return
+    if (href.startsWith('/wiki/') || href.startsWith('./') || (!href.startsWith('http') && !href.startsWith('#'))) {
+      link.addEventListener('click', (e) => {
+        e.preventDefault()
+        const slug = href.replace(/^\.?\/?wiki\//, '').replace(/^\.\//, '')
+        if (slug) {
+          handleSelectPage({ slug, id: slug, title: slug } as WikiPage)
+        }
+      })
+    }
+  })
 }
 
 const handleSelectPage = async (page: WikiPage | null) => {
   if (!page) {
     currentPage.value = null
     viewMode.value = 'chat'
+    if (route.params.pageId) {
+      router.replace({ name: 'workspace' })
+    }
     return
   }
-  await loadPageById(page.slug || page.id)
+
+  const slug = page.slug || page.id
+  if (route.params.pageId !== slug) {
+    router.replace({ name: 'workspacePage', params: { pageId: slug } })
+  }
+  await loadPageById(slug)
+}
+
+const handleBackToChat = () => {
+  currentPage.value = null
+  viewMode.value = 'chat'
+  router.replace({ name: 'workspace' })
 }
 
 const formatDate = (dateStr: string) => {
@@ -91,16 +139,35 @@ const breadcrumb = computed(() => {
   }
   return ['XinWiki', '智能问答']
 })
+
+watch(() => route.params.pageId, async (pageId) => {
+  if (pageId && typeof pageId === 'string') {
+    if (!defaultKbId.value) {
+      await loadKBs()
+    }
+    await loadPageById(pageId)
+  } else {
+    currentPage.value = null
+    viewMode.value = 'chat'
+  }
+}, { immediate: false })
+
+onMounted(async () => {
+  await loadKBs()
+  const pageId = route.params.pageId as string | undefined
+  if (pageId && defaultKbId.value) {
+    await loadPageById(pageId)
+  }
+})
 </script>
 
 <template>
-  <XinWikiWorkspace @select-page="handleSelectPage">
+  <XinWikiWorkspace :selected-page-id="selectedPageId" @select-page="handleSelectPage">
     <template #header-actions>
       <div class="view-toggle" v-if="currentPage">
         <button
           class="toggle-btn"
-          :class="{ active: viewMode === 'chat' }"
-          @click="viewMode = 'chat'"
+          @click="handleBackToChat"
           title="返回问答"
         >
           <ArrowLeftIcon size="small" />
@@ -135,7 +202,7 @@ const breadcrumb = computed(() => {
 
       <div v-else-if="viewMode === 'page' && currentPage" class="wiki-page-viewer">
         <div class="page-header">
-          <button class="back-btn" @click="viewMode = 'chat'; currentPage = null" title="返回问答">
+          <button class="back-btn" @click="handleBackToChat" title="返回问答">
             <ArrowLeftIcon size="small" />
             返回
           </button>
@@ -148,7 +215,7 @@ const breadcrumb = computed(() => {
             <span v-if="currentPage.summary" class="page-summary">{{ currentPage.summary }}</span>
           </div>
         </div>
-        <div class="page-content">
+        <div ref="pageContentRef" class="page-content">
           <div class="markdown-body" v-html="pageContent" />
         </div>
       </div>

@@ -2,12 +2,18 @@ package middleware
 
 import (
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/Tencent/XinWiki/internal/errors"
 	"github.com/Tencent/XinWiki/internal/logger"
 )
+
+func isRelease() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("GIN_MODE")), "release")
+}
 
 // ErrorHandler is a middleware that converts AppErrors attached to c.Errors
 // into a consistent JSON error response. In release mode it also scrubs
@@ -21,9 +27,6 @@ func ErrorHandler() gin.HandlerFunc {
 		if len(c.Errors) == 0 {
 			return
 		}
-		// Log all collected errors server-side before producing a response,
-		// so even sanitized client messages retain their diagnostic detail
-		// in the logs.
 		for _, e := range c.Errors {
 			if e != nil && e.Err != nil {
 				logger.ErrorWithFields(c.Request.Context(), e.Err, logger.Fields{
@@ -37,13 +40,16 @@ func ErrorHandler() gin.HandlerFunc {
 		err := c.Errors.Last().Err
 
 		if appErr, ok := errors.IsAppError(err); ok {
+			resp := gin.H{
+				"code":    appErr.Code,
+				"message": appErr.Message,
+			}
+			if !isRelease() && appErr.Details != nil {
+				resp["details"] = appErr.Details
+			}
 			c.JSON(appErr.HTTPCode, gin.H{
 				"success": false,
-				"error": gin.H{
-					"code":    appErr.Code,
-					"message": appErr.Message,
-					"details": appErr.Details,
-				},
+				"error":   resp,
 			})
 			return
 		}

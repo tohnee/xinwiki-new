@@ -1,7 +1,7 @@
 import { get, post } from '../../utils/request'
 import { getApiBaseUrl } from '@/utils/api-base'
 
-export type ArtifactType = 'markdown' | 'report' | 'ppt' | 'pdf' | 'chart' | 'diagram'
+export type ArtifactType = 'markdown' | 'report' | 'ppt' | 'chart'
 export type ArtifactStatus = 'pending' | 'ready' | 'failed'
 export type ArtifactSharingPolicy = 'private' | 'tenant' | 'explicit'
 export type GenerationStatus = 'idle' | 'generating' | 'ready' | 'failed'
@@ -42,6 +42,10 @@ export interface CreateArtifactParams {
 
 export function createArtifact(params: CreateArtifactParams) {
   return post('/api/v1/artifacts', params) as unknown as Promise<{ success: boolean; data: Artifact }>
+}
+
+export function generateArtifact(id: string, prompt?: string) {
+  return post(`/api/v1/artifacts/${encodeURIComponent(id)}/generate`, { prompt: prompt || '' }) as unknown as Promise<{ success: boolean; data: { id: string; status: string } }>
 }
 
 export function listArtifacts(page = 1, pageSize = 20) {

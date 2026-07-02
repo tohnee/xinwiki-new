@@ -41,18 +41,28 @@ func (g *PPTGenerator) Generate(ctx context.Context, in *Input) (*Result, error)
 	if err != nil {
 		return nil, err
 	}
+	if len(deck.Slides) == 0 {
+		return nil, fmt.Errorf("ppt: no slides generated")
+	}
+	if len(deck.Slides) > 50 {
+		return nil, fmt.Errorf("ppt: too many slides (%d, max 50)", len(deck.Slides))
+	}
 	html := pptHTMLTemplate(deck)
-	pdfBytes, _, err := htmlToPDF(ctx, html)
+	pdfBytes, pageCount, err := htmlToPDF(ctx, html)
 	if err != nil {
 		return nil, fmt.Errorf("ppt: render PDF: %w", err)
 	}
-	total := len(deck.Slides) + 2 // cover + closing
+	if len(pdfBytes) > maxArtifactSize {
+		return nil, fmt.Errorf("ppt: generated file too large (%d bytes, max %d)", len(pdfBytes), maxArtifactSize)
+	}
+	total := len(deck.Slides) + 2
 	return &Result{
 		MIMEType:      "application/pdf",
 		FileExtension: "pdf",
 		Bytes:         pdfBytes,
 		ExtraMetadata: map[string]any{
 			"slide_count": total,
+			"page_count":  pageCount,
 			"title":       deck.Title,
 		},
 	}, nil
@@ -142,8 +152,14 @@ li { margin: 8pt 0; }
 		switch s.Layout {
 		case "two_col":
 			mid := len(s.Bullets) / 2
+			if mid < 1 {
+				mid = 1
+			}
+			if mid > len(s.Bullets) {
+				mid = len(s.Bullets)
+			}
 			b.WriteString(`<div class="two-col"><ul>`)
-			for _, bullet := range s.Bullets[:max1(mid, 1)] {
+			for _, bullet := range s.Bullets[:mid] {
 				fmt.Fprintf(&b, `<li>%s</li>`, escapeHTML(bullet))
 			}
 			b.WriteString(`</ul><ul>`)
@@ -167,11 +183,4 @@ li { margin: 8pt 0; }
 	b.WriteString(`<section class="slide closing"><h1>Thank You</h1></section>`)
 	b.WriteString(`</body></html>`)
 	return b.String()
-}
-
-func max1(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

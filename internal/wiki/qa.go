@@ -26,6 +26,12 @@ func NewQAEngine(
 
 // Answer performs high-precision question answering with citations.
 func (e *QAEngine) Answer(ctx context.Context, question string, tenantID string, kbIDs []string) (*Answer, error) {
+	if e == nil || e.llm == nil {
+		return nil, fmt.Errorf("wiki/qa: engine not properly initialized (llm is nil)")
+	}
+	if e.retriever == nil {
+		return nil, fmt.Errorf("wiki/qa: retriever not configured")
+	}
 	startTime := time.Now()
 	answer := &Answer{
 		ID:        generateID(),
@@ -58,19 +64,25 @@ func (e *QAEngine) Answer(ctx context.Context, question string, tenantID string,
 	retrievalResp, err := e.retriever.Retrieve(ctx, retrievalReq)
 	retrievalDuration := time.Since(retrievalStart)
 
+	var resultCount int
+	if retrievalResp != nil {
+		resultCount = len(retrievalResp.Results)
+	}
 	thinkingSteps[0].DurationMs = retrievalDuration.Milliseconds()
 	thinkingSteps[0].Observation = fmt.Sprintf("Retrieved %d relevant chunks in %dms",
-		len(retrievalResp.Results), retrievalDuration.Milliseconds())
+		resultCount, retrievalDuration.Milliseconds())
 
 	if err != nil {
 		logger.Warnf(ctx, "[wiki/qa] retrieval failed: %v", err)
-		// Continue with empty context
+		retrievalResp = &RetrievalResponse{Results: nil}
 	}
 
 	// Step 2: Build context from retrieved chunks
 	chunks := make([]*Chunk, 0, len(retrievalResp.Results))
 	for _, r := range retrievalResp.Results {
-		chunks = append(chunks, r.Chunk)
+		if r != nil && r.Chunk != nil {
+			chunks = append(chunks, r.Chunk)
+		}
 	}
 
 	contextText := e.buildContext(chunks)
@@ -110,9 +122,17 @@ func (e *QAEngine) Answer(ctx context.Context, question string, tenantID string,
 		return answer, err
 	}
 
+	if chatResp == nil {
+		answer.Answer = "I encountered an error while generating the answer: empty response"
+		answer.Confidence = 0
+		answer.ThinkingChain = thinkingSteps
+		return answer, fmt.Errorf("wiki/qa: empty LLM response")
+	}
+
 	answer.Answer = chatResp.Content
-	answer.TokensUsed = chatResp.Usage.TotalTokens
-	thinkingStep.Observation = fmt.Sprintf("Generated answer in %dms, used %d tokens", llmDuration.Milliseconds(), chatResp.Usage.TotalTokens)
+	tokensUsed := chatResp.Usage.TotalTokens
+	answer.TokensUsed = tokensUsed
+	thinkingStep.Observation = fmt.Sprintf("Generated answer in %dms, used %d tokens", llmDuration.Milliseconds(), tokensUsed)
 	thinkingSteps = append(thinkingSteps, thinkingStep)
 
 	// Step 4: Extract and verify citations

@@ -14,6 +14,10 @@ import { useAuthStore } from '@/stores/auth'
 const slots = useSlots()
 const authStore = useAuthStore()
 
+const props = defineProps<{
+  selectedPageId?: string
+}>()
+
 const emit = defineEmits<{
   (e: 'select-page', page: WikiPage | null): void
   (e: 'select-search-result', result: { id: string; title: string; type: string }): void
@@ -93,11 +97,12 @@ const handleSearchResult = (result: { id: string; title: string; type: string })
       <WorkspaceSidebar
         :collapsed="sidebarCollapsed"
         :is-mobile="isMobile"
+        :selected-page-id="selectedPageId"
         @toggle="toggleSidebar"
         @select-page="handlePageSelect"
       />
 
-      <WorkspaceContent :show-welcome="!slots.default">
+      <WorkspaceContent :show-welcome="!slots.default" :breadcrumb="[]">
         <template #header-actions>
           <slot name="header-actions" />
         </template>

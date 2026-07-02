@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Tencent/XinWiki/internal/artifact"
 	"github.com/Tencent/XinWiki/internal/application/service"
@@ -444,32 +445,40 @@ func (h *ArtifactHandler) GenerateArtifact(c *gin.Context) {
 	}
 	req.Prompt = strings.TrimSpace(req.Prompt)
 
-	// Validate ownership / visibility of the artifact before kicking off work.
 	a, err := h.artifactService.Get(ctx, tenantID, caller, id)
 	if err != nil {
 		if !mapArtifactError(c, tenantID, err) {
 			logger.Errorf(ctx, "GenerateArtifact load failed: tenant=%d id=%s err=%v", tenantID, id, err)
-			c.Error(apperrors.NewInternalServerError("failed to load artifact").WithDetails(err.Error()))
+			c.Error(apperrors.NewInternalServerError("failed to load artifact"))
 		}
 		return
 	}
 
-	// Reset status to pending (so the UI shows "in progress") and clear any
-	// previous file. Creator-or-admin only (enforced by UpdateStatus).
+	if a.Status == types.ArtifactStatusPending {
+		c.JSON(http.StatusConflict, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "ALREADY_GENERATING", "message": "artifact generation is already in progress"},
+		})
+		return
+	}
+
 	if err := h.artifactService.UpdateStatus(ctx, tenantID, caller, id,
 		types.ArtifactStatusPending, "", 0); err != nil {
 		if !mapArtifactError(c, tenantID, err) {
 			logger.Errorf(ctx, "GenerateArtifact reset status failed: tenant=%d id=%s err=%v", tenantID, id, err)
-			c.Error(apperrors.NewInternalServerError("failed to reset artifact status").WithDetails(err.Error()))
+			c.Error(apperrors.NewInternalServerError("failed to reset artifact status"))
 		}
 		return
 	}
 
-	// Kick off generation asynchronously. Use a background context detached
-	// from the request so generation continues after the HTTP response is
-	// sent (chromedp-driven renderers may take 30+s).
 	go func() {
-		bgCtx := context.Background()
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Errorf(context.Background(), "GenerateArtifact panic: tenant=%d id=%s panic=%v", tenantID, id, r)
+			}
+		}()
+		bgCtx, cancel := context.WithTimeout(context.Background(), 6*time.Minute)
+		defer cancel()
 		userID := a.UserID
 		if userID == "" {
 			userID = caller.UserID

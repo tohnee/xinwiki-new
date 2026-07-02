@@ -85,12 +85,26 @@ func (r *AnthropicRuntime) ChatStream(ctx context.Context, messages []chat.Messa
 	ch := make(chan types.StreamResponse, 64)
 	go func() {
 		defer close(ch)
+		defer func() {
+			if rec := recover(); rec != nil {
+				ch <- types.StreamResponse{
+					ResponseType: types.ResponseTypeError,
+					Content:      fmt.Sprintf("anthropic stream panic: %v", rec),
+					Done:         true,
+				}
+			}
+		}()
 		stream := r.client.Messages.NewStreaming(ctx, req)
 		var (
 			acc     anthropic.Message
 			curTool *types.LLMToolCall
 		)
 		for stream.Next() {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
 			evt := stream.Current()
 			if err := acc.Accumulate(evt); err != nil {
 				ch <- types.StreamResponse{ResponseType: types.ResponseTypeError, Content: "accumulate: " + err.Error(), Done: true}
@@ -136,14 +150,11 @@ func (r *AnthropicRuntime) ChatStream(ctx context.Context, messages []chat.Messa
 		}
 
 		var (
-			text        strings.Builder
-			toolCalls   []types.LLMToolCall
+			toolCalls    []types.LLMToolCall
 			finishReason string
 		)
 		for _, b := range acc.Content {
 			switch cb := b.AsAny().(type) {
-			case anthropic.TextBlock:
-				text.WriteString(cb.Text)
 			case anthropic.ToolUseBlock:
 				toolCalls = append(toolCalls, types.LLMToolCall{
 					ID:       cb.ID,
@@ -157,7 +168,7 @@ func (r *AnthropicRuntime) ChatStream(ctx context.Context, messages []chat.Messa
 		}
 		ch <- types.StreamResponse{
 			ResponseType: types.ResponseTypeAnswer,
-			Content:      text.String(),
+			Content:      "",
 			Done:         true,
 			FinishReason: finishReason,
 			Usage: &types.TokenUsage{
@@ -275,55 +286,55 @@ func (r *AnthropicRuntime) buildParams(messages []chat.Message, opts *RuntimeOpt
 			role = "user"
 		}
 		var blocks []anthropic.ContentBlockParamUnion
+		isToolResult := m.ToolCallID != ""
 		if m.ReasoningContent != "" {
 			blocks = append(blocks, anthropic.ContentBlockParamUnion{
 				OfThinking: &anthropic.ThinkingBlockParam{Type: "thinking", Thinking: m.ReasoningContent},
 			})
 		}
-		if m.Content != "" {
+		if m.Content != "" && !isToolResult {
 			blocks = append(blocks, anthropic.ContentBlockParamUnion{
 				OfText: &anthropic.TextBlockParam{Type: "text", Text: m.Content},
 			})
 		}
-		for _, part := range m.MultiContent {
-			switch part.Type {
-			case "text":
-				blocks = append(blocks, anthropic.ContentBlockParamUnion{
-					OfText: &anthropic.TextBlockParam{Type: "text", Text: part.Text},
-				})
-			case "image_url":
-				// Callers are expected to provide data URIs. Anthropic SDK
-				// Source{Data string} accepts base64 directly; if the URL is
-				// a data URI, strip the prefix.
-				data := part.ImageURL.URL
-				mediaType := anthropic.Base64ImageSourceMediaTypeImagePNG
-				if strings.HasPrefix(data, "data:") {
-					if idx := strings.Index(data, ";base64,"); idx > 5 {
-						mt := data[5:idx]
-						switch mt {
-						case "image/jpeg", "image/jpg":
-							mediaType = anthropic.Base64ImageSourceMediaTypeImageJPEG
-						case "image/png":
-							mediaType = anthropic.Base64ImageSourceMediaTypeImagePNG
-						case "image/gif":
-							mediaType = anthropic.Base64ImageSourceMediaTypeImageGIF
-						case "image/webp":
-							mediaType = anthropic.Base64ImageSourceMediaTypeImageWebP
+		if !isToolResult {
+			for _, part := range m.MultiContent {
+				switch part.Type {
+				case "text":
+					blocks = append(blocks, anthropic.ContentBlockParamUnion{
+						OfText: &anthropic.TextBlockParam{Type: "text", Text: part.Text},
+					})
+				case "image_url":
+					data := part.ImageURL.URL
+					mediaType := anthropic.Base64ImageSourceMediaTypeImagePNG
+					if strings.HasPrefix(data, "data:") {
+						if idx := strings.Index(data, ";base64,"); idx > 5 {
+							mt := data[5:idx]
+							switch mt {
+							case "image/jpeg", "image/jpg":
+								mediaType = anthropic.Base64ImageSourceMediaTypeImageJPEG
+							case "image/png":
+								mediaType = anthropic.Base64ImageSourceMediaTypeImagePNG
+							case "image/gif":
+								mediaType = anthropic.Base64ImageSourceMediaTypeImageGIF
+							case "image/webp":
+								mediaType = anthropic.Base64ImageSourceMediaTypeImageWebP
+							}
+							data = data[idx+8:]
 						}
-						data = data[idx+8:]
 					}
-				}
-				blocks = append(blocks, anthropic.ContentBlockParamUnion{
-					OfImage: &anthropic.ImageBlockParam{
-						Type: "image",
-						Source: anthropic.ImageBlockParamSourceUnion{
-							OfBase64: &anthropic.Base64ImageSourceParam{
-								MediaType: mediaType,
-								Data:      data,
+					blocks = append(blocks, anthropic.ContentBlockParamUnion{
+						OfImage: &anthropic.ImageBlockParam{
+							Type: "image",
+							Source: anthropic.ImageBlockParamSourceUnion{
+								OfBase64: &anthropic.Base64ImageSourceParam{
+									MediaType: mediaType,
+									Data:      data,
+								},
 							},
 						},
-					},
-				})
+					})
+				}
 			}
 		}
 		for _, tc := range m.ToolCalls {
@@ -336,14 +347,18 @@ func (r *AnthropicRuntime) buildParams(messages []chat.Message, opts *RuntimeOpt
 				},
 			})
 		}
-		if m.ToolCallID != "" {
+		if isToolResult {
+			var toolResultContent []anthropic.ToolResultBlockParamContentUnion
+			if m.Content != "" {
+				toolResultContent = append(toolResultContent, anthropic.ToolResultBlockParamContentUnion{
+					OfText: &anthropic.TextBlockParam{Type: "text", Text: m.Content},
+				})
+			}
 			blocks = append(blocks, anthropic.ContentBlockParamUnion{
 				OfToolResult: &anthropic.ToolResultBlockParam{
 					Type:      "tool_result",
 					ToolUseID: m.ToolCallID,
-					Content: []anthropic.ToolResultBlockParamContentUnion{
-						{OfText: &anthropic.TextBlockParam{Type: "text", Text: m.Content}},
-					},
+					Content:   toolResultContent,
 				},
 			})
 		}

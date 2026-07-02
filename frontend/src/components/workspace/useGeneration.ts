@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import {
   FileTxtIcon,
@@ -8,7 +8,7 @@ import {
   TimeIcon,
   TipsIcon,
 } from 'tdesign-icons-vue-next'
-import { createArtifact, getArtifact, type Artifact, type ArtifactStatus } from '@/api/artifact'
+import { createArtifact, generateArtifact, getArtifact, downloadArtifactURL, type Artifact, type ArtifactStatus } from '@/api/artifact'
 
 export type GenerationTypeId = 'summary' | 'briefing' | 'faq' | 'timeline' | 'mindmap' | 'presentation' | 'chart'
 
@@ -17,7 +17,7 @@ export interface GenerationType {
   name: string
   icon: any
   description: string
-  artifactType: 'markdown' | 'report' | 'ppt' | 'pdf' | 'chart' | 'diagram'
+  artifactType: 'markdown' | 'report' | 'ppt' | 'pdf' | 'chart'
 }
 
 export interface Citation {
@@ -55,7 +55,7 @@ export function useGeneration() {
     { id: 'briefing', name: '研究简报', icon: FileExcelIcon, description: '生成结构化的研究报告', artifactType: 'report' },
     { id: 'faq', name: '常见问题', icon: HelpCircleFilledIcon, description: '基于文档生成问答对', artifactType: 'markdown' },
     { id: 'timeline', name: '时间线', icon: TimeIcon, description: '提取关键事件生成时间线', artifactType: 'markdown' },
-    { id: 'mindmap', name: '思维导图', icon: TipsIcon, description: '生成结构化思维导图', artifactType: 'diagram' },
+    { id: 'mindmap', name: '思维导图', icon: TipsIcon, description: '生成结构化思维导图', artifactType: 'markdown' },
     { id: 'presentation', name: '演示文稿', icon: FileExcelIcon, description: '生成PPT大纲和内容', artifactType: 'ppt' },
     { id: 'chart', name: '数据图表', icon: ChartIcon, description: '提取数据生成可视化图表', artifactType: 'chart' },
   ]
@@ -64,15 +64,13 @@ export function useGeneration() {
 
   const isDownloadable = computed(() => {
     if (!currentArtifact.value) return false
-    return currentArtifact.value.type === 'ppt'
-        || currentArtifact.value.type === 'pdf'
-        || currentArtifact.value.type === 'chart'
-        || currentArtifact.value.type === 'report'
+    const t = currentArtifact.value.type
+    return t === 'ppt' || t === 'report' || t === 'chart' || t === 'markdown'
   })
 
   const artifactDownloadUrl = computed(() => {
-    if (!currentArtifact.value?.storage_uri) return ''
-    return `/api/v1/files/presigned-preview?file_path=${encodeURIComponent(currentArtifact.value.storage_uri)}`
+    if (!currentArtifact.value?.id) return ''
+    return downloadArtifactURL(currentArtifact.value.id)
   })
 
   const clearPoll = () => {
@@ -82,9 +80,14 @@ export function useGeneration() {
     }
   }
 
+  onUnmounted(() => {
+    clearPoll()
+  })
+
   const pollArtifact = async (id: string, attempts = 0) => {
     const MAX_ATTEMPTS = 90
     if (attempts >= MAX_ATTEMPTS) {
+      clearPoll()
       generationStatus.value = 'failed'
       generationError.value = '生成超时，请稍后重试'
       isGenerating.value = false
@@ -97,6 +100,7 @@ export function useGeneration() {
         currentArtifact.value = res.data
         const status: ArtifactStatus = res.data.status
         if (status === 'ready') {
+          clearPoll()
           generationStatus.value = 'ready'
           isGenerating.value = false
           const meta = res.data.metadata || {}
@@ -111,6 +115,7 @@ export function useGeneration() {
           return
         }
         if (status === 'failed') {
+          clearPoll()
           generationStatus.value = 'failed'
           generationError.value = metaErrorMessage(res.data)
           isGenerating.value = false
@@ -172,7 +177,6 @@ export function useGeneration() {
         type: typeDef.artifactType,
         title: typeDef.name + ' - ' + prompt.slice(0, 30),
         sharing_policy: 'private',
-        metadata: { prompt },
       })
       if (res?.success && res.data?.id) {
         currentArtifact.value = res.data
@@ -180,6 +184,7 @@ export function useGeneration() {
           ...s,
           status: i < 2 ? 'completed' : 'running' as const,
         }))
+        await generateArtifact(res.data.id, prompt)
         pollArtifact(res.data.id)
       } else {
         throw new Error('create failed')
@@ -187,7 +192,7 @@ export function useGeneration() {
     } catch (e: any) {
       isGenerating.value = false
       generationStatus.value = 'failed'
-      generationError.value = e?.message || '创建生成任务失败'
+      generationError.value = e?.response?.data?.error?.message || e?.message || '创建生成任务失败'
       MessagePlugin.error(generationError.value)
       sampleThinkingSteps.value = sampleThinkingSteps.value.map(s => ({ ...s, status: 'completed' as const }))
     }

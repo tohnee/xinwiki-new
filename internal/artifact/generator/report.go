@@ -28,8 +28,6 @@ func NewReportGenerator() *ReportGenerator {
 func (g *ReportGenerator) Type() types.ArtifactType { return types.ArtifactTypeReport }
 
 func (g *ReportGenerator) Generate(ctx context.Context, in *Input) (*Result, error) {
-	// Step 1: get Markdown content from the LLM using the markdown
-	// generator with a "report-oriented" prompt twist.
 	mdIn := *in
 	mdIn.Prompt = buildReportPrompt(in)
 	mdRes, err := g.mdGen.Generate(ctx, &mdIn)
@@ -38,11 +36,16 @@ func (g *ReportGenerator) Generate(ctx context.Context, in *Input) (*Result, err
 	}
 	mdContent := string(mdRes.Bytes)
 
-	// Step 2: render to HTML, then to PDF.
 	html := reportHTMLTemplate(in.Artifact.Title, mdContent, in.Language)
 	pdfBytes, pageCount, err := htmlToPDF(ctx, html)
 	if err != nil {
 		return nil, fmt.Errorf("report: render PDF: %w", err)
+	}
+	if len(pdfBytes) > maxArtifactSize {
+		return nil, fmt.Errorf("report: generated file too large (%d bytes, max %d)", len(pdfBytes), maxArtifactSize)
+	}
+	if pageCount < 1 {
+		pageCount = 1
 	}
 	return &Result{
 		MIMEType:      "application/pdf",
@@ -113,62 +116,61 @@ func simpleMarkdownToHTML(md string) string {
 	for i := 0; i < len(lines); i++ {
 		line := lines[i]
 		trim := strings.TrimRight(line, " \t")
-		// Headings
 		switch {
 		case strings.HasPrefix(trim, "### "):
-			closeList(&out, &inList)
+			closeList(&out, &inList, &listType)
 			fmt.Fprintf(&out, "<h3>%s</h3>", inlineMD(strings.TrimPrefix(trim, "### ")))
 		case strings.HasPrefix(trim, "## "):
-			closeList(&out, &inList)
+			closeList(&out, &inList, &listType)
 			fmt.Fprintf(&out, "<h2>%s</h2>", inlineMD(strings.TrimPrefix(trim, "## ")))
 		case strings.HasPrefix(trim, "# "):
-			closeList(&out, &inList)
+			closeList(&out, &inList, &listType)
 			fmt.Fprintf(&out, "<h1>%s</h1>", inlineMD(strings.TrimPrefix(trim, "# ")))
 		case strings.HasPrefix(trim, "> "):
-			closeList(&out, &inList)
+			closeList(&out, &inList, &listType)
 			fmt.Fprintf(&out, "<blockquote>%s</blockquote>", inlineMD(strings.TrimPrefix(trim, "> ")))
 		case strings.HasPrefix(trim, "- ") || strings.HasPrefix(trim, "* "):
 			if !inList || listType != "ul" {
-				closeList(&out, &inList)
+				closeList(&out, &inList, &listType)
 				out.WriteString("<ul>")
 				inList = true
 				listType = "ul"
 			}
 			fmt.Fprintf(&out, "<li>%s</li>", inlineMD(trim[2:]))
 		case len(trim) > 1 && trim[0] >= '0' && trim[0] <= '9' && (trim[1] == '.' || (trim[1] >= '0' && trim[1] <= '9' && len(trim) > 2 && trim[2] == '.')):
-			// crude ordered list detection
 			dot := strings.Index(trim, ". ")
 			if dot > 0 {
 				if !inList || listType != "ol" {
-					closeList(&out, &inList)
+					closeList(&out, &inList, &listType)
 					out.WriteString("<ol>")
 					inList = true
 					listType = "ol"
 				}
 				fmt.Fprintf(&out, "<li>%s</li>", inlineMD(trim[dot+2:]))
 			} else {
-				closeList(&out, &inList)
+				closeList(&out, &inList, &listType)
 				out.WriteString("<p>")
 				out.WriteString(inlineMD(trim))
 				out.WriteString("</p>")
 			}
 		case trim == "":
-			closeList(&out, &inList)
+			closeList(&out, &inList, &listType)
 		default:
-			closeList(&out, &inList)
+			closeList(&out, &inList, &listType)
 			out.WriteString("<p>")
 			out.WriteString(inlineMD(trim))
 			out.WriteString("</p>")
 		}
 	}
-	closeList(&out, &inList)
+	closeList(&out, &inList, &listType)
 	return out.String()
 }
 
-func closeList(out *strings.Builder, inList *bool) {
+func closeList(out *strings.Builder, inList *bool, listType *string) {
 	if *inList {
-		out.WriteString("</ul>")
+		out.WriteString("</" + *listType + ">")
 		*inList = false
+		*listType = ""
 	}
 }
 

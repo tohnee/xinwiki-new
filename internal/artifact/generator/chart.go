@@ -39,10 +39,16 @@ func (g *ChartGenerator) Generate(ctx context.Context, in *Input) (*Result, erro
 	if err != nil {
 		return nil, err
 	}
+	if err := validateChartConfig(spec.Config); err != nil {
+		return nil, fmt.Errorf("chart: invalid config: %w", err)
+	}
 	html := chartHTMLTemplate(spec.Title, spec.Config)
 	pngBytes, err := htmlToPNG(ctx, html)
 	if err != nil {
 		return nil, fmt.Errorf("chart: render PNG: %w", err)
+	}
+	if len(pngBytes) > maxArtifactSize {
+		return nil, fmt.Errorf("chart: generated image too large (%d bytes, max %d)", len(pngBytes), maxArtifactSize)
 	}
 	meta := map[string]any{
 		"chart_type":   spec.ChartType,
@@ -108,8 +114,9 @@ Rules:
 }
 
 func chartHTMLTemplate(title, configJSON string) string {
+	safeConfig := strings.ReplaceAll(configJSON, "</", "<\\/")
 	return fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>%s</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" referrerpolicy="no-referrer" crossorigin="anonymous"></script>
 <style>
 body { margin: 0; padding: 24px; background: #fff; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
 h1 { font-size: 18pt; color: #1d1d1f; margin: 0 0 14pt; text-align: center; }
@@ -117,10 +124,44 @@ h1 { font-size: 18pt; color: #1d1d1f; margin: 0 0 14pt; text-align: center; }
 </style></head><body>
 <h1>%s</h1>
 <div id="chartWrap"><canvas id="c" width="860" height="520"></canvas></div>
+<script id="chart-config" type="application/json">%s</script>
 <script>
-const cfg = %s;
-new Chart(document.getElementById('c'), cfg);
-</script></body></html>`, escapeHTML(title), escapeHTML(title), configJSON)
+(function(){
+  var el = document.getElementById('chart-config');
+  var cfg;
+  try { cfg = JSON.parse(el.textContent); } catch(e) { document.body.innerHTML = '<p style="color:red">Invalid chart config</p>'; return; }
+  if (typeof cfg !== 'object' || cfg === null) { document.body.innerHTML = '<p style="color:red">Invalid chart config</p>'; return; }
+  new Chart(document.getElementById('c'), cfg);
+})();
+</script></body></html>`, escapeHTML(title), escapeHTML(title), safeConfig)
+}
+
+const maxArtifactSize = 50 * 1024 * 1024 // 50 MB
+
+// validateChartConfig performs basic structural validation on the Chart.js
+// config JSON to reject obviously malicious or malformed payloads before
+// they are injected into the headless Chrome renderer.
+func validateChartConfig(configJSON string) error {
+	if len(configJSON) > 100*1024 {
+		return fmt.Errorf("chart config too large (%d bytes)", len(configJSON))
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal([]byte(configJSON), &cfg); err != nil {
+		return fmt.Errorf("chart config is not valid JSON: %w", err)
+	}
+	allowedTypes := map[string]bool{"bar": true, "line": true, "pie": true, "doughnut": true, "radar": true, "scatter": true, "bubble": true, "polarArea": true}
+	t, ok := cfg["type"].(string)
+	if !ok || !allowedTypes[t] {
+		return fmt.Errorf("chart config has invalid or missing 'type' field")
+	}
+	data, ok := cfg["data"].(map[string]any)
+	if !ok {
+		return fmt.Errorf("chart config missing 'data' object")
+	}
+	if _, ok := data["datasets"]; !ok {
+		return fmt.Errorf("chart config missing 'data.datasets'")
+	}
+	return nil
 }
 
 func htmlToPNG(ctx context.Context, html string) ([]byte, error) {
