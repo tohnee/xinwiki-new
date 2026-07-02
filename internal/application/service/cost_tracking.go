@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"math"
 	"sort"
 	"time"
 
@@ -289,22 +290,22 @@ func (s *CostTrackingService) QueryCostTrend(
 		db = db.Where("user_id IN ?", query.UserIDs)
 	}
 
-	// Determine time grouping
+	// Determine time grouping (PostgreSQL TO_CHAR format)
 	var timeFormat string
 	switch query.Granularity {
 	case "hour":
-		timeFormat = "%Y-%m-%d %H:00:00"
+		timeFormat = "YYYY-MM-DD HH24:00:00"
 	case "week":
-		timeFormat = "%Y-%u"
+		timeFormat = "YYYY-IW"
 	case "month":
-		timeFormat = "%Y-%m"
+		timeFormat = "YYYY-MM"
 	default:
-		timeFormat = "%Y-%m-%d"
+		timeFormat = "YYYY-MM-DD"
 	}
 
 	// Build select and group by clauses
 	selectFields := fmt.Sprintf(`
-		DATE_FORMAT(created_at, '%s') as timestamp,
+		TO_CHAR(created_at, '%s') as timestamp,
 		SUM(prompt_tokens) as prompt_tokens,
 		SUM(completion_tokens) as completion_tokens,
 		SUM(cached_tokens) as cached_tokens,
@@ -316,7 +317,7 @@ func (s *CostTrackingService) QueryCostTrend(
 		SUM(CASE WHEN status != 'success' THEN 1 ELSE 0 END) as error_count
 	`, timeFormat)
 
-	groupFields := []string{"DATE_FORMAT(created_at, '" + timeFormat + "')"}
+	groupFields := []string{"TO_CHAR(created_at, '" + timeFormat + "')"}
 
 	// Add group by fields
 	modelGrouped := false
@@ -690,10 +691,26 @@ func (s *CostTrackingService) getModelLatencyStatsFallback(
 			}
 		}
 
-		// Approximate percentiles from average and max
-		p50 := int(r.AvgLatency)
-		p95 := int(float64(r.AvgLatency)*1.5 + float64(r.MaxLatency)*0.2)
-		p99 := r.MaxLatency
+		// Compute percentiles using nearest-rank method: index = ceil(p/100 * n) - 1
+		var latencies []int
+		latErr := s.db.WithContext(ctx).Model(&types.LLMCallLog{}).
+			Where("tenant_id = ?", tenantID).
+			Where("model_id = ?", r.ModelID).
+			Where("created_at BETWEEN ? AND ?", start, end).
+			Where("status = ?", types.LLMCallStatusSuccess).
+			Order("latency_ms ASC").
+			Pluck("latency_ms", &latencies).Error
+		var p50, p95, p99 int
+		if latErr == nil && len(latencies) > 0 {
+			p50 = nearestRankPercentile(latencies, 50)
+			p95 = nearestRankPercentile(latencies, 95)
+			p99 = nearestRankPercentile(latencies, 99)
+		} else {
+			// Last-resort fallback if latency query fails
+			p50 = int(r.AvgLatency)
+			p95 = int(r.AvgLatency)
+			p99 = r.MaxLatency
+		}
 
 		stats = append(stats, &types.ModelLatencyStats{
 			ModelID:      r.ModelID,
@@ -721,4 +738,22 @@ func stringsJoin(elems []string, sep string) string {
 		result += sep + elems[i]
 	}
 	return result
+}
+
+// nearestRankPercentile computes the p-th percentile of a sorted slice using
+// the nearest-rank method: index = ceil(p/100 * n) - 1, clamped to [0, n-1].
+// The input slice must be sorted in ascending order.
+func nearestRankPercentile(sorted []int, p float64) int {
+	n := len(sorted)
+	if n == 0 {
+		return 0
+	}
+	idx := int(math.Ceil(p/100.0*float64(n))) - 1
+	if idx < 0 {
+		idx = 0
+	}
+	if idx >= n {
+		idx = n - 1
+	}
+	return sorted[idx]
 }

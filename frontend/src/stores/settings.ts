@@ -102,10 +102,21 @@ const defaultSettings: Settings = {
   autoCheckUpdate: true,
 };
 
+// 从本地存储加载设置；解析失败时回退到默认值，避免脏数据导致整个 store 初始化抛错。
+function loadSettingsFromStorage(): Settings {
+  try {
+    const raw = localStorage.getItem("XinWiki_settings");
+    if (!raw) return { ...defaultSettings };
+    return JSON.parse(raw) as Settings;
+  } catch {
+    return { ...defaultSettings };
+  }
+}
+
 export const useSettingsStore = defineStore("settings", {
   state: () => ({
-    // 从本地存储加载设置，如果没有则使用默认设置
-    settings: JSON.parse(localStorage.getItem("XinWiki_settings") || JSON.stringify(defaultSettings)) as Settings,
+    // 从本地存储加载设置，如果没有或解析失败则使用默认设置
+    settings: loadSettingsFromStorage(),
     // 进入会话时拍下"全局默认"的快照；离开会话时还原。非持久化字段：
     // 刷新页面相当于重新走"进入会话"流程，自然会重新拍快照。
     _defaultsSnapshot: null as Settings | null,

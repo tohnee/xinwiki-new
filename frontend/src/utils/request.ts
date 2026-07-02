@@ -11,12 +11,13 @@ const BASE_URL = getApiBaseUrl();
 
 
 // 创建Axios实例
+// X-Request-ID 由请求拦截器在每个请求生成唯一值，不在此处设置实例级默认值，
+// 否则所有请求会共享同一个 ID（实际上会被拦截器覆盖，但默认值冗余且容易误读）。
 const instance = axios.create({
   baseURL: BASE_URL, // 使用配置的API基础URL
   timeout: 30000, // 请求超时时间
   headers: {
     "Content-Type": "application/json",
-    "X-Request-ID": `${generateRandomString(12)}`,
   },
 });
 

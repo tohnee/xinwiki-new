@@ -225,9 +225,7 @@ onMounted(() => {
   // Auto check for updates on startup
   setTimeout(() => {
     if (settingsStore.isAutoCheckUpdateEnabled) {
-      // @ts-ignore
       if (window.go && window.go.main && window.go.main.App && window.go.main.App.AutoCheckForUpdates) {
-        // @ts-ignore
         window.go.main.App.AutoCheckForUpdates()
       }
     }
@@ -236,9 +234,7 @@ onMounted(() => {
   // Periodically check for updates (every 4 hours)
   updateCheckTimer = setInterval(() => {
     if (settingsStore.isAutoCheckUpdateEnabled) {
-      // @ts-ignore
       if (window.go && window.go.main && window.go.main.App && window.go.main.App.AutoCheckForUpdates) {
-        // @ts-ignore
         window.go.main.App.AutoCheckForUpdates()
       }
     }

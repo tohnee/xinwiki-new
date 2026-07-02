@@ -7,3 +7,17 @@ declare module '*.vue' {
 
 declare const __FRONTEND_VERSION__: string;
 declare const __FRONTEND_COMMIT__: string;
+
+// Wails 桌面端把 Go 绑定注入到 window.go.<package>.<Struct>。
+// 自动生成的 src/wailsjs/go/main/App.d.ts 把它们导出为模块函数，
+// 但浏览器侧通过 window.go.main.App.* 访问，这里补全全局类型声明，
+// 让调用处无需 @ts-ignore 即可通过类型检查。仅镜像实际被消费的方法。
+interface Window {
+    go?: {
+        main?: {
+            App?: {
+                AutoCheckForUpdates?: () => Promise<void>;
+            };
+        };
+    };
+}

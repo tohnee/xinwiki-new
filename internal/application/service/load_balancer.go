@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sort"
 	"sync"
 	"sync/atomic"
 
@@ -33,11 +34,12 @@ func (b *RoundRobinBalancer) SelectNode(healthyNodes map[string]interfaces.Reada
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	// 构建节点ID列表，保证顺序一致性
+	// 构建节点ID列表，排序保证顺序一致性（map迭代顺序不确定）
 	b.nodeIDs = b.nodeIDs[:0]
 	for nodeID := range healthyNodes {
 		b.nodeIDs = append(b.nodeIDs, nodeID)
 	}
+	sort.Strings(b.nodeIDs)
 
 	// 轮询选择
 	idx := b.counter.Add(1) % uint64(len(b.nodeIDs))
@@ -65,6 +67,13 @@ func (b *LeastConnectionsBalancer) SelectNode(healthyNodes map[string]interfaces
 
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
+	// 惰性清理：移除不在健康节点池中的条目，防止 connectionMap 无界增长
+	for nodeID := range b.connectionMap {
+		if _, ok := healthyNodes[nodeID]; !ok {
+			delete(b.connectionMap, nodeID)
+		}
+	}
 
 	var selectedNode interfaces.ReadableNode
 	var minConns int64 = -1
