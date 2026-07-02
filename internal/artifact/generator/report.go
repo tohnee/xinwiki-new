@@ -54,6 +54,7 @@ func (g *ReportGenerator) Generate(ctx context.Context, in *Input) (*Result, err
 		ExtraMetadata: map[string]any{
 			"page_count":   pageCount,
 			"markdown_len": len(mdContent),
+			"citations":    in.Citations,
 		},
 	}, nil
 }

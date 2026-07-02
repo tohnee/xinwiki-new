@@ -5,6 +5,13 @@ import { createSessions } from '@/api/chat'
 import { SendIcon, StopIcon } from 'tdesign-icons-vue-next'
 import { sanitizeMarkdownHTML } from '@/utils/security'
 import { MessagePlugin } from 'tdesign-vue-next'
+import {
+  mapReferencePayload,
+  injectInlineCitations,
+  findReferenceByNum,
+  type Reference,
+} from './citation'
+import NotebookGuideChips from './NotebookGuideChips.vue'
 
 export interface ChatMessage {
   id: string
@@ -12,7 +19,7 @@ export interface ChatMessage {
   content: string
   thinking?: string
   thinkingActive?: boolean
-  references?: Array<{ id: string; title: string; excerpt?: string; url?: string }>
+  references?: Reference[]
   isStreaming?: boolean
   isCompleted?: boolean
   error?: string
@@ -35,8 +42,17 @@ const { isStreaming, error, onChunk, startStream, stopStream } = useStream()
 const assistantMsgId = ref<string>('')
 let chunkBuffer = ''
 let thinkingBuffer = ''
-let referenceBuffer: NonNullable<ChatMessage['references']> = []
+let referenceBuffer: Reference[] = []
 let msgCounter = 0
+
+// Inline-citation hover card state. `hoverRef` is the Reference currently
+// pinned to the cursor; `hoverPos` positions the floating card. Cleared on
+// mouseleave / scroll.
+const hoverRef = ref<Reference | null>(null)
+const hoverPos = ref<{ x: number; y: number }>({ x: 0, y: 0 })
+// `activeRefNum` highlights the matching source chip in the references list
+// when the user clicks an inline [n] citation.
+const activeRefNum = ref<number | null>(null)
 
 const genId = () => `msg_${Date.now()}_${++msgCounter}`
 
@@ -49,7 +65,7 @@ const scrollToBottom = (force = true) => {
   })
 }
 
-function simpleMarkdown(text: string): string {
+function simpleMarkdown(text: string, references: Reference[] = []): string {
   if (!text) return ''
   let html = text
     .replace(/&/g, '&amp;')
@@ -61,6 +77,7 @@ function simpleMarkdown(text: string): string {
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
   html = html.replace(/\n/g, '<br>')
+  html = injectInlineCitations(html, references)
   return sanitizeMarkdownHTML(html)
 }
 
@@ -89,7 +106,7 @@ const updateStreamingAssistant = () => {
   if (!assistant) return
   assistant.content = chunkBuffer
   assistant.thinking = thinkingBuffer
-    assistant.references = referenceBuffer.length ? [...referenceBuffer] : assistant.references
+  assistant.references = referenceBuffer.length ? [...referenceBuffer] : assistant.references
 }
 
 const handleChunk = (data: any) => {
@@ -100,12 +117,7 @@ const handleChunk = (data: any) => {
   if (rt === 'references') {
     const refs = data.knowledge_references || data.data?.references || data.data?.knowledge_references
     if (Array.isArray(refs)) {
-      referenceBuffer = refs.map((r: any, i: number) => ({
-        id: r.id || r.knowledge_id || String(i + 1),
-        title: r.title || r.name || r.doc_title || `来源 ${i + 1}`,
-        excerpt: r.excerpt || r.content || r.snippet,
-        url: r.url,
-      }))
+      referenceBuffer = refs.map((r: any, i: number) => mapReferencePayload(r, i))
     }
     return
   }
@@ -161,6 +173,77 @@ const finalizeAssistant = () => {
   assistantMsgId.value = ''
   isSending.value = false
   scrollToBottom()
+}
+
+// Inline-citation interaction handlers. Because v-html content cannot bind
+// @click directly, we attach a single delegated listener on the message
+// list and read data-ref-num from the clicked <cite> chip.
+const onMessageListClick = (e: MouseEvent) => {
+  const target = e.target as HTMLElement
+  const cite = target.closest('cite.inline-citation') as HTMLElement | null
+  if (!cite) return
+  const numStr = cite.getAttribute('data-ref-num')
+  if (!numStr) return
+  const num = parseInt(numStr, 10)
+  activeRefNum.value = num
+  // Scroll the matching source chip into view.
+  nextTick(() => {
+    const chip = scrollContainer.value?.querySelector(`[data-ref-chip="${num}"]`) as HTMLElement | null
+    if (chip) {
+      chip.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      // Briefly pulse the highlight; the class is removed after the
+      // animation so subsequent clicks re-trigger it.
+      chip.classList.remove('ref-chip-flash')
+      // Force reflow to restart the animation.
+      void chip.offsetWidth
+      chip.classList.add('ref-chip-flash')
+    }
+  })
+}
+
+const onCitationHover = (e: MouseEvent) => {
+  const target = e.target as HTMLElement
+  const cite = target.closest('cite.inline-citation') as HTMLElement | null
+  if (!cite) {
+    hoverRef.value = null
+    return
+  }
+  const numStr = cite.getAttribute('data-ref-num')
+  if (!numStr) return
+  const num = parseInt(numStr, 10)
+  // Find the reference in the currently rendered assistant message.
+  const assistant = messages.value.find(m => m.id === assistantMsgId.value) ||
+    messages.value.slice().reverse().find(m => m.role === 'assistant' && m.references?.length)
+  const ref = assistant?.references ? findReferenceByNum(assistant.references, num) : undefined
+  if (ref) {
+    hoverRef.value = ref
+    const rect = cite.getBoundingClientRect()
+    hoverPos.value = { x: rect.left, y: rect.bottom + 6 }
+  }
+}
+
+const onCitationLeave = () => {
+  hoverRef.value = null
+}
+
+// Clicking a source chip in the references list opens its URL if present,
+// otherwise scrolls to the first inline [n] citation of the same number so
+// the user sees where it was used in the answer.
+const onReferenceChipClick = (ref: Reference) => {
+  if (ref.url) {
+    window.open(ref.url, '_blank', 'noopener,noreferrer')
+    return
+  }
+  activeRefNum.value = ref.num
+  nextTick(() => {
+    const cite = scrollContainer.value?.querySelector(`cite.inline-citation[data-ref-num="${ref.num}"]`) as HTMLElement | null
+    if (cite) {
+      cite.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      cite.classList.remove('ref-chip-flash')
+      void cite.offsetWidth
+      cite.classList.add('ref-chip-flash')
+    }
+  })
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
@@ -233,6 +316,24 @@ const handleStop = () => {
   finalizeAssistant()
 }
 
+// NotebookLM-style suggested-question handler: drop the picked question
+// into the input box and focus the textarea so the user can edit before
+// sending. We deliberately do NOT auto-send - NotebookLM also lets the
+// user review the suggested phrasing first.
+const onSuggestionSelect = (question: string) => {
+  inputText.value = question
+  nextTick(() => {
+    textareaRef.value?.focus()
+    if (textareaRef.value) {
+      // Move cursor to end so the user can append/edit rather than
+      // overtype from the start.
+      const len = textareaRef.value.value.length
+      textareaRef.value.setSelectionRange(len, len)
+      autoResize(textareaRef.value)
+    }
+  })
+}
+
 onChunk(handleChunk)
 
 watch(error, (err) => {
@@ -278,17 +379,19 @@ onUnmounted(() => {
         <p class="empty-desc">
           基于所选知识库进行问答，支持混合检索、引用溯源和思维链可视化
         </p>
-        <div class="sample-questions">
-          <button
-            v-for="q in ['帮我总结一下 XinWiki 的核心功能', '什么是混合检索？', '如何创建一个知识库页面？']"
-            :key="q"
-            class="sample-q"
-            @click="inputText = q; nextTick(() => textareaRef?.focus())"
-          >{{ q }}</button>
-        </div>
+        <NotebookGuideChips
+          :knowledge-base-id="knowledgeBaseIds && knowledgeBaseIds.length > 0 ? knowledgeBaseIds[0] : undefined"
+          @select="onSuggestionSelect"
+        />
       </div>
 
-      <div v-else class="message-list">
+      <div
+        v-else
+        class="message-list"
+        @click="onMessageListClick"
+        @mouseover="onCitationHover"
+        @mouseout="onCitationLeave"
+      >
         <div v-for="msg in messages" :key="msg.id" class="message-row" :class="msg.role">
           <div class="message-bubble" :class="{ streaming: msg.isStreaming, error: !!msg.error }">
             <div v-if="msg.role === 'assistant' && (msg.thinking || msg.thinkingActive)" class="thinking-block">
@@ -301,22 +404,46 @@ onUnmounted(() => {
               </details>
             </div>
             <div v-if="msg.error" class="error-text">{{ msg.error }}</div>
-            <div v-else-if="msg.content || msg.isStreaming" class="msg-content markdown-body" v-html="simpleMarkdown(msg.content || '')" />
+            <div
+              v-else-if="msg.content || msg.isStreaming"
+              class="msg-content markdown-body"
+              v-html="simpleMarkdown(msg.content || '', msg.references || [])"
+            />
             <span v-else-if="msg.isStreaming" class="streaming-cursor">▍</span>
 
             <div v-if="msg.references && msg.references.length > 0" class="references-block">
               <div class="ref-title">引用来源 ({{ msg.references.length }})</div>
               <div class="ref-list">
-                <div v-for="(ref, i) in msg.references" :key="ref.id + i" class="ref-item">
-                  <span class="ref-num">{{ i + 1 }}</span>
+                <button
+                  v-for="ref in msg.references"
+                  :key="ref.id + ref.num"
+                  class="ref-item"
+                  :class="{ 'ref-item-active': activeRefNum === ref.num }"
+                  :data-ref-chip="ref.num"
+                  :title="ref.url ? '点击打开来源' : '点击定位到正文引用'"
+                  @click.stop="onReferenceChipClick(ref)"
+                >
+                  <span class="ref-num">{{ ref.num }}</span>
                   <span class="ref-text">{{ ref.title }}</span>
-                </div>
+                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="hoverRef"
+        class="citation-hover-card"
+        :style="{ left: hoverPos.x + 'px', top: hoverPos.y + 'px' }"
+      >
+        <div class="hover-card-title">{{ hoverRef.title }}</div>
+        <div v-if="hoverRef.excerpt" class="hover-card-excerpt">{{ hoverRef.excerpt }}</div>
+        <div v-if="hoverRef.url" class="hover-card-url">{{ hoverRef.url }}</div>
+      </div>
+    </Teleport>
 
     <div class="chat-input-wrap">
       <div class="input-box">
@@ -408,29 +535,6 @@ onUnmounted(() => {
   margin: 0 0 32px 0;
   max-width: 500px;
   line-height: 1.6;
-}
-
-.sample-questions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
-  max-width: 640px;
-}
-.sample-q {
-  padding: 8px 14px;
-  background: rgba(0, 122, 255, 0.06);
-  border: 1px solid rgba(0, 122, 255, 0.15);
-  border-radius: 16px;
-  color: #007aff;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-
-  &:hover {
-    background: rgba(0, 122, 255, 0.12);
-    transform: translateY(-1px);
-  }
 }
 
 .message-list {
@@ -585,9 +689,28 @@ onUnmounted(() => {
   gap: 8px;
   font-size: 13px;
   color: #007aff;
-  padding: 4px 0;
+  padding: 6px 8px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
   cursor: pointer;
-  &:hover { text-decoration: underline; }
+  transition: background 0.15s ease, border-color 0.15s ease;
+  &:hover {
+    background: rgba(0, 122, 255, 0.06);
+  }
+  &.ref-item-active {
+    background: rgba(0, 122, 255, 0.12);
+    border-color: rgba(0, 122, 255, 0.25);
+  }
+  &.ref-chip-flash {
+    animation: ref-chip-flash 1.2s ease-out;
+  }
+}
+@keyframes ref-chip-flash {
+  0% { background: rgba(0, 122, 255, 0.35); }
+  100% { background: transparent; }
 }
 .ref-num {
   display: inline-flex;
@@ -605,6 +728,33 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+// Inline [n] citation chips rendered inside v-html markdown. These must
+// be :deep() because the HTML is injected via v-html and scoped styles
+// cannot target it directly.
+.msg-content :deep(cite.inline-citation) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  margin: 0 2px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 600;
+  color: #007aff;
+  background: rgba(0, 122, 255, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  vertical-align: super;
+  line-height: 1;
+  user-select: none;
+  transition: background 0.15s ease;
+  &:hover {
+    background: rgba(0, 122, 255, 0.22);
+  }
 }
 
 .chat-input-wrap {
@@ -683,6 +833,49 @@ onUnmounted(() => {
   .message-row.user .message-bubble,
   .message-row.assistant .message-bubble {
     max-width: 90%;
+  }
+}
+</style>
+
+<!-- Non-scoped: the citation hover card is Teleported to <body>, so scoped
+     selectors would not reach it. Keep the class name prefixed to avoid
+     collisions. -->
+<style lang="less">
+.citation-hover-card {
+  position: fixed;
+  z-index: 9999;
+  max-width: 360px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  pointer-events: none;
+
+  .hover-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1d1d1f;
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+  .hover-card-excerpt {
+    font-size: 12px;
+    color: #424245;
+    line-height: 1.55;
+    max-height: 120px;
+    overflow-y: auto;
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .hover-card-url {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #007aff;
+    word-break: break-all;
   }
 }
 </style>

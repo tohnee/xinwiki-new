@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 export function useWorkspaceLayout() {
   const sidebarCollapsed = ref(false)
   const rightPanelVisible = ref(true)
-  const rightPanelTab = ref<'generate' | 'sources' | 'thinking'>('generate')
+  const rightPanelTab = ref<'generate' | 'sources' | 'thinking' | 'notes'>('generate')
   const isMobile = ref(false)
 
   const handleResize = () => {

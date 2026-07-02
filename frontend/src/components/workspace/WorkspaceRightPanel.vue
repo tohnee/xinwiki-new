@@ -4,11 +4,13 @@ import {
   StarFilledIcon,
   FileTxtIcon,
   TipsIcon,
+  StickyNoteIcon,
   CloseIcon,
 } from 'tdesign-icons-vue-next'
 import GeneratePanel from './GeneratePanel.vue'
 import SourcesPanel from './SourcesPanel.vue'
 import ThinkingPanel from './ThinkingPanel.vue'
+import NotesPanel from './NotesPanel.vue'
 import type { GenerationType, Citation, ThinkingStep } from './useGeneration'
 import type { Artifact, GenerationStatus } from '@/api/artifact'
 import {
@@ -17,7 +19,7 @@ import {
   mobileDrawerCloseAriaLabel,
 } from './mobilePanel'
 
-type TabId = 'generate' | 'sources' | 'thinking'
+type TabId = 'generate' | 'sources' | 'thinking' | 'notes'
 
 const props = defineProps<{
   visible: boolean
@@ -35,6 +37,8 @@ const props = defineProps<{
   generationError?: string
   isDownloadable?: boolean
   artifactDownloadUrl?: string
+  /** Optional: chat session id, forwarded to NotesPanel so notes scope to the current chat. */
+  sessionId?: string
 }>()
 
 const emit = defineEmits<{
@@ -84,6 +88,14 @@ const panelState = computed(() =>
           <TipsIcon />
           <span class="tab-label">思维链</span>
         </button>
+        <button
+          class="panel-tab"
+          :class="{ active: activeTab === 'notes' }"
+          @click="emit('update:activeTab', 'notes')"
+        >
+          <StickyNoteIcon />
+          <span class="tab-label">笔记</span>
+        </button>
       </div>
       <button class="icon-button panel-close" @click="emit('toggle')" title="关闭面板">
         <CloseIcon size="small" />
@@ -114,6 +126,7 @@ const panelState = computed(() =>
         v-else-if="activeTab === 'thinking'"
         :sample-thinking-steps="sampleThinkingSteps"
       />
+      <NotesPanel v-else-if="activeTab === 'notes'" :session-id="sessionId" />
     </div>
   </aside>
 
@@ -162,6 +175,14 @@ const panelState = computed(() =>
               <TipsIcon />
               <span class="tab-label">思维链</span>
             </button>
+            <button
+              class="panel-tab"
+              :class="{ active: activeTab === 'notes' }"
+              @click="emit('update:activeTab', 'notes')"
+            >
+              <StickyNoteIcon />
+              <span class="tab-label">笔记</span>
+            </button>
           </div>
           <button
             class="icon-button panel-close"
@@ -197,6 +218,7 @@ const panelState = computed(() =>
             v-else-if="activeTab === 'thinking'"
             :sample-thinking-steps="sampleThinkingSteps"
           />
+          <NotesPanel v-else-if="activeTab === 'notes'" :session-id="sessionId" />
         </div>
       </aside>
     </div>

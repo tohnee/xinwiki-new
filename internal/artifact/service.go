@@ -174,9 +174,11 @@ func (s *GenerationService) buildInput(ctx context.Context, art *types.Artifact,
 		prompt = "Generate output"
 	}
 	var sourceText string
+	var citations []generator.Citation
 	if art.SourceWikiPageID != "" && s.wikiPages != nil {
 		if page, err := s.wikiPages.GetPageByID(ctx, art.SourceWikiPageID); err == nil && page != nil {
 			sourceText = "# Wiki Page: " + page.Title + "\n" + page.Content
+			citations = generator.BuildCitationsFromWikiPage(page)
 		}
 	}
 	return &generator.Input{
@@ -185,6 +187,7 @@ func (s *GenerationService) buildInput(ctx context.Context, art *types.Artifact,
 		Artifact:   art,
 		Chat:       chatModel,
 		Language:   "zh",
+		Citations:  citations,
 	}, nil
 }
 

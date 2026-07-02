@@ -44,6 +44,7 @@ func registerRepositories(c *dig.Container, ctx context.Context) {
 	must(c.Provide(repository.NewEmbedChannelRepository))
 	must(c.Provide(repository.NewTenantDisabledSharedAgentRepository))
 	must(c.Provide(repository.NewUserResourceFavoriteRepository))
+	must(c.Provide(repository.NewUserNoteRepository))
 	must(c.Provide(service.NewWebSearchStateService))
 	must(c.Provide(repository.NewDataSourceRepository))
 	must(c.Provide(repository.NewSyncLogRepository))

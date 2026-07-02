@@ -85,6 +85,7 @@ type RouterParams struct {
 	TagHandler                   *handler.TagHandler
 	CustomAgentHandler           *handler.CustomAgentHandler
 	UserFavoriteHandler          *handler.UserResourceFavoriteHandler
+	UserNoteHandler              *handler.UserNoteHandler
 	SkillHandler                 *handler.SkillHandler
 	OrganizationHandler          *handler.OrganizationHandler
 	IMHandler                    *handler.IMHandler
@@ -291,6 +292,7 @@ func NewRouter(params RouterParams) *gin.Engine {
 		RegisterVectorStoreRoutes(v1, params.VectorStoreHandler, rbacGuards)
 		RegisterCustomAgentRoutes(v1, params.CustomAgentHandler, rbacGuards)
 		RegisterUserFavoriteRoutes(v1, params.UserFavoriteHandler, rbacGuards)
+		RegisterUserNoteRoutes(v1, params.UserNoteHandler, rbacGuards)
 		RegisterSkillRoutes(v1, params.SkillHandler, rbacGuards)
 		RegisterOrganizationRoutes(v1, params.OrganizationHandler, rbacGuards)
 		RegisterIMChannelRoutes(v1, params.IMHandler, rbacGuards)
@@ -489,6 +491,8 @@ func RegisterKnowledgeBaseRoutes(r *gin.RouterGroup, handler *handler.KnowledgeB
 		kb.GET("/copy/progress/:task_id", middleware.RequireScope(types.ScopeKBRead), g.Viewer(), handler.GetKBCloneProgress)
 		// 获取可移动目标知识库列表 — Viewer+ 且对 KB 有 read 权限
 		kb.GET("/:id/move-targets", middleware.RequireScope(types.ScopeKBRead), g.Viewer(), g.KBAccessRead("id"), handler.ListMoveTargets)
+		// 获取知识库建议问题 (NotebookLM Notebook Guide) — Viewer+ 且对 KB 有 read 权限
+		kb.GET("/:id/suggested-questions", middleware.RequireScope(types.ScopeKBRead), g.Viewer(), g.KBAccessRead("id"), handler.GetSuggestedQuestions)
 	}
 }
 
@@ -1192,6 +1196,21 @@ func RegisterUserFavoriteRoutes(r *gin.RouterGroup, h *handler.UserResourceFavor
 		favs.GET("", g.Viewer(), h.ListFavorites)
 		favs.POST("", g.Viewer(), h.AddFavorite)
 		favs.DELETE("/:type/:id", g.Viewer(), h.RemoveFavorite)
+	}
+}
+
+// RegisterUserNoteRoutes wires the per-user notes endpoints (NotebookLM-style
+// "Notes" surface in the Workspace). The handler always derives (user_id,
+// tenant_id) from the auth context, so a Viewer floor is the right gate -
+// notes are owned by the user *writing* them, not by the resource's creator.
+func RegisterUserNoteRoutes(r *gin.RouterGroup, h *handler.UserNoteHandler, g *rbacGuards) {
+	notes := r.Group("/user/notes")
+	{
+		notes.GET("", g.Viewer(), h.ListNotes)
+		notes.POST("", g.Viewer(), h.CreateNote)
+		notes.GET("/:id", g.Viewer(), h.GetNote)
+		notes.PUT("/:id", g.Viewer(), h.UpdateNote)
+		notes.DELETE("/:id", g.Viewer(), h.DeleteNote)
 	}
 }
 

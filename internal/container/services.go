@@ -76,6 +76,8 @@ func registerServices(c *dig.Container, ctx context.Context) {
 	must(c.Provide(service.NewMCPToolApprovalService))
 	must(c.Provide(service.NewCustomAgentService))
 	must(c.Provide(service.NewUserResourceFavoriteService))
+	must(c.Provide(service.NewUserNoteService))
+	must(c.Provide(service.NewKnowledgeBaseSuggestionService))
 	must(c.Provide(memoryService.NewMemoryService))
 	must(c.Provide(service.NewWikiPageService))
 	must(c.Provide(service.NewWikiLogEntryService))

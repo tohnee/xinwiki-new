@@ -41,7 +41,10 @@ func (g *MarkdownGenerator) Generate(ctx context.Context, in *Input) (*Result, e
 		MIMEType:      "text/markdown; charset=utf-8",
 		FileExtension: "md",
 		Bytes:         []byte(content),
-		ExtraMetadata: map[string]any{"char_count": len(content)},
+		ExtraMetadata: map[string]any{
+			"char_count": len(content),
+			"citations":  in.Citations,
+		},
 	}, nil
 }
 

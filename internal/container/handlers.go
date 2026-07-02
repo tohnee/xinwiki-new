@@ -51,6 +51,7 @@ func registerHandlers(c *dig.Container, ctx context.Context) {
 	must(c.Provide(handler.NewVectorStoreHandler))
 	must(c.Provide(handler.NewCustomAgentHandler))
 	must(c.Provide(handler.NewUserResourceFavoriteHandler))
+	must(c.Provide(handler.NewUserNoteHandler))
 	must(c.Provide(service.NewSkillService))
 	must(c.Provide(handler.NewSkillHandler))
 	must(c.Provide(handler.NewOrganizationHandler))

@@ -57,6 +57,7 @@ func (g *ChartGenerator) Generate(ctx context.Context, in *Input) (*Result, erro
 		"config_json":  spec.Config,
 		"width":        900,
 		"height":       560,
+		"citations":    in.Citations,
 	}
 	return &Result{
 		MIMEType:      "image/png",

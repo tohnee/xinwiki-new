@@ -35,6 +35,9 @@ type KnowledgeBaseHandler struct {
 	// userService 仅在 list 类接口里用于批量回填 creator_name；
 	// 真正的鉴权由 RBAC 中间件 + Lookup 完成，这里不参与决策。
 	userService interfaces.UserService
+	// suggestionService powers the NotebookLM-style "Notebook Guide" suggested
+	// questions endpoint. Optional: if nil, GetSuggestedQuestions returns 503.
+	suggestionService interfaces.KnowledgeBaseSuggestionService
 }
 
 // NewKnowledgeBaseHandler creates a new knowledge base handler instance
@@ -46,6 +49,7 @@ func NewKnowledgeBaseHandler(
 	asynqClient interfaces.TaskEnqueuer,
 	vectorStoreService interfaces.VectorStoreService,
 	userService interfaces.UserService,
+	suggestionService interfaces.KnowledgeBaseSuggestionService,
 ) *KnowledgeBaseHandler {
 	return &KnowledgeBaseHandler{
 		service:            service,
@@ -55,6 +59,7 @@ func NewKnowledgeBaseHandler(
 		asynqClient:        asynqClient,
 		vectorStoreService: vectorStoreService,
 		userService:        userService,
+		suggestionService:  suggestionService,
 	}
 }
 
@@ -501,6 +506,80 @@ func (h *KnowledgeBaseHandler) validateAndGetKnowledgeBase(c *gin.Context) (*typ
 		id, tenantID.(uint64), kb.TenantID,
 	)
 	return nil, id, 0, "", apperrors.NewForbiddenError("No permission to operate")
+}
+
+// GetSuggestedQuestions returns NotebookLM-style "Notebook Guide" suggested
+// questions for a single knowledge base. Questions are sourced from FAQ
+// recommended chunks, document chunks with AI-generated questions, and wiki
+// page titles, then round-robin sampled for diversity.
+//
+// The endpoint reuses validateAndGetKnowledgeBase so cross-tenant shared KBs
+// work correctly: the effective source tenant ID (where chunk rows live) is
+// passed to the suggestion service, not the caller's tenant.
+//
+// @Summary      获取知识库建议问题 (Notebook Guide)
+// @Description  基于知识库内容生成建议问题，来源包括 FAQ、文档 AI 生成问题和 Wiki 页面标题
+// @Tags         知识库
+// @Produce      json
+// @Param        id             path      string  true   "知识库ID"
+// @Param        knowledge_ids  query     string  false  "知识条目 ID 列表（逗号分隔），缩小建议范围"
+// @Param        limit          query     int     false  "返回数量上限（默认 6）"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      403  {object}  errors.AppError  "无权限访问该知识库"
+// @Failure      404  {object}  errors.AppError  "知识库不存在"
+// @Failure      503  {object}  errors.AppError  "建议问题服务未配置"
+// @Security     Bearer
+// @Security     ApiKeyAuth
+// @Router       /knowledge-bases/{id}/suggested-questions [get]
+func (h *KnowledgeBaseHandler) GetSuggestedQuestions(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	if h.suggestionService == nil {
+		c.Error(apperrors.NewServiceUnavailableError("suggestion service not configured"))
+		return
+	}
+
+	// validateAndGetKnowledgeBase handles tenant ownership, org share, and
+	// shared-agent access checks. effectiveTenantID is the source tenant
+	// (where chunk/wiki rows physically live), which is what the suggestion
+	// queries must filter on.
+	_, kbID, effectiveTenantID, _, err := h.validateAndGetKnowledgeBase(c)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	var knowledgeIDs []string
+	if kIDsStr := strings.TrimSpace(c.Query("knowledge_ids")); kIDsStr != "" {
+		for _, kid := range strings.Split(kIDsStr, ",") {
+			if trimmed := strings.TrimSpace(kid); trimmed != "" {
+				knowledgeIDs = append(knowledgeIDs, trimmed)
+			}
+		}
+	}
+
+	limit := 6
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if parsed, parseErr := strconv.Atoi(limitStr); parseErr == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+
+	questions, err := h.suggestionService.GetSuggestedQuestions(ctx, kbID, effectiveTenantID, knowledgeIDs, limit)
+	if err != nil {
+		logger.ErrorWithFields(ctx, err, map[string]interface{}{
+			"kb_id": kbID,
+		})
+		c.Error(apperrors.NewInternalServerError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"questions": questions,
+		},
+	})
 }
 
 // GetKnowledgeBase godoc

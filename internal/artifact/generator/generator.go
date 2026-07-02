@@ -28,6 +28,35 @@ type Input struct {
 	Chat chat.Chat
 	// Language hint for output ("zh", "en").
 	Language string
+	// Citations are the source references the generator should (a) pass
+	// to the LLM as numbered sources and (b) echo back in ExtraMetadata
+	// so the frontend can render inline citation chips. Built by the
+	// service layer from the underlying source material (wiki page, RAG
+	// chunks, web search results).
+	Citations []Citation
+}
+
+// Citation is a single source reference attached to an artifact. It is the
+// contract between the backend source-material layer and the frontend
+// inline-citation UI: generators emit it verbatim in ExtraMetadata, and the
+// Workspace chat/sources panel renders it as a clickable chip.
+type Citation struct {
+	// ID is the 1-based number the LLM was instructed to emit as [1], [2],
+	// ... in the generated text. The frontend matches inline [n] tokens
+	// against this ID to resolve chips.
+	ID int `json:"id"`
+	// Title is the human-readable label for the chip (wiki page title,
+	// document title, web page title).
+	Title string `json:"title"`
+	// Type categorizes the source for icon/routing: "wiki_page",
+	// "knowledge_chunk", "web_search".
+	Type string `json:"type"`
+	// RefID is the stable backend identifier the frontend can use to
+	// navigate (wiki page ID, knowledge chunk ID, search result URL).
+	RefID string `json:"ref_id"`
+	// URL is an optional absolute or relative path the chip links to.
+	// Empty when no routable target exists.
+	URL string `json:"url,omitempty"`
 }
 
 // Result is returned by a Generator on success.

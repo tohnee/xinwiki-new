@@ -64,6 +64,7 @@ func (g *PPTGenerator) Generate(ctx context.Context, in *Input) (*Result, error)
 			"slide_count": total,
 			"page_count":  pageCount,
 			"title":       deck.Title,
+			"citations":   in.Citations,
 		},
 	}, nil
 }
