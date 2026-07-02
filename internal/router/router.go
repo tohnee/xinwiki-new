@@ -837,6 +837,8 @@ func RegisterArtifactRoutes(r *gin.RouterGroup, h *handler.ArtifactHandler, g *r
 		art.POST("", g.Contributor(), h.CreateArtifact)
 		art.GET("", g.Viewer(), h.ListArtifacts)
 		art.GET("/:id", g.Viewer(), h.GetArtifact)
+		art.GET("/:id/download", g.Viewer(), h.DownloadArtifact)
+		art.POST("/:id/generate", g.Contributor(), h.GenerateArtifact)
 		art.PUT("/:id/status", g.Contributor(), h.UpdateArtifactStatus)
 		art.DELETE("/:id", g.Contributor(), h.DeleteArtifact)
 	}

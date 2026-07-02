@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/Tencent/XinWiki/internal/agent"
+	agentruntime "github.com/Tencent/XinWiki/internal/agent/runtime"
 	"github.com/Tencent/XinWiki/internal/agent/approval"
 	"github.com/Tencent/XinWiki/internal/agent/skills"
 	"github.com/Tencent/XinWiki/internal/agent/tools"
@@ -15,6 +16,7 @@ import (
 	"github.com/Tencent/XinWiki/internal/logger"
 	"github.com/Tencent/XinWiki/internal/mcp"
 	"github.com/Tencent/XinWiki/internal/models/chat"
+	"github.com/Tencent/XinWiki/internal/models/provider"
 	"github.com/Tencent/XinWiki/internal/models/rerank"
 	"github.com/Tencent/XinWiki/internal/sandbox"
 	"github.com/Tencent/XinWiki/internal/types"
@@ -148,6 +150,16 @@ func (s *agentService) CreateAgentEngine(
 		systemPromptTemplate,
 	)
 	engine.SetAppConfig(s.cfg)
+
+	// If a native Runtime is registered for the chat model's provider, attach
+	// it to the engine so the ReAct loop uses the vendor-native SDK (better
+	// support for thinking/caching/tool streaming) instead of the legacy
+	// chat.Chat shim. chat.Chat is retained as fallback for sub-components
+	// (memory consolidator, tool-side summarization) that still expect it.
+	if rt := s.buildNativeRuntime(ctx, chatModel); rt != nil {
+		engine.SetRuntime(rt)
+		logger.Infof(ctx, "Using native agent runtime %s for model %s", rt.Name(), rt.ModelName())
+	}
 
 	// Set VLM image describer for MCP tool result image analysis.
 	// When an MCP tool returns images, the engine uses VLM to generate text descriptions
@@ -798,4 +810,52 @@ func (s *agentService) getSelectedDocumentInfos(ctx context.Context, knowledgeID
 
 	logger.Infof(ctx, "Loaded %d selected documents metadata for prompt", len(selectedDocs))
 	return selectedDocs, nil
+}
+
+// buildNativeRuntime attempts to construct a vendor-native agent runtime for
+// the given chat model. If the model's provider has a registered native
+// Runtime factory AND the chatModel exposes enough configuration (API key,
+// base URL, model name), the returned Runtime is attached to the engine so
+// ReAct calls use the vendor SDK directly (extended thinking, prompt
+// caching, structured tool streaming). Returns nil if no native runtime is
+// available (e.g. OpenAI-compatible proxy, Ollama), in which case the
+// legacy chat.Chat path is used as-is.
+func (s *agentService) buildNativeRuntime(ctx context.Context, chatModel chat.Chat) agentruntime.Runtime {
+	if chatModel == nil {
+		return nil
+	}
+	modelID := chatModel.GetModelID()
+	if modelID == "" {
+		return nil
+	}
+	m, err := s.modelService.GetModelByID(ctx, modelID)
+	if err != nil || m == nil {
+		return nil
+	}
+	providerName := m.Parameters.Provider
+	if providerName == "" {
+		return nil
+	}
+	switch providerName {
+	case string(provider.ProviderAnthropic):
+		// proceed
+	default:
+		return nil
+	}
+	cfg := &chat.ChatConfig{
+		Source:        m.Source,
+		BaseURL:       m.Parameters.BaseURL,
+		ModelName:     m.Name,
+		APIKey:        m.Parameters.APIKey,
+		ModelID:       m.ID,
+		Provider:      providerName,
+		ExtraConfig:   m.Parameters.ExtraConfig,
+		CustomHeaders: m.Parameters.CustomHeaders,
+	}
+	rt, err := agentruntime.NewRuntime(cfg)
+	if err != nil {
+		logger.Warnf(ctx, "Failed to build native %s runtime: %v (falling back to chat.Chat)", providerName, err)
+		return nil
+	}
+	return rt
 }

@@ -48,12 +48,14 @@ func (e *AgentEngine) streamLLMToEventBus(
 	opts *chat.ChatOptions,
 	emitFunc func(chunk *types.StreamResponse, fullContent string),
 ) (*streamLLMResult, error) {
-	logger.Debugf(ctx, "[Agent][Stream] Starting LLM stream with %d messages", len(messages))
+	logger.Debugf(ctx, "[Agent][Stream] Starting LLM stream with %d messages (runtime=%s)", len(messages), e.activeRuntime().Name())
 
 	llmCtx, llmCancel := context.WithTimeout(ctx, e.getLLMCallTimeout())
 	defer llmCancel()
 
-	stream, err := e.chatModel.ChatStream(llmCtx, messages, opts)
+	sysPrompt, rest := extractSystemPrompt(messages)
+	runtimeOpts := toRuntimeOptions(opts, sysPrompt)
+	stream, err := e.activeRuntime().ChatStream(llmCtx, rest, runtimeOpts)
 	if err != nil {
 		logger.Errorf(ctx, "[Agent][Stream] Failed to start LLM stream: %v", err)
 		return nil, err

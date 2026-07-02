@@ -112,7 +112,7 @@ func TestArtifactHandler_Create_Returns201(t *testing.T) {
 			return &types.Artifact{ID: "art_1", TenantID: tenantID, UserID: c.UserID, Type: types.ArtifactTypePDF, Status: types.ArtifactStatusPending}, nil
 		},
 	}
-	h := NewArtifactHandler(svc)
+	h := NewArtifactHandler(svc, nil, nil)
 
 	w := doArtifact(t, newArtifactTestRouter(h, "u1", types.TenantRoleContributor), http.MethodPost, "/artifacts",
 		map[string]any{"type": "pdf", "title": "Q3", "sharing_policy": "private"})
@@ -132,7 +132,7 @@ func TestArtifactHandler_Create_RejectsInvalidType(t *testing.T) {
 			return nil, service.ErrInvalidArtifactType
 		},
 	}
-	h := NewArtifactHandler(svc)
+	h := NewArtifactHandler(svc, nil, nil)
 
 	w := doArtifact(t, newArtifactTestRouter(h, "u1", types.TenantRoleContributor), http.MethodPost, "/artifacts",
 		map[string]any{"type": "widget", "sharing_policy": "private"})
@@ -148,7 +148,7 @@ func TestArtifactHandler_Get_ForbiddenMapsTo403(t *testing.T) {
 			return nil, service.ErrArtifactForbidden
 		},
 	}
-	h := NewArtifactHandler(svc)
+	h := NewArtifactHandler(svc, nil, nil)
 
 	w := doArtifact(t, newArtifactTestRouter(h, "u2", types.TenantRoleViewer), http.MethodGet, "/artifacts/art_1", nil)
 	if w.Code != http.StatusForbidden {
@@ -163,7 +163,7 @@ func TestArtifactHandler_Get_NotFoundMapsTo404(t *testing.T) {
 			return nil, service.ErrArtifactNotFound
 		},
 	}
-	h := NewArtifactHandler(svc)
+	h := NewArtifactHandler(svc, nil, nil)
 
 	w := doArtifact(t, newArtifactTestRouter(h, "u1", types.TenantRoleViewer), http.MethodGet, "/artifacts/art_x", nil)
 	if w.Code != http.StatusNotFound {
@@ -179,7 +179,7 @@ func TestArtifactHandler_List_ReturnsPaginated(t *testing.T) {
 			return []*types.Artifact{{ID: "a1"}, {ID: "a2"}}, 5, nil
 		},
 	}
-	h := NewArtifactHandler(svc)
+	h := NewArtifactHandler(svc, nil, nil)
 
 	w := doArtifact(t, newArtifactTestRouter(h, "u1", types.TenantRoleViewer), http.MethodGet, "/artifacts?page=1&page_size=10", nil)
 	if w.Code != http.StatusOK {
@@ -202,7 +202,7 @@ func TestArtifactHandler_Delete_ForbiddenMapsTo403(t *testing.T) {
 			return service.ErrArtifactForbidden
 		},
 	}
-	h := NewArtifactHandler(svc)
+	h := NewArtifactHandler(svc, nil, nil)
 
 	w := doArtifact(t, newArtifactTestRouter(h, "u2", types.TenantRoleViewer), http.MethodDelete, "/artifacts/art_1", nil)
 	if w.Code != http.StatusForbidden {
@@ -219,7 +219,7 @@ func TestArtifactHandler_Delete_Success(t *testing.T) {
 			return nil
 		},
 	}
-	h := NewArtifactHandler(svc)
+	h := NewArtifactHandler(svc, nil, nil)
 
 	w := doArtifact(t, newArtifactTestRouter(h, "u1", types.TenantRoleContributor), http.MethodDelete, "/artifacts/art_1", nil)
 	if w.Code != http.StatusOK {
@@ -240,7 +240,7 @@ func TestArtifactHandler_Create_MissingTenantContext(t *testing.T) {
 			return nil, nil
 		},
 	}
-	h := NewArtifactHandler(svc)
+	h := NewArtifactHandler(svc, nil, nil)
 
 	// Engine with NO tenant seeded.
 	gin.SetMode(gin.TestMode)

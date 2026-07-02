@@ -60,6 +60,9 @@ type RetrievalRequest struct {
 	RRFConstant    int      `json:"rrf_constant"`
 	UseCache       bool     `json:"use_cache"`
 	Filters        map[string]interface{} `json:"filters,omitempty"`
+	// History contains the recent conversation turns (oldest first) used for
+	// history-aware query rewriting. Nil/empty means standalone query.
+	History []Message `json:"history,omitempty"`
 }
 
 // RetrievalResponse contains retrieval results and timing info.
@@ -175,6 +178,7 @@ type HybridRetriever struct {
 	graphRetriever GraphRetriever
 	cache          *RetrievalCache
 	queryRewriter  QueryRewriter
+	reranker       Reranker
 }
 
 // RetrievalCache caches retrieval results for common queries.
@@ -238,7 +242,15 @@ type GraphRetriever interface {
 // QueryRewriter expands and rewrites queries for better retrieval.
 type QueryRewriter interface {
 	Rewrite(ctx context.Context, query string) (*QueryRewrite, error)
+	RewriteWithContext(ctx context.Context, query string, history []Message) (*QueryRewrite, error)
 	ExtractEntities(ctx context.Context, query string) ([]string, error)
+}
+
+// Reranker re-scores and reorders retrieved results relative to the query.
+// Rerank returns a new slice (in sorted order) of the top results. Implementations
+// MUST be safe to call with a nil/empty input and must always return a valid slice.
+type Reranker interface {
+	Rerank(ctx context.Context, query string, results []*SearchResult, topN int) ([]*SearchResult, error)
 }
 
 // LLMClient abstracts LLM operations.

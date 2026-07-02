@@ -16,15 +16,20 @@ func NewHybridRetriever(
 	vector VectorRetriever,
 	graph GraphRetriever,
 	queryRewriter QueryRewriter,
+	reranker Reranker,
 	cacheTTL time.Duration,
 	cacheMaxEntries int,
 ) *HybridRetriever {
+	if reranker == nil {
+		reranker = NewNoopReranker()
+	}
 	return &HybridRetriever{
 		bm25Retriever:  bm25,
 		vectorRetriever: vector,
 		graphRetriever: graph,
 		cache:          NewRetrievalCache(cacheTTL, cacheMaxEntries),
 		queryRewriter:  queryRewriter,
+		reranker:       reranker,
 	}
 }
 
@@ -61,12 +66,18 @@ func (h *HybridRetriever) Retrieve(ctx context.Context, req *RetrievalRequest) (
 			traceID, cacheKey, time.Since(cacheCheckStart).Microseconds())
 	}
 
-	// Query rewriting for better retrieval
+	// Query rewriting for better retrieval (history-aware when provided).
 	rewriteStart := time.Now()
 	var expandedQueries []string
 	var entities []string
 	if h.queryRewriter != nil {
-		rewrite, err := h.queryRewriter.Rewrite(ctx, req.Query)
+		var rewrite *QueryRewrite
+		var err error
+		if len(req.History) > 0 {
+			rewrite, err = h.queryRewriter.RewriteWithContext(ctx, req.Query, req.History)
+		} else {
+			rewrite, err = h.queryRewriter.Rewrite(ctx, req.Query)
+		}
 		rewriteDuration := time.Since(rewriteStart).Microseconds()
 		if err == nil && rewrite != nil {
 			expandedQueries = rewrite.ExpandedQueries
@@ -190,6 +201,37 @@ func (h *HybridRetriever) Retrieve(ctx context.Context, req *RetrievalRequest) (
 	logger.Debugf(ctx, "[wiki:%s] result fusion (%s) completed in %dμs, raw_fused=%d results",
 		traceID, map[bool]string{true: "RRF", false: "weighted"}[req.UseRRF], fusionDuration, len(finalResults))
 
+	// Sort by fused score descending before handing off to reranker (so the
+	// reranker sees the strongest fusion candidates first when it caps input).
+	sort.Slice(finalResults, func(i, j int) bool {
+		return finalResults[i].FinalScore > finalResults[j].FinalScore
+	})
+
+	// Cross-encoder style reranking. The reranker may down-rank irrelevant
+	// fusion matches and reorders the top-N; it falls back to a noop when
+	// unconfigured or on error.
+	rerankStart := time.Now()
+	if h.reranker != nil && len(finalResults) > 0 {
+		rerankTopN := 0
+		const rerankFloor = 50
+		if req.TopK > 0 {
+			// Rerank a larger window than the final TopK so reordering has
+			// room to surface good results that the fusion ranked lower.
+			rerankTopN = req.TopK * 3
+			if rerankTopN < rerankFloor {
+				rerankTopN = rerankFloor
+			}
+		}
+		reranked, rerr := h.reranker.Rerank(ctx, req.Query, finalResults, rerankTopN)
+		rerankDuration := time.Since(rerankStart).Microseconds()
+		if rerr != nil {
+			logger.Warnf(ctx, "[wiki:%s] rerank failed after %dμs: %v; keeping fusion order", traceID, rerankDuration, rerr)
+		} else {
+			finalResults = reranked
+			logger.Debugf(ctx, "[wiki:%s] rerank completed in %dμs, results=%d", traceID, rerankDuration, len(finalResults))
+		}
+	}
+
 	// Filter by minimum score
 	if req.MinScore > 0 {
 		filtered := make([]*SearchResult, 0, len(finalResults))
@@ -203,7 +245,8 @@ func (h *HybridRetriever) Retrieve(ctx context.Context, req *RetrievalRequest) (
 		finalResults = filtered
 	}
 
-	// Sort by final score descending
+	// Sort by final score descending (reranker already sorts, but keep this
+	// as a safety net for the noop path).
 	sortStart := time.Now()
 	sort.Slice(finalResults, func(i, j int) bool {
 		return finalResults[i].FinalScore > finalResults[j].FinalScore
@@ -211,7 +254,7 @@ func (h *HybridRetriever) Retrieve(ctx context.Context, req *RetrievalRequest) (
 	sortDuration := time.Since(sortStart).Microseconds()
 
 	// Limit to TopK
-	if len(finalResults) > req.TopK {
+	if req.TopK > 0 && len(finalResults) > req.TopK {
 		finalResults = finalResults[:req.TopK]
 	}
 

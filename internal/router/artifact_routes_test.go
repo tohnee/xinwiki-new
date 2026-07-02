@@ -56,7 +56,7 @@ func artifactRouteEngine(t *testing.T, method string, scopes []string) *gin.Engi
 		c.Set(types.APIKeyScopesContextKey.String(), scopes)
 		c.Next()
 	})
-	h := handler.NewArtifactHandler(stubArtifactSvcForRouter{})
+	h := handler.NewArtifactHandler(stubArtifactSvcForRouter{}, nil, nil)
 	RegisterArtifactRoutes(r.Group("/api/v1"), h, &rbacGuards{})
 	return r
 }

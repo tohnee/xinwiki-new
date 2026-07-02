@@ -1,50 +1,77 @@
-<template>
-  <XinWikiWorkspace>
-    <div class="workspace-content">
-      <div class="wiki-page-viewer">
-        <div class="page-header">
-          <h1 class="page-title">{{ currentPage?.title || '选择一个知识库页面开始' }}</h1>
-          <div class="page-meta" v-if="currentPage">
-            <span class="meta-item">
-              <TimeIcon size="small" />
-              {{ formatDate(currentPage.updated_at) }}
-            </span>
-            <span class="meta-item">
-              <BookIcon size="small" />
-              {{ currentPage.knowledge_base_name }}
-            </span>
-          </div>
-        </div>
-        <div class="page-content" v-if="currentPage">
-          <div class="markdown-body" v-html="renderedContent"></div>
-        </div>
-        <div class="empty-page" v-else>
-          <BookIcon class="empty-icon" size="48" />
-          <p>从左侧选择一个知识库或页面开始浏览和提问</p>
-        </div>
-      </div>
-    </div>
-  </XinWikiWorkspace>
-</template>
-
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import XinWikiWorkspace from '@/components/XinWikiWorkspace.vue'
-import { TimeIcon, BookIcon } from 'tdesign-icons-vue-next'
+import WorkspaceChat from '@/components/workspace/WorkspaceChat.vue'
+import { TimeIcon, BookIcon, ChatIcon, ArrowLeftIcon } from 'tdesign-icons-vue-next'
+import { getWikiPage, type WikiPage } from '@/api/wiki'
+import { marked } from 'marked'
+import markedKatex from 'marked-katex-extension'
+import { sanitizeMarkdownHTML } from '@/utils/security'
+import { listKnowledgeBases } from '@/api/knowledge-base'
+import { useAuthStore } from '@/stores/auth'
 
-interface WikiPage {
-  id: string
-  title: string
-  content: string
-  knowledge_base_name: string
-  updated_at: string
-}
+marked.use(markedKatex({ throwOnError: false, nonStandard: true }))
+
+const route = useRoute()
+const authStore = useAuthStore()
 
 const currentPage = ref<WikiPage | null>(null)
-const renderedContent = computed(() => {
-  if (!currentPage.value) return ''
-  return currentPage.value.content
+const pageContent = ref<string>('')
+const viewMode = ref<'chat' | 'page'>('chat')
+const defaultKbId = ref<string>('')
+
+onMounted(async () => {
+  const pageId = route.params.pageId as string | undefined
+  try {
+    const res = await listKnowledgeBases({ creator: 'all' }) as any
+    const kbs = res?.data || res?.knowledge_bases || []
+    if (Array.isArray(kbs) && kbs.length > 0) {
+      defaultKbId.value = authStore.currentKnowledgeBase?.id || kbs[0].id
+    }
+  } catch (e) {
+    console.warn('[workspace] failed to list KBs', e)
+  }
+  if (pageId && defaultKbId.value) {
+    await loadPageById(pageId)
+  }
 })
+
+const loadPageById = async (pageSlugOrId: string) => {
+  const kbId = authStore.currentKnowledgeBase?.id || defaultKbId.value
+  if (!kbId) {
+    viewMode.value = 'chat'
+    return
+  }
+  try {
+    const res = await getWikiPage(kbId, pageSlugOrId) as any
+    const page = res?.data as WikiPage | undefined
+    if (page) {
+      currentPage.value = page
+      viewMode.value = 'page'
+      try {
+        const html = marked.parse(page.content || '') as string
+        pageContent.value = sanitizeMarkdownHTML(html)
+      } catch {
+        pageContent.value = page.content || ''
+      }
+    } else {
+      viewMode.value = 'chat'
+    }
+  } catch (e) {
+    console.warn('[workspace] load page failed', e)
+    viewMode.value = 'chat'
+  }
+}
+
+const handleSelectPage = async (page: WikiPage | null) => {
+  if (!page) {
+    currentPage.value = null
+    viewMode.value = 'chat'
+    return
+  }
+  await loadPageById(page.slug || page.id)
+}
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return ''
@@ -57,60 +84,185 @@ const formatDate = (dateStr: string) => {
     minute: '2-digit'
   })
 }
+
+const breadcrumb = computed(() => {
+  if (viewMode.value === 'page' && currentPage.value) {
+    return ['知识库', currentPage.value.title]
+  }
+  return ['XinWiki', '智能问答']
+})
 </script>
+
+<template>
+  <XinWikiWorkspace @select-page="handleSelectPage">
+    <template #header-actions>
+      <div class="view-toggle" v-if="currentPage">
+        <button
+          class="toggle-btn"
+          :class="{ active: viewMode === 'chat' }"
+          @click="viewMode = 'chat'"
+          title="返回问答"
+        >
+          <ArrowLeftIcon size="small" />
+        </button>
+        <button
+          class="toggle-btn"
+          :class="{ active: viewMode === 'chat' }"
+          @click="viewMode = 'chat'"
+          title="智能问答"
+        >
+          <ChatIcon size="small" />
+          <span>问答</span>
+        </button>
+        <button
+          class="toggle-btn"
+          :class="{ active: viewMode === 'page' }"
+          @click="viewMode = 'page'"
+          title="页面内容"
+        >
+          <BookIcon size="small" />
+          <span>页面</span>
+        </button>
+      </div>
+    </template>
+
+    <div class="workspace-content">
+      <WorkspaceChat
+        v-if="viewMode === 'chat'"
+        :key="'chat-' + defaultKbId"
+        :knowledge-base-ids="defaultKbId ? [defaultKbId] : undefined"
+      />
+
+      <div v-else-if="viewMode === 'page' && currentPage" class="wiki-page-viewer">
+        <div class="page-header">
+          <button class="back-btn" @click="viewMode = 'chat'; currentPage = null" title="返回问答">
+            <ArrowLeftIcon size="small" />
+            返回
+          </button>
+          <h1 class="page-title">{{ currentPage.title }}</h1>
+          <div class="page-meta">
+            <span class="meta-item">
+              <TimeIcon size="small" />
+              {{ formatDate(currentPage.updated_at) }}
+            </span>
+            <span v-if="currentPage.summary" class="page-summary">{{ currentPage.summary }}</span>
+          </div>
+        </div>
+        <div class="page-content">
+          <div class="markdown-body" v-html="pageContent" />
+        </div>
+      </div>
+    </div>
+  </XinWikiWorkspace>
+</template>
 
 <style scoped>
 .workspace-content {
-  padding: 32px 48px;
-  max-width: 900px;
-  margin: 0 auto;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 3px;
+  border-radius: 8px;
+}
+.toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #86868b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &.active {
+    background: white;
+    color: #007aff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  }
+  &:hover:not(.active) { color: #1d1d1f; }
+}
+
+.wiki-page-viewer {
+  padding: 8px 0;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: #007aff;
+  background: rgba(0, 122, 255, 0.08);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  &:hover { background: rgba(0, 122, 255, 0.15); }
 }
 
 .page-header {
-  margin-bottom: 32px;
-  padding-bottom: 20px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .page-title {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
   color: #1d1d1f;
-  margin: 0 0 12px 0;
+  margin: 0 0 10px 0;
   letter-spacing: -0.02em;
 }
 
 .page-meta {
   display: flex;
-  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
   color: #86868b;
   font-size: 13px;
 }
 
 .meta-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+}
+
+.page-summary {
+  color: #6c6c70;
+  font-size: 14px;
 }
 
 .page-content {
-  font-size: 16px;
-  line-height: 1.7;
+  font-size: 15px;
+  line-height: 1.75;
   color: #1d1d1f;
+  padding-bottom: 40px;
 }
 
 .markdown-body :deep(h1),
 .markdown-body :deep(h2),
 .markdown-body :deep(h3) {
-  margin-top: 32px;
-  margin-bottom: 16px;
+  margin-top: 28px;
+  margin-bottom: 12px;
   font-weight: 600;
 }
-
-.markdown-body :deep(p) {
-  margin-bottom: 16px;
-}
-
+.markdown-body :deep(p) { margin-bottom: 14px; }
 .markdown-body :deep(code) {
   background: #f5f5f7;
   padding: 2px 6px;
@@ -118,42 +270,30 @@ const formatDate = (dateStr: string) => {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Mono', Monaco, monospace;
   font-size: 0.9em;
 }
-
 .markdown-body :deep(pre) {
   background: #f5f5f7;
   padding: 16px;
   border-radius: 12px;
   overflow-x: auto;
-  margin: 20px 0;
+  margin: 16px 0;
 }
-
-.empty-page {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
-  color: #86868b;
-  text-align: center;
+.markdown-body :deep(ul), .markdown-body :deep(ol) {
+  padding-left: 24px;
+  margin-bottom: 14px;
 }
-
-.empty-icon {
-  margin-bottom: 16px;
-  opacity: 0.5;
+.markdown-body :deep(blockquote) {
+  border-left: 3px solid #007aff;
+  padding-left: 16px;
+  color: #6c6c70;
+  margin: 16px 0;
 }
-
-.empty-page p {
-  font-size: 15px;
-  margin: 0;
+.markdown-body :deep(a) {
+  color: #007aff;
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
 }
 
 @media (max-width: 768px) {
-  .workspace-content {
-    padding: 20px;
-  }
-
-  .page-title {
-    font-size: 24px;
-  }
+  .page-title { font-size: 22px; }
 }
 </style>
